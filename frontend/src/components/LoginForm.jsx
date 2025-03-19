@@ -111,7 +111,7 @@ const LoginForm = () => {
               className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-3 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
               id="username"
               type="text"
-              placeholder="Enter your username"
+              placeholder="Enter your email"
               value={username}
               onChange={handleUsernameChange}
               required
