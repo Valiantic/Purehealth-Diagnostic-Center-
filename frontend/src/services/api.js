@@ -22,6 +22,18 @@ export const userAPI = {
 
 // WebAuthn API
 export const webauthnAPI = {
+  // Temporary Registration (user not yet created)
+  getTempRegistrationOptions: (userData) => {
+    return apiClient.post('/webauthn/registration/temp/options', userData);
+  },
+  verifyTempRegistration: (tempRegistrationId, response, userData) => {
+    return apiClient.post('/webauthn/registration/temp/verify', { 
+      tempRegistrationId, 
+      response, 
+      userData 
+    });
+  },
+  
   // Registration
   getRegistrationOptions: (userId, isPrimary = true) => {
     return apiClient.post('/webauthn/registration/options', { userId, isPrimary });
@@ -37,4 +49,4 @@ export const webauthnAPI = {
   verifyAuthentication: (userId, response) => {
     return apiClient.post('/webauthn/authentication/verify', { userId, response });
   }
-}; 
+};

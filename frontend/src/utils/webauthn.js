@@ -9,30 +9,47 @@ import { userAPI, webauthnAPI } from '../services/api';
  */
 export async function registerUser(userData) {
   try {
-    // Step 1: Register user details
-    const userResponse = await userAPI.register(userData);
-    const userId = userResponse.data.user.userId;
+    // Step 1: Get registration options for a temporary user
+    const optionsResponse = await webauthnAPI.getTempRegistrationOptions(userData);
+    const { options, tempRegistrationId } = optionsResponse.data;
     
-    // Step 2: Get registration options for primary passkey
-    const optionsResponse = await webauthnAPI.getRegistrationOptions(userId, true);
-    const options = optionsResponse.data.options;
-    
-    // Step 3: Start registration with the browser WebAuthn API
+    // Step 2: Start registration with the browser WebAuthn API
     const attResp = await startRegistration(options);
     
-    // Step 4: Verify registration with the server
-    const verificationResponse = await webauthnAPI.verifyRegistration(userId, attResp, true);
+    // Step 3: Verify registration with the server and create the user
+    const verificationResponse = await webauthnAPI.verifyTempRegistration(tempRegistrationId, attResp, userData);
     
     return {
       success: true,
-      userId,
-      message: 'Primary passkey registration successful'
+      userId: verificationResponse.data.user.userId,
+      message: 'Account and passkey created successfully'
     };
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Handle user cancellation specifically
+    if (
+      error.name === 'AbortError' || 
+      error.message?.includes('The operation either timed out or was not allowed') ||
+      error.message?.includes('user canceled')
+    ) {
+      return {
+        success: false,
+        message: 'Passkey registration was canceled. Your account has not been created.'
+      };
+    }
+    
+    // Better error message extraction from axios error responses
+    if (error.response?.data) {
+      return {
+        success: false,
+        message: error.response.data.message || error.response.data.error || 'Registration failed'
+      };
+    }
+    
     return {
       success: false,
-      message: error.response?.data?.message || 'Registration failed'
+      message: error.message || 'Registration failed due to an unexpected error'
     };
   }
 }
@@ -92,4 +109,4 @@ export async function authenticateUser(email) {
       message: error.response?.data?.message || 'Authentication failed'
     };
   }
-} 
+}

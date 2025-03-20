@@ -62,8 +62,20 @@ const RegistrationForm = () => {
         setError(result.message);
       }
     } catch (error) {
-      setError('An unexpected error occurred during registration');
-      console.error(error);
+      console.error('Registration error:', error);
+      
+      // Check for various WebAuthn cancellation errors
+      if (
+        error.name === 'AbortError' || 
+        error.message?.includes('The operation either timed out or was not allowed') ||
+        error.message?.includes('The user attempted to register') ||
+        error.message?.includes('user canceled') ||
+        error.message?.includes('The operation was aborted')
+      ) {
+        setError('Passkey registration was canceled. Your account has not been created.');
+      } else {
+        setError(`Registration failed: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }
