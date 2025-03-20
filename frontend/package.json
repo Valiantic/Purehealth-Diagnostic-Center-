@@ -12,6 +12,7 @@
   "dependencies": {
     "@simplewebauthn/browser": "^7.2.0",
     "axios": "^1.5.0",
+    "chart.js": "^4.4.8",
     "lucide-react": "^0.482.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

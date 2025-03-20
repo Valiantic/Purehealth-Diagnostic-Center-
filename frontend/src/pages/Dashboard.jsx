@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import Income from '../assets/icons/profits.png'
+import Expense from '../assets/icons/expense.png'
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -29,26 +31,34 @@ const Dashboard = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
+      
       <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-4">Welcome, {user.firstName}!</h2>
-          <p className="mb-4">You have successfully authenticated with WebAuthn passkey.</p>
-          
-          <div className="bg-gray-50 p-4 rounded-md mb-6">
-            <h3 className="text-lg font-semibold mb-2">Your Profile</h3>
-            <ul className="space-y-2">
-              <li><strong>Name:</strong> {user.firstName} {user.lastName}</li>
-              <li><strong>Email:</strong> {user.email}</li>
-            </ul>
-          </div>
-          
-          <div className="border-t pt-4">
-            <p className="mb-2 text-gray-600">Security Information:</p>
-            <p className="text-sm text-gray-500">You are using FIDO2 WebAuthn authentication with passkeys for enhanced security.</p>
-          </div>
-        </div>
-  
+       <div className="bg-[#02542D] p-6 rounded-lg shadow-md flex justify-around items-center space-x-8">
+
+  {/* Total Income */}
+  <div className="flex flex-col items-start">
+    <h2 className="font-bold mb-4 text-white sm:text-xs md:text-3xl">Total Income</h2>
+
+    <div className="flex items-center gap-4">
+      <img src={Income} className="w-12 h-12" alt="Income Icon" />
+      <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 25,000</h1>
+    </div>
+  </div>
+
+  {/* Total Expenses */}
+  <div className="flex flex-col items-start">
+    <h2 className="font-bold mb-4 text-white sm:text-xs md:text-3xl">Total Expenses</h2>
+
+    <div className="flex items-center gap-4">
+      <img src={Expense} className="w-12 h-12" alt="Expense Icon" />
+      <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 4,000</h1>
+    </div>
+  </div>
+
+</div>
+
+      
       </div>
     </div>
   );
