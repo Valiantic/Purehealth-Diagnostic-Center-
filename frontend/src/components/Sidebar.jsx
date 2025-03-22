@@ -32,7 +32,7 @@ const Sidebar = () => {
     { title: 'Dashboard', path: '/dashboard', icon: dashboardIcon },
     { title: 'Transaction', path: '/transaction', icon: transactionIcon },
     { title: 'Monthly', path: '/monthly', icon: annualIcon },
-    { title: 'Referrals', path: '/referral', icon: referralIcon },
+    { title: 'Referrals', path: '/referrals', icon: referralIcon },
     { title: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 

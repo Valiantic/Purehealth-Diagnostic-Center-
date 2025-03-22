@@ -57,10 +57,10 @@ const Dashboard = () => {
       chartInstancesRef.current.dailyIncome = new Chart(dailyIncomeCtx, {
         type: 'line',
         data: {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',],
           datasets: [{
             label: 'Daily Income',
-            data: [50, 67, 50, 67, 95],
+            data: [2000, 7000, 4500, 3000, 9700, 4000],
             borderColor: '#02542D',
             backgroundColor: 'rgba(2, 84, 45, 0.1)',
             tension: 0.4,
@@ -87,7 +87,7 @@ const Dashboard = () => {
             y: {
               beginAtZero: true,
               ticks: {
-                stepSize: 10,
+                stepSize: 3000,
                 font: {
                   size: 10
                 }
@@ -149,7 +149,7 @@ const Dashboard = () => {
       chartInstancesRef.current.monthlyNetProfit = new Chart(profitCtx, {
         type: 'bar',
         data: {
-          labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+          labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
           datasets: [{
             label: 'Net Profit',
             data: [12000, 16000, 22000, 0, 0, 0],
@@ -224,7 +224,7 @@ const Dashboard = () => {
         <div className="bg-[#02542D] p-6 rounded-lg shadow-md flex justify-around items-center space-x-8 mb-6">
           {/* Total Income */}
           <div className="flex flex-col items-start">
-            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-3xl">Total Income</h2>
+            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-2xl">Total Monthly Income</h2>
             <div className="flex items-center gap-4">
               <img src={Income} className="w-12 h-12" alt="Income Icon" />
               <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 25,000</h1>
@@ -233,7 +233,7 @@ const Dashboard = () => {
 
           {/* Total Expenses */}
           <div className="flex flex-col items-start">
-            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-3xl">Total Expenses</h2>
+            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-2xl">Total Monthly Expenses</h2>
             <div className="flex items-center gap-4">
               <img src={Expense} className="w-12 h-12" alt="Expense Icon" />
               <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 3,000</h1>
@@ -256,7 +256,7 @@ const Dashboard = () => {
                 {showDailyIncomeTooltip && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
                     <p className="font-semibold mb-1">Daily Income Trend</p>
-                    <p>This chart displays your daily income over the past week. It helps you identify patterns in revenue generation and track day-to-day financial performance.</p>
+                    <p>This chart displays your daily income over the past days. It helps you identify patterns in revenue generation and track day-to-day financial performance.</p>
                   </div>
                 )}
               </div>
