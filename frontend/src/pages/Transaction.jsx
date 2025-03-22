@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
-import { Calendar, Download, Edit, X} from 'lucide-react';
+import Expense from '../assets/icons/expense_logo.png';
+import { Calendar, Download, Edit, X, Check } from 'lucide-react';
 
 
 const Transaction = () => {
@@ -60,6 +61,44 @@ const Transaction = () => {
       total: 1650
     };
 
+  // Sample expense data
+  const expenseData = [
+    {
+      payee: 'Salmon Hermida',
+      purpose: 'Office Supplies',
+      department: 'Lab',
+      amount: 3000,
+    },
+    {
+      payee: 'Grey Williams',
+      purpose: 'Utilities',
+      department: 'X-ray',
+      amount: 7000,
+    },
+    {
+      payee: 'Elmira Joe',
+      purpose: 'Medical Equipment',
+      department: 'ECG',
+      amount: 4000,
+    }
+  ];
+
+  // Calculate expense totals
+  const expenseTotals = expenseData.reduce((acc, expense) => {
+    if (expense.status === 'paid') {
+      acc.total += expense.amount;
+      
+      // Track payment methods
+      if (expense.paymentMethod === 'Cash') {
+        acc.cash += expense.amount;
+      } else if (expense.paymentMethod === 'GCash') {
+        acc.gcash += expense.amount;
+      } else {
+        acc.other += expense.amount;
+      }
+    }
+    return acc;
+  }, { total: 0, cash: 0, gcash: 0, other: 0 });
 
   useEffect(() => {
       const userData = localStorage.getItem('user');
@@ -89,7 +128,9 @@ const Transaction = () => {
          
       {/* Main content */}
       <div className="flex-grow p-2 md:p-4">
-        <div className="bg-white rounded-lg shadow p-3 md:p-4">
+        {/* Income section */}
+        <div className="bg-white rounded-lg shadow p-3 md:p-4 mb-4">
+          {/* Income header */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-3 md:mb-4">
             <div className="flex items-center mb-3 md:mb-0">
               <h2 className="text-xl md:text-2xl font-bold text-green-800 flex items-center">
@@ -113,11 +154,11 @@ const Transaction = () => {
               </div>
               
               <div className="flex space-x-2 w-full md:w-auto justify-between md:justify-start">
-                <div className="flex items-center border border-green-800 rounded-md bg-green-100 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none">
+                <div className="flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none">
                   <input
                     type="text"
                     value={date}
-                    className="px-1 md:px-2 py-1 outline-none bg-green-100 w-24 md:w-auto"
+                    className="px-1 md:px-2 py-1 outline-none bg-green-50 w-24 md:w-auto"
                     readOnly
                   />
                   <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
@@ -275,9 +316,114 @@ const Transaction = () => {
             </div>
           </div>
         </div>
+        
+        {/* Expenses section */}
+        <div className="bg-white rounded-lg shadow p-3 md:p-4">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-3 md:mb-4">
+            <div className="flex items-center mb-3 md:mb-0">
+              <h2 className="text-xl md:text-2xl font-bold text-green-800 flex items-center">
+                Expenses
+                <span className="ml-2">
+                  <img src={Expense} className="w-7 h-7 md:w-10 md:h-10" alt="Income Icon"/>
+                </span>
+              </h2>
+            </div>
+            
+            <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
+              <div className="relative w-full md:w-auto">
+                <input
+                  type="text"
+                  placeholder="Search Expenses..."
+                  className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
+                />
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+              </div>
+              
+              <div className="flex space-x-2 w-full md:w-auto justify-between md:justify-start">
+                <div className="flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none">
+                  <input
+                    type="text"
+                    value={date}
+                    className="px-1 md:px-2 py-1 outline-none bg-green-50 w-24 md:w-auto"
+                    readOnly
+                  />
+                  <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
+                </div>
+                
+                <button className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32">
+                  New
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Expenses table */}
+          <div className="relative">
+            <div className="md:hidden text-sm text-gray-500 italic mb-2 flex items-center">
+              <span>Swipe horizontally to view more</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            
+            <div className="overflow-x-auto pb-2 relative">
+              <table className="min-w-full border-collapse text-sm md:text-base">
+                <thead>
+                  <tr className="bg-green-800 text-white">
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Payee</th>
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Purpose</th>
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Department</th>
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Amount</th>
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenseData.map((row, index) => (
+                    <tr key={index} className={row.status === 'pending' ? 'bg-green-50' : 'bg-white'}>
+                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">{row.payee}</td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.purpose}</td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.department}</td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.amount}</td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                        <div className="flex justify-center space-x-1">
+                          <button className="text-gray-600 hover:text-blue-600">
+                            <Edit size={16} className="md:w-5 md:h-5" />
+                          </button>
+                          <button className="text-gray-600 hover:text-green-600">
+                            <Check size={16} className="md:w-5 md:h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  <tr className="bg-gray-200">
+                    <td colSpan={3} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800">Total:</td>
+                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold">{expenseTotals.total}</td>
+                    <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          {/* Expenses summary */}
+          <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
+            <div className="flex flex-wrap items-center mb-4 md:mb-0">
+              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base">
+                Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+              </button>
+              
+            </div>
+          </div>
+
+          
+        </div>
       </div>
     </div>
   );
 };
 
-export default Transaction
+export default Transaction;
