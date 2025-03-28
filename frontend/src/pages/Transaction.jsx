@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
-import { Calendar, Download, Edit, X, Check, MoreVertical } from 'lucide-react';
+import { Calendar, Download, Edit, X, Check, MoreVertical, ReceiptText } from 'lucide-react';
 
 
 const Transaction = () => {
@@ -277,6 +277,10 @@ const Transaction = () => {
                                 className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
                                 onClick={handleDropdownClick}
                               >
+                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-gray-600">
+                                  <ReceiptText size={14} className="mr-2" />
+                                 Details
+                                </button>
                                 <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600">
                                   <Edit size={14} className="mr-2" />
                                   Edit
@@ -456,6 +460,10 @@ const Transaction = () => {
                               className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
                               onClick={handleDropdownClick}
                             >
+                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-gray-600">
+                                  <ReceiptText size={14} className="mr-2" />
+                                 Details
+                                </button>
                               <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600">
                                 <Edit size={14} className="mr-2" />
                                 Edit
