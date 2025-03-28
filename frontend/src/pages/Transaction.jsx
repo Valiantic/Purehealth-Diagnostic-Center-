@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
@@ -11,6 +12,12 @@ const Transaction = () => {
   const [date, setDate] = useState('16-MAR-2025');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
+
+  const navigate = useNavigate();
+
+  const handleNewExpenses = () => {
+    navigate('/add-expenses');
+  }
 
   // Toggle dropdown menu for income rows
   const toggleIncomeMenu = (id) => {
@@ -397,7 +404,7 @@ const Transaction = () => {
                   <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
                 </div>
                 
-                <button className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32">
+                <button onClick={handleNewExpenses} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32">
                   New
                 </button>
               </div>
