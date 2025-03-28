@@ -224,7 +224,7 @@ const Dashboard = () => {
         <div className="bg-[#02542D] p-6 rounded-lg shadow-md flex justify-around items-center space-x-8 mb-6">
           {/* Total Income */}
           <div className="flex flex-col items-start">
-            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-2xl">Total Monthly Income</h2>
+            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-2xl">Total Monthly Revenue</h2>
             <div className="flex items-center gap-4">
               <img src={Income} className="w-12 h-12" alt="Income Icon" />
               <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 25,000</h1>
@@ -256,7 +256,7 @@ const Dashboard = () => {
                 {showDailyIncomeTooltip && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
                     <p className="font-semibold mb-1">Daily Income Trend</p>
-                    <p>This chart displays your daily income over the past days. It helps you identify patterns in revenue generation and track day-to-day financial performance.</p>
+                    <p>This chart displays your daily income over the past few days. It helps you identify patterns in revenue generation and track day-to-day financial performance.</p>
                   </div>
                 )}
               </div>
@@ -323,7 +323,7 @@ const Dashboard = () => {
               {showNetProfitTooltip && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
                   <p className="font-semibold mb-1">Monthly Net Profit</p>
-                  <p>This bar chart shows your net profit for the last 6 months. Use this data to analyze profit trends, identify seasonal variations, and track overall financial performance.</p>
+                  <p>This bar chart shows your net profit for the year. Use this data to analyze profit trends, identify seasonal variations, and track overall financial performance.</p>
                 </div>
               )}
             </div>

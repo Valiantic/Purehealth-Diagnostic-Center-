@@ -3,13 +3,47 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
-import { Calendar, Download, Edit, X, Check } from 'lucide-react';
+import { Calendar, Download, Edit, X, Check, MoreVertical } from 'lucide-react';
 
 
 const Transaction = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [date, setDate] = useState('16-MAR-2025');
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
+
+  // Toggle dropdown menu for income rows
+  const toggleIncomeMenu = (id) => {
+    setOpenMenuId(prevId => prevId === id ? null : id);
+    // Close expense menu if open
+    if (openExpenseMenuId) setOpenExpenseMenuId(null);
+  };
+
+  // Toggle dropdown menu for expense rows
+  const toggleExpenseMenu = (id) => {
+    setOpenExpenseMenuId(prevId => prevId === id ? null : id);
+    // Close income menu if open
+    if (openMenuId) setOpenMenuId(null);
+  };
+
+  // Close all menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenMenuId(null);
+      setOpenExpenseMenuId(null);
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // Prevent menu close when clicking on the dropdown itself
+  const handleDropdownClick = (e) => {
+    e.stopPropagation();
+  };
 
   const incomeData = [
     {
@@ -193,8 +227,8 @@ const Transaction = () => {
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">ECG</th>
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">PE</th>
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">DT</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Referrer</th>
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Referrer</th>
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
                   </tr>
                 </thead>
@@ -221,19 +255,38 @@ const Transaction = () => {
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
                         {row.status === 'canceled' ? '' : row.dt}
                       </td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.grossDeposit}</td>
                       <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 max-w-[100px] truncate">
                         {row.status === 'canceled' ? '' : row.referrer}
                       </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.grossDeposit}</td>
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
                         {row.status !== 'canceled' && (
-                          <div className="flex justify-center space-x-1">
-                            <button className="text-gray-600 hover:text-blue-600">
-                              <Edit size={16} className="md:w-5 md:h-5" />
+                          <div className="relative flex justify-center">
+                            <button 
+                              className="text-gray-600 hover:text-green-600 focus:outline-none"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleIncomeMenu(row.id);
+                              }}
+                            >
+                              <MoreVertical size={16} className="md:w-5 md:h-5" />
                             </button>
-                            <button className="text-gray-600 hover:text-red-600">
-                              <X size={16} className="md:w-5 md:h-5" />
-                            </button>
+                            
+                            {openMenuId === row.id && (
+                              <div 
+                                className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                                onClick={handleDropdownClick}
+                              >
+                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600">
+                                  <Edit size={14} className="mr-2" />
+                                  Edit
+                                </button>
+                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600">
+                                  <X size={14} className="mr-2" />
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </td>
@@ -248,8 +301,8 @@ const Transaction = () => {
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.ecg}</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.pe}</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.dt}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.grossDeposit}</td>
+                    <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                     <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   </tr>
                 </tbody>
@@ -387,13 +440,32 @@ const Transaction = () => {
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.department}</td>
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.amount}</td>
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        <div className="flex justify-center space-x-1">
-                          <button className="text-gray-600 hover:text-blue-600">
-                            <Edit size={16} className="md:w-5 md:h-5" />
+                        <div className="relative flex justify-center">
+                          <button 
+                            className="text-gray-600 hover:text-green-600 focus:outline-none"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpenseMenu(index);
+                            }}
+                          >
+                            <MoreVertical size={16} className="md:w-5 md:h-5" />
                           </button>
-                          <button className="text-gray-600 hover:text-green-600">
-                            <Check size={16} className="md:w-5 md:h-5" />
-                          </button>
+                          
+                          {openExpenseMenuId === index && (
+                            <div 
+                              className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                              onClick={handleDropdownClick}
+                            >
+                              <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600">
+                                <Edit size={14} className="mr-2" />
+                                Edit
+                              </button>
+                              <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-green-600">
+                                <Check size={14} className="mr-2" />
+                                Mark Paid
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
