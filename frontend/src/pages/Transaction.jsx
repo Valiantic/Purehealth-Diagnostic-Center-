@@ -4,10 +4,10 @@ import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Calendar, Download, Edit, X, Check, MoreVertical, ReceiptText } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import LoginForm from '../components/LoginForm';
 
 const Transaction = () => {
-  const { user, loading } = useAuth();
+  // Use the custom auth hook - with isAuthenticating check
+  const { user, isAuthenticating } = useAuth();
   const [date, setDate] = useState('16-MAR-2025');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
@@ -133,10 +133,14 @@ const Transaction = () => {
     return acc;
   }, { total: 0, cash: 0, gcash: 0, other: 0 });
 
-  if (loading) {
-    return <LoginForm />;
+  // Page Rendering Security
+  if (isAuthenticating) {
+    return null;
   }
 
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className='flex flex-col md:flex-row min-h-screen bg-gray-100'>

@@ -4,11 +4,10 @@ import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/profits.png';
 import Expense from '../assets/icons/expense.png';
 import useAuth from '../hooks/useAuth';
-import LoginForm from '../components/LoginForm';
 
 const Dashboard = () => {
-  // Use the custom auth hook
-  const { user, loading } = useAuth();
+  // Use the custom auth hook - with isAuthenticating check
+  const { user, isAuthenticating } = useAuth();
   
   // Tooltip visibility states
   const [showDailyIncomeTooltip, setShowDailyIncomeTooltip] = useState(false);
@@ -196,8 +195,14 @@ const Dashboard = () => {
     };
   }, [user]);
 
-  if (loading) {
-    return <LoginForm />; 
+  // Return nothing while authenticating to prevent flash of protected content
+  if (isAuthenticating) {
+    return null;
+  }
+
+  // If user is null after authentication check, the hook will handle redirect
+  if (!user) {
+    return null;
   }
 
   return (
