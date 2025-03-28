@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Chart from 'chart.js/auto';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/profits.png';
 import Expense from '../assets/icons/expense.png';
+import useAuth from '../hooks/useAuth';
+import LoginForm from '../components/LoginForm';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  // Use the custom auth hook
+  const { user, loading } = useAuth();
   
   // Tooltip visibility states
   const [showDailyIncomeTooltip, setShowDailyIncomeTooltip] = useState(false);
@@ -25,22 +26,6 @@ const Dashboard = () => {
     expensesByDepartment: null,
     monthlyNetProfit: null
   });
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
-      navigate('/login');
-      return;
-    }
-    
-    try {
-      setUser(JSON.parse(userData));
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      localStorage.removeItem('user');
-      navigate('/login');
-    }
-  }, [navigate]);
 
   // Initialize and render charts
   useEffect(() => {
@@ -211,8 +196,8 @@ const Dashboard = () => {
     };
   }, [user]);
 
-  if (!user) {
-    return <div className="text-center mt-10">Loading...</div>;
+  if (loading) {
+    return <LoginForm />; 
   }
 
   return (

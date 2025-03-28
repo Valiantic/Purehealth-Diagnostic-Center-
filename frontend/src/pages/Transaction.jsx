@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Calendar, Download, Edit, X, Check, MoreVertical, ReceiptText } from 'lucide-react';
-
+import useAuth from '../hooks/useAuth';
+import LoginForm from '../components/LoginForm';
 
 const Transaction = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, loading } = useAuth();
   const [date, setDate] = useState('16-MAR-2025');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
@@ -134,25 +133,10 @@ const Transaction = () => {
     return acc;
   }, { total: 0, cash: 0, gcash: 0, other: 0 });
 
-  useEffect(() => {
-      const userData = localStorage.getItem('user');
-      if (!userData) {
-        navigate('/login');
-        return;
-      }
-      
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
-    }, [navigate]);
-
-  if (!user) {
-    return <div className="text-center mt-20 sm:text-xs md:text-4xl text-green-800">Loading...</div>;
+  if (loading) {
+    return <LoginForm />;
   }
+
 
   return (
     <div className='flex flex-col md:flex-row min-h-screen bg-gray-100'>
