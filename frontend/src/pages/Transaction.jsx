@@ -193,7 +193,7 @@ const Transaction = () => {
                   <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
                 </div>
                 
-                <button className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32">
+                <button className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
                   New
                 </button>
               </div>
@@ -312,7 +312,7 @@ const Transaction = () => {
           {/* Legend  */}
           <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
             <div className="flex flex-wrap items-center mb-4 md:mb-0">
-              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base">
+              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
                 Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
               </button>
               
@@ -404,7 +404,7 @@ const Transaction = () => {
                   <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
                 </div>
                 
-                <button onClick={handleNewExpenses} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32">
+                <button onClick={handleNewExpenses} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
                   New
                 </button>
               </div>
@@ -487,7 +487,7 @@ const Transaction = () => {
           {/* Expenses summary */}
           <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
             <div className="flex flex-wrap items-center mb-4 md:mb-0">
-              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base">
+              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
                 Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
               </button>
               

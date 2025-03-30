@@ -190,7 +190,7 @@ const AddExpenses = () => {
                 <div className="pt-6">
                   <button
                     onClick={handleAddExpense}
-                    className="bg-[#02542D] hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md"
+                    className="bg-[#02542D] hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md"
                   >
                     Queue
                   </button>
