@@ -19,6 +19,10 @@ const Transaction = () => {
     navigate('/add-expenses');
   }
 
+  const handleNewIncome = () => {
+    navigate('/add-income');
+  }
+
   // Toggle dropdown menu for income rows
   const toggleIncomeMenu = (id) => {
     setOpenMenuId(prevId => prevId === id ? null : id);
@@ -193,7 +197,7 @@ const Transaction = () => {
                   <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
                 </div>
                 
-                <button className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
+                <button onClick={handleNewIncome} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
                   New
                 </button>
               </div>
