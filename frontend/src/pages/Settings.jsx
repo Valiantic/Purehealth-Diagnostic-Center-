@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
 import { Pencil, Key, Users } from 'lucide-react'
+import tabsConfig from '../config/tabsConfig'
 
 const Settings = () => {
   const { user, isAuthenticating } = useAuth()
@@ -13,15 +14,6 @@ const Settings = () => {
   const handleViewAccounts = () => {
     navigate('/view-accounts')
   }
-
-  // Define tab configuration with routes
-  const tabsConfig = [
-    { name: 'Account', route: '/settings' },
-    { name: 'Activity', route: '/settings/activity' },
-    { name: 'Department', route: '/settings/department' },
-    { name: 'Test', route: '/settings/test' },
-    { name: 'Referrer', route: '/settings/referrer' }
-  ];
   
   const userData = {
     firstName: 'Juan Ponce',

@@ -4,20 +4,12 @@ import { PlusCircle } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
+import tabsConfig from '../config/tabsConfig'
 
 const ViewAccounts = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-
-  // Define tab configuration with routes
-  const tabsConfig = [
-    { name: 'Account', route: '/settings' },
-    { name: 'Activity', route: '/view-accounts/activity' },
-    { name: 'Department', route: '/view-accounts/department' },
-    { name: 'Test', route: '/view-accounts/test' },
-    { name: 'Referrer', route: '/view-accounts/referrer' }
-  ];
 
   const handleAddAccount = () => {
     navigate('/add-account')

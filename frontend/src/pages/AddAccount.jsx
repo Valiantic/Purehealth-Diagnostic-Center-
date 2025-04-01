@@ -4,12 +4,11 @@ import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
 import FIDO2BG from '../assets/images/FIDO2BG.png'
+import tabsConfig from '../config/tabsConfig'
 
 const AddAccount = () => {
   const { user, isAuthenticating } = useAuth()
-
   
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
@@ -24,16 +23,6 @@ const AddAccount = () => {
     // Add your form submission logic here
   };
   
-
-    // Define tab configuration with routes
-    const tabsConfig = [
-        { name: 'Account', route: '/settings' },
-        { name: 'Activity', route: '/view-accounts/activity' },
-        { name: 'Department', route: '/view-accounts/department' },
-        { name: 'Test', route: '/view-accounts/test' },
-        { name: 'Referrer', route: '/view-accounts/referrer' }
-      ];
-
   if (isAuthenticating) {
     return null;
   }
@@ -42,11 +31,10 @@ const AddAccount = () => {
     return null;
   }
 
-
-    const currentPath = location.pathname;
-    const activeTab = tabsConfig.find(tab => 
-      currentPath === tab.route || currentPath.startsWith(tab.route)
-    )?.name || 'Account';
+  const currentPath = location.pathname;
+  const activeTab = tabsConfig.find(tab => 
+    currentPath === tab.route || currentPath.startsWith(tab.route)
+  )?.name || 'Account';
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
