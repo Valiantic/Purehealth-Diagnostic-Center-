@@ -1,10 +1,16 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import { Pencil, Key, Users } from 'lucide-react'
 
 const Settings = () => {
   const { user, isAuthenticating } = useAuth()
+  const navigate = useNavigate()
+
+  const handleViewAccounts = () => {
+    navigate('/view-accounts')
+}
 
   const [activeTab, setActiveTab] = useState('Account');
   const tabs = ['Account', 'Activity', 'Department', 'Test', 'Referrer'];
@@ -112,7 +118,7 @@ const Settings = () => {
                     Change Passkey
                   </button>
                   
-                  <button className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
+                  <button onClick={handleViewAccounts} className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
                     <Users className="w-4 h-4 mr-2" />
                     View Accounts
                   </button>
