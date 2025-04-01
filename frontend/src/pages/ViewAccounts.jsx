@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { PlusCircle } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
@@ -8,6 +8,7 @@ import useAuth from '../hooks/useAuth'
 const ViewAccounts = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
   // Define tab configuration with routes
   const tabsConfig = [
@@ -17,6 +18,10 @@ const ViewAccounts = () => {
     { name: 'Test', route: '/view-accounts/test' },
     { name: 'Referrer', route: '/view-accounts/referrer' }
   ];
+
+  const handleAddAccount = () => {
+    navigate('/add-account')
+  }
     
   const userData = {
     firstName: 'Juan Ponce',
@@ -54,7 +59,7 @@ const ViewAccounts = () => {
           {activeTab === 'Account' && (
             <>
               <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
-                <button className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
+                <button onClick={handleAddAccount} className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
                   <PlusCircle className="mr-1 sm:mr-2" size={18} />
                   Add Account
                 </button>

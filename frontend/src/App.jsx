@@ -4,12 +4,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Transaction from './pages/Transaction'
+import AddExpenses from './pages/AddExpenses';
+import AddIncome from './pages/AddIncome';
 import Monthly from './pages/Monthly';
 import Referrals from './pages/Referrals';
 import Settings from './pages/Settings';
 import ViewAccounts from './pages/ViewAccounts';
-import AddExpenses from './pages/AddExpenses';
-import AddIncome from './pages/AddIncome';
+import AddAccount from './pages/AddAccount';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -20,12 +21,13 @@ function App() {
         <Route path="register" element={<Register />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="transaction" element={<Transaction/>}/>
+        <Route path="add-expenses" element={<AddExpenses />} />
+        <Route path="add-income" element={<AddIncome />} />
         <Route path="monthly" element={<Monthly />} />
         <Route path="referrals" element={<Referrals />} />
         <Route path="settings" element={<Settings />} />
         <Route path="view-accounts" element={<ViewAccounts />} />
-        <Route path="add-expenses" element={<AddExpenses />} />
-        <Route path="add-income" element={<AddIncome />} />
+        <Route path="add-account" element={<AddAccount />} />
         <Route path="*" element={<NotFound />} />
     </Routes>
   );
