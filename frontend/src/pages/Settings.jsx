@@ -1,22 +1,29 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
+import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
 import { Pencil, Key, Users } from 'lucide-react'
 
 const Settings = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleViewAccounts = () => {
     navigate('/view-accounts')
-}
+  }
 
-  const [activeTab, setActiveTab] = useState('Account');
-  const tabs = ['Account', 'Activity', 'Department', 'Test', 'Referrer'];
+  // Define tab configuration with routes
+  const tabsConfig = [
+    { name: 'Account', route: '/settings' },
+    { name: 'Activity', route: '/settings/activity' },
+    { name: 'Department', route: '/settings/department' },
+    { name: 'Test', route: '/settings/test' },
+    { name: 'Referrer', route: '/settings/referrer' }
+  ];
   
   const userData = {
-    username: 'Juan4Ever',
     firstName: 'Juan Ponce',
     middleName: 'De Leon',
     lastName: 'Enrile',
@@ -31,31 +38,20 @@ const Settings = () => {
     return null;
   }
 
+  const currentPath = location.pathname;
+  const activeTab = tabsConfig.find(tab => 
+    currentPath === tab.route || currentPath.startsWith(tab.route)
+  )?.name || 'Account';
+
   return (
    <div className="flex flex-col md:flex-row min-h-screen h-full bg-gray-100">
-      {/* Sidebar placeholder - will be provided by parent component */}
       <Sidebar />
       
       {/* Main content */}
       <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
         
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
-          {/* Tabs */}
-          <div className="flex overflow-x-auto scrollbar-hide border-b border-gray-200">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                className={`px-4 py-3 text-sm md:text-base font-medium whitespace-nowrap ${
-                  activeTab === tab
-                    ? 'text-green-800 border-b-2 border-green-800'
-                    : 'text-gray-600 hover:text-green-700 hover:bg-gray-50'
-                }`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <TabNavigation tabsConfig={tabsConfig} />
           
           {/* Content */}
           <div className="p-4 md:p-6">
@@ -72,7 +68,6 @@ const Settings = () => {
                       readOnly
                     />
                   </div>
-
 
                   <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0">
                     <label className="w-32 md:text-right text-left font-medium text-green-800 md:mr-4 shrink-0">First Name:</label>
@@ -126,11 +121,7 @@ const Settings = () => {
               </div>
             )}
             
-            {activeTab !== 'Account' && (
-              <div className="py-8 text-center text-gray-500">
-                {activeTab} content would appear here.
-              </div>
-            )}
+        
           </div>
         </div>
       </div>
