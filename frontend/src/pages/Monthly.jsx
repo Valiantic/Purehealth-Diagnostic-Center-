@@ -66,7 +66,7 @@ const Monthly = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-green-800 bg-green-100">
+                    <tr className="border-b border-green-800 bg-green-200">
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Day</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">UTZ</th>
@@ -83,24 +83,24 @@ const Monthly = () => {
                   <tbody>
                     {/* Empty rows for data input */}
                     {[...Array(10)].map((_, index) => (
-                      <tr key={`income-row-${index}`} className="border-b border-green-100">
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
+                      <tr key={`income-row-${index}`} className="border-b border-green-200">
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
                         <td className="p-1"></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="p-1 border-t border-green-800 font-bold bg-green-100 text-green-800">
+              <div className="p-1 border-t border-green-800 font-bold bg-green-200 text-green-800">
                 TOTAL:
               </div>
             </div>
@@ -120,7 +120,7 @@ const Monthly = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-green-800 bg-green-100">
+                      <tr className="border-b border-green-800 bg-green-200">
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Name</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Purpose</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
@@ -129,17 +129,17 @@ const Monthly = () => {
                     </thead>
                     <tbody>
                       {[...Array(7)].map((_, index) => (
-                        <tr key={`expense-row-${index}`} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-100"></td>
-                          <td className="p-1 border-r border-green-100"></td>
-                          <td className="p-1 border-r border-green-100"></td>
+                        <tr key={`expense-row-${index}`} className="border-b border-green-200">
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200"></td>
                           <td className="p-1"></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="p-1 border-t bg-green-100 border-green-800 font-bold text-green-800">
+                <div className="p-1 border-t bg-green-200 border-green-800 font-bold text-green-800">
                   TOTAL:
                 </div>
               </div>
@@ -157,7 +157,7 @@ const Monthly = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-green-800 bg-green-100">
+                      <tr className="border-b border-green-800 bg-green-200">
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Company</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Coordinator</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
@@ -167,18 +167,18 @@ const Monthly = () => {
                     </thead>
                     <tbody>
                       {[...Array(7)].map((_, index) => (
-                        <tr key={`collectible-row-${index}`} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-100"></td>
-                          <td className="p-1 border-r border-green-100"></td>
-                          <td className="p-1 border-r border-green-100"></td>
-                          <td className="p-1 border-r border-green-100"></td>
+                        <tr key={`collectible-row-${index}`} className="border-b border-green-200">
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200"></td>
                           <td className="p-1"></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="p-1 border-t bg-green-100 border-green-800 font-bold text-green-800">
+                <div className="p-1 border-t bg-green-200 border-green-800 font-bold text-green-800">
                   TOTAL:
                 </div>
               </div>

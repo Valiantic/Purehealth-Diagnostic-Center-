@@ -61,16 +61,16 @@ const Referrals = () => {
                   <tbody>
                     {/* Empty rows for data input */}
                     {[...Array(10)].map((_, index) => (
-                      <tr key={`income-row-${index}`} className="border-b border-green-100">
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
-                        <td className="p-1 border-r border-green-100"></td>
+                      <tr key={`income-row-${index}`} className="border-b border-green-200">
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
+                        <td className="p-1 border-r border-green-200"></td>
                         <td className="p-1"></td>
                       </tr>
                     ))}
