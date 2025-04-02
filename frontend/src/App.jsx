@@ -11,6 +11,7 @@ import Referrals from './pages/Referrals';
 import Settings from './pages/Settings';
 import ViewAccounts from './pages/ViewAccounts';
 import AddAccount from './pages/AddAccount';
+import ActivityLog from './pages/ActivityLog';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -28,9 +29,10 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="view-accounts" element={<ViewAccounts />} />
         <Route path="add-account" element={<AddAccount />} />
+        <Route path="activity-log" element={<ActivityLog />} />
         <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
 
-export default App; 
+export default App;
