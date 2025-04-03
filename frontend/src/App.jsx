@@ -14,6 +14,7 @@ import AddAccount from './pages/AddAccount';
 import ActivityLog from './pages/ActivityLog';
 import DepartmentManagement from './pages/DepartmentManagement';
 import TestManagement from './pages/TestManagement';
+import ReferralManagement from './pages/ReferralManagement';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
         <Route path="activity-log" element={<ActivityLog />} />
         <Route path="department-management" element={<DepartmentManagement />} />
         <Route path="test-management" element={<TestManagement />} />
+        <Route path="referral-management" element={<ReferralManagement />} />
         <Route path="*" element={<NotFound />} />
     </Routes>
   );
