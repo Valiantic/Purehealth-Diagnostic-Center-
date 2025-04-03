@@ -75,11 +75,10 @@ const Department = () => {
                    <table className="w-full text-sm">
                      <thead>
                        <tr className="border-b border-green-800 bg-green-100">
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">User</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Time</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Action</th>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Department Name</th>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Test Quantity</th>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Opt</th>
                        </tr>
                      </thead>
@@ -87,7 +86,6 @@ const Department = () => {
                        {/* Empty rows for data input */}
                        {[...Array(10)].map((_, index) => (
                          <tr key={`activity-row-${index}`} className="border-b border-green-200">
-                           <td className="p-1 border-r border-green-200"></td>
                            <td className="p-1 border-r border-green-200"></td>
                            <td className="p-1 border-r border-green-200"></td>
                            <td className="p-1 border-r border-green-200"></td>
