@@ -13,6 +13,7 @@ import ViewAccounts from './pages/ViewAccounts';
 import AddAccount from './pages/AddAccount';
 import ActivityLog from './pages/ActivityLog';
 import Department from './pages/Department';
+import Test from './pages/Test';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
         <Route path="add-account" element={<AddAccount />} />
         <Route path="activity-log" element={<ActivityLog />} />
         <Route path="department-management" element={<Department />} />
+        <Route path="test-management" element={<Test />} />
         <Route path="*" element={<NotFound />} />
     </Routes>
   );
