@@ -65,7 +65,6 @@ const Department = () => {
                </div>
              </div>
  
-             {/* Activity Log Table */}
              <div className="p-2">
                <div className="bg-green-800 p-2 rounded-t">
                  <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Departments</h1>
@@ -97,7 +96,6 @@ const Department = () => {
                  </div>
                </div>
  
-                    {/* Expenses summary */}
                     <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
                              <div className="flex flex-wrap items-center mb-4 md:mb-0">
                                <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">

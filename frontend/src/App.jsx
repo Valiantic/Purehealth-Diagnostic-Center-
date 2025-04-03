@@ -12,8 +12,8 @@ import Settings from './pages/Settings';
 import ViewAccounts from './pages/ViewAccounts';
 import AddAccount from './pages/AddAccount';
 import ActivityLog from './pages/ActivityLog';
-import Department from './pages/Department';
-import Test from './pages/Test';
+import DepartmentManagement from './pages/DepartmentManagement';
+import TestManagement from './pages/TestManagement';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -32,8 +32,8 @@ function App() {
         <Route path="view-accounts" element={<ViewAccounts />} />
         <Route path="add-account" element={<AddAccount />} />
         <Route path="activity-log" element={<ActivityLog />} />
-        <Route path="department-management" element={<Department />} />
-        <Route path="test-management" element={<Test />} />
+        <Route path="department-management" element={<DepartmentManagement />} />
+        <Route path="test-management" element={<TestManagement />} />
         <Route path="*" element={<NotFound />} />
     </Routes>
   );
