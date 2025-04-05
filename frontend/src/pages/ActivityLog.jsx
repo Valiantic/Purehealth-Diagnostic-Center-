@@ -65,14 +65,12 @@ const ActivityLog = () => {
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Time</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Action</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Opt</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* Empty rows for data input */}
                       {[...Array(10)].map((_, index) => (
                         <tr key={`activity-row-${index}`} className="border-b border-green-200">
-                          <td className="p-1 border-r border-green-200"></td>
                           <td className="p-1 border-r border-green-200"></td>
                           <td className="p-1 border-r border-green-200"></td>
                           <td className="p-1 border-r border-green-200"></td>

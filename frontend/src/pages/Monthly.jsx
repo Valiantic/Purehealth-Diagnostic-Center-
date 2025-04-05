@@ -1,12 +1,21 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
-
   const [currentMonth, setCurrentMonth] = useState('MAR-2025');
+  const navigate = useNavigate()
+
+  const handleAddIncome = () => {
+    navigate('/add-income')
+  }
+
+  const handleAddExpense = () => {
+    navigate('/add-expenses')
+  }
 
   const handlePrevMonth = () => {
     setCurrentMonth('FEB-2025');
@@ -59,8 +68,11 @@ const Monthly = () => {
 
           {/* Monthly Income Table */}
           <div className="p-2">
-            <div className="bg-green-800 text-white p-2 font-semibold rounded-t">
+            <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
               Monthly Income
+              <button onClick={handleAddIncome} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                  <CirclePlus/>
+                </button>
             </div>
             <div className="border border-green-800 rounded-b">
               <div className="overflow-x-auto">
@@ -108,48 +120,13 @@ const Monthly = () => {
 
           {/* Monthly Expense and Collectible Income Sections (side by side on larger screens) */}
           <div className="md:flex p-2 gap-2">
-            {/* Monthly Expense */}
-            <div className="md:w-1/2 mb-2 md:mb-0">
-              <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
-                <span>Monthly Expense</span>
-                <button className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                <CirclePlus/>
-                </button>
-              </div>
-              <div className="border border-green-800 rounded-b">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-green-800 bg-green-200">
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Name</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Purpose</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
-                        <th className="p-1 text-sm font-medium">Opt.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...Array(7)].map((_, index) => (
-                        <tr key={`expense-row-${index}`} className="border-b border-green-200">
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1"></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="p-1 border-t bg-green-200 border-green-800 font-bold text-green-800">
-                  TOTAL:
-                </div>
-              </div>
-            </div>
+         
 
             {/* Collectible Income */}
             <div className="md:w-1/2">
               <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
                 <span>Collectible Income</span>
-                <button className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                <button onClick={handleAddExpense} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
                   <CirclePlus/>
                 </button>
               </div>
