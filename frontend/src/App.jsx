@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Transaction from './pages/Transaction'
 import AddExpenses from './pages/AddExpenses';
 import AddIncome from './pages/AddIncome';
-import Monthly from './pages/Monthly';
+import MonthlyIncome from './pages/MonthlyIncome';
 import Referrals from './pages/Referrals';
 import Settings from './pages/Settings';
 import ViewAccounts from './pages/ViewAccounts';
@@ -26,7 +26,7 @@ function App() {
         <Route path="transaction" element={<Transaction/>}/>
         <Route path="add-expenses" element={<AddExpenses />} />
         <Route path="add-income" element={<AddIncome />} />
-        <Route path="monthly" element={<Monthly />} />
+        <Route path="monthly-income" element={<MonthlyIncome />} />
         <Route path="referrals" element={<Referrals />} />
         <Route path="settings" element={<Settings />} />
         <Route path="view-accounts" element={<ViewAccounts />} />
