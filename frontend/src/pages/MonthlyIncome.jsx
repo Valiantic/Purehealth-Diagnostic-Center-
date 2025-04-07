@@ -17,6 +17,10 @@ const Monthly = () => {
     navigate('/add-expenses')
   }
 
+  const GoToMonthlyExpenses = () => {
+    navigate('/monthly-expenses')
+  }
+
   const handlePrevMonth = () => {
     setCurrentMonth('FEB-2025');
   }
@@ -46,6 +50,14 @@ const Monthly = () => {
       <div className="flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64">
         
         <div className="bg-cream-50  border-green-800 rounded">
+          
+          <div className='flex justify-end mb-2'>
+            <button  onClick={GoToMonthlyExpenses} 
+    className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
+              Monthly Expenses <ChevronRight size={16} className="ml-1" />
+            </button>
+          </div>
+          
           {/* Month navigation */}
              {/* Month navigation - improved to match design */}
              <div className="flex justify-center items-center py-2">
