@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PlusCircle } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { userAPI } from '../services/api'
 import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
@@ -10,17 +12,32 @@ const ViewAccounts = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  
+  // Fetch all accounts using TanStack Query
+  const { data: accountsData, isLoading, isError, error } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: async () => {
+      const response = await userAPI.getAllUsers()
+      return response.data
+    }
+  })
 
   const handleAddAccount = () => {
     navigate('/add-account')
   }
+  
+  // Filter accounts based on search term
+  const filteredAccounts = accountsData?.users?.filter(account => {
+    if (!searchTerm) return true
     
-  const userData = {
-    firstName: 'Juan Ponce',
-    middleName: 'De Leon',
-    lastName: 'Enrile',
-    email: 'juanponce@gmail.com'
-  };
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      account.name.toLowerCase().includes(searchLower) ||
+      account.email.toLowerCase().includes(searchLower) ||
+      account.username.toLowerCase().includes(searchLower)
+    )
+  }) || []
 
   if(isAuthenticating) {
     return null;
@@ -61,6 +78,8 @@ const ViewAccounts = () => {
                     type="text"
                     placeholder="Search User..."
                     className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -70,7 +89,6 @@ const ViewAccounts = () => {
 
               {/* Monthly Income Table */}
               <div className="p-2">
-                {/* ...existing code... */}
                 <div className="bg-green-800 p-2 rounded-t">
                   <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>User Accounts</h1>
                 </div>
@@ -78,36 +96,53 @@ const ViewAccounts = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                  <tr className="border-b border-green-800 bg-green-100">
-                    <th className="p-1 border-r border-green-800 text-sm font-medium">Name</th>
-                    <th className="p-1 border-r border-green-800 text-sm font-medium">Username</th>
-                    <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
-                    <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
-                    <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
-                    <th className="p-1">Opt.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Empty rows for data input */}
-                  {[...Array(10)].map((_, index) => (
-                    <tr key={`income-row-${index}`} className="border-b border-green-200">
-                      <td className="p-1 border-r border-green-200"></td>
-                      <td className="p-1 border-r border-green-200"></td>
-                      <td className="p-1 border-r border-green-200"></td>
-                      <td className="p-1 border-r border-green-200"></td>
-                      <td className="p-1 border-r border-green-200"></td>
-                    </tr>
-                  ))}
-                  
-                </tbody>
+                        <tr className="border-b border-green-800 bg-green-100">
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Name</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Username</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
+                          <th className="p-1">Opt.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {isLoading ? (
+                          <tr>
+                            <td colSpan="6" className="text-center py-4">Loading...</td>
+                          </tr>
+                        ) : isError ? (
+                          <tr>
+                            <td colSpan="6" className="text-center py-4 text-red-500">
+                              Error: {error?.message || 'Failed to load accounts'}
+                            </td>
+                          </tr>
+                        ) : filteredAccounts.length === 0 ? (
+                          <tr>
+                            <td colSpan="6" className="text-center py-4">No accounts found</td>
+                          </tr>
+                        ) : (
+                          filteredAccounts.map((account) => (
+                            <tr key={account.userId} className="border-b border-green-200 hover:bg-green-50">
+                              <td className="p-1 border-r border-green-200">{account.name}</td>
+                              <td className="p-1 border-r border-green-200">{account.username}</td>
+                              <td className="p-1 border-r border-green-200">{account.email}</td>
+                              <td className="p-1 border-r border-green-200">{account.status}</td>
+                              <td className="p-1 border-r border-green-200">
+                                {new Date(account.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="p-1 text-center">
+                                <button className="text-blue-600 hover:text-blue-800">Edit</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
                     </table>
                   </div>
                 </div>
               </div>
             </>
           )}
-          
-         
         </div>
       </div>
     </div>
