@@ -17,6 +17,9 @@ export const userAPI = {
   },
   findByEmail: (email) => {
     return apiClient.post('/users/find', { email });
+  },
+  getAllUsers: () => {
+    return apiClient.get('/users/all');
   }
 };
 

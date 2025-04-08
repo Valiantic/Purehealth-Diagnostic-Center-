@@ -99,7 +99,37 @@ async function findUserByEmail(req, res) {
   }
 }
 
+async function getAllUsers(req, res) {
+  try {
+    // Get all users
+    const users = await User.findAll({
+      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'createdAt'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      users: users.map(user => ({
+        userId: user.userId,
+        name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
+        username: user.email.split('@')[0], // Generate username from email
+        email: user.email,
+        status: 'Active', // Default status
+        createdAt: user.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   registerUserDetails,
-  findUserByEmail
-}; 
+  findUserByEmail,
+  getAllUsers
+};
