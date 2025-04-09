@@ -53,3 +53,16 @@ export const webauthnAPI = {
     return apiClient.post('/webauthn/authentication/verify', { userId, response });
   }
 };
+
+// Department API
+export const departmentAPI = {
+  getAllDepartments: () => {
+    return apiClient.get('/departments');
+  },
+  createDepartment: (departmentName) => {
+    return apiClient.post('/departments', { name: departmentName });
+  },
+  updateDepartmentStatus: (departmentId, status) => {
+    return apiClient.patch(`/departments/${departmentId}`, { status });
+  }
+};
