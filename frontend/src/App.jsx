@@ -23,28 +23,30 @@ const queryClient = new QueryClient()
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Routes>
-        <Route index element={<Navigate to="/login" replace />} />
-        <Route path="login" element={<Login />} />
-        <Route path="register" element={<Register />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="transaction" element={<Transaction/>}/>
-        <Route path="add-expenses" element={<AddExpenses />} />
-        <Route path="add-income" element={<AddIncome />} />
-        <Route path="monthly-income" element={<MonthlyIncome />} />
-        <Route path="monthly-expenses" element={<MonthlyExpenses />} />
-        <Route path="referrals" element={<Referrals />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="view-accounts" element={<ViewAccounts />} />
-        <Route path="add-account" element={<AddAccount />} />
-        <Route path="activity-log" element={<ActivityLog />} />
-        <Route path="department-management" element={<DepartmentManagement />} />
-        <Route path="test-management" element={<TestManagement />} />
-        <Route path="referral-management" element={<ReferralManagement />} />
-        <Route path="*" element={<NotFound />} />
-    </Routes>
-    </QueryClientProvider>
+    <>
+      <QueryClientProvider client={queryClient}>
+        <Routes>
+          <Route index element={<Navigate to="/login" replace />} />
+          <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="transaction" element={<Transaction/>}/>
+          <Route path="add-expenses" element={<AddExpenses />} />
+          <Route path="add-income" element={<AddIncome />} />
+          <Route path="monthly-income" element={<MonthlyIncome />} />
+          <Route path="monthly-expenses" element={<MonthlyExpenses />} />
+          <Route path="referrals" element={<Referrals />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="view-accounts" element={<ViewAccounts />} />
+          <Route path="add-account" element={<AddAccount />} />
+          <Route path="activity-log" element={<ActivityLog />} />
+          <Route path="department-management" element={<DepartmentManagement />} />
+          <Route path="test-management" element={<TestManagement />} />
+          <Route path="referral-management" element={<ReferralManagement />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </QueryClientProvider>
+    </>
   );
 }
 

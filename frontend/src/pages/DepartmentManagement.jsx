@@ -1,15 +1,69 @@
 import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import TabNavigation from '../components/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
+import { departmentAPI } from '../services/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const Department = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
-  
+  const queryClient = useQueryClient()
+  const [newDepartment, setNewDepartment] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [success, setSuccess] = useState('')
+
+  // Use React Query for fetching departments
+  const { 
+    data: departments = [], 
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const response = await departmentAPI.getAllDepartments();
+      return response.data;
+    },
+    staleTime: 60000, // 1 minute before refetching
+    retry: 2
+  })
+
+  // Mutation for adding departments
+  const addDepartmentMutation = useMutation({
+    mutationFn: (name) => departmentAPI.createDepartment(name),
+    onSuccess: () => {
+      // Invalidate the departments query to refetch
+      queryClient.invalidateQueries({ queryKey: ['departments'] })
+      setSuccess('Department added successfully')
+      setNewDepartment('')
+      setTimeout(() => setSuccess(''), 3000)
+    }
+  })
+
+  // Mutation for updating department status
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }) => departmentAPI.updateDepartmentStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] })
+    }
+  })
+
+  const handleAddDepartment = () => {
+    if (!newDepartment.trim()) {
+      return;
+    }
+    
+    addDepartmentMutation.mutate(newDepartment.trim());
+  }
+
+  // Filter departments based on search term
+  const filteredDepartments = departments.filter(dept => 
+    dept.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   if (isAuthenticating) {
     return null;
@@ -37,6 +91,23 @@ const Department = () => {
          {/* Content based on active tab */}
          {activeTab === 'Departments' && (
            <>
+             {/* Error and Success Messages */}
+             {isError && (
+               <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                 <p>{error?.message || 'An error occurred'}</p>
+               </div>
+             )}
+             {addDepartmentMutation.error && (
+               <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                 <p>{addDepartmentMutation.error?.response?.data?.message || 'Failed to add department'}</p>
+               </div>
+             )}
+             {success && (
+               <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
+                 <p>{success}</p>
+               </div>
+             )}
+             
              <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
                {/* New Department Input and Button */}
                <div className="relative w-full sm:w-64">
@@ -44,11 +115,16 @@ const Department = () => {
                    type="text"
                    placeholder="Enter new department..."
                    className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base pr-16"
+                   value={newDepartment}
+                   onChange={(e) => setNewDepartment(e.target.value)}
+                   onKeyPress={(e) => e.key === 'Enter' && handleAddDepartment()}
                  />
                  <button 
                    className="absolute right-0 top-0 bottom-0 bg-green-800 text-white px-4 rounded-r-lg text-sm md:text-base hover:bg-green-600 h-full"
+                   onClick={handleAddDepartment}
+                   disabled={addDepartmentMutation.isPending}
                  >
-                   Add
+                   {addDepartmentMutation.isPending ? 'Adding...' : 'Add'}
                  </button>
                </div>
 
@@ -56,7 +132,9 @@ const Department = () => {
                <div className="relative w-full sm:w-64">
                  <input
                    type="text"
-                   placeholder="Search Activity..."
+                   placeholder="Search Department..."
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
                    className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
                  />
                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -78,38 +156,64 @@ const Department = () => {
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Test Quantity</th>
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Opt</th>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                        </tr>
                      </thead>
                      <tbody>
-                       {/* Empty rows for data input */}
-                       {[...Array(10)].map((_, index) => (
-                         <tr key={`activity-row-${index}`} className="border-b border-green-200">
-                           <td className="p-1 border-r border-green-200"></td>
-                           <td className="p-1 border-r border-green-200"></td>
-                           <td className="p-1 border-r border-green-200"></td>
-                           <td className="p-1 border-r border-green-200"></td>
+                       {isLoading ? (
+                         <tr>
+                           <td colSpan="5" className="text-center p-4">Loading departments...</td>
                          </tr>
-                       ))}
+                       ) : filteredDepartments.length === 0 ? (
+                         <tr>
+                           <td colSpan="5" className="text-center p-4">
+                             {searchTerm ? 'No departments match your search' : 'No departments found'}
+                           </td>
+                         </tr>
+                       ) : (
+                         filteredDepartments.map((dept) => (
+                           <tr key={dept.id} className="border-b border-green-200">
+                             <td className="p-1 pl-5 border-r border-green-200 text-left">{dept.name}</td>
+                             <td className="p-1 border-r border-green-200 text-center">{dept.testQuantity}</td>
+                             <td className="p-1 border-r border-green-200 text-center">{new Date(dept.createdAt).toLocaleDateString()}</td>
+                             <td className="p-1 border-r border-green-200 text-center">
+                               <span className={`px-2 py-1 rounded text-xs ${dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                 {dept.status}
+                               </span>
+                             </td>
+                             <td className="p-1 border-r border-green-200 text-center">
+                               <button 
+                                 className={`px-2 py-1 rounded text-xs ${dept.status === 'active' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
+                                 onClick={() => updateStatusMutation.mutate({
+                                   id: dept.id,
+                                   status: dept.status === 'active' ? 'inactive' : 'active'
+                                 })}
+                                 disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.id}
+                               >
+                                 {updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.id
+                                   ? 'Updating...'
+                                   : dept.status === 'active' ? 'Deactivate' : 'Activate'
+                                 }
+                               </button>
+                             </td>
+                           </tr>
+                         ))
+                       )}
                      </tbody>
                    </table>
                  </div>
                </div>
  
-                    <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
-                             <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                               <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                                 Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                               </button>
-                               
-                             </div>
-                           </div>
- 
+               <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
+                 <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                   <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                     Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                   </button>
+                 </div>
+               </div>
              </div>
            </>
          )}
-         
-
        </div>
      </div>
    </div>
