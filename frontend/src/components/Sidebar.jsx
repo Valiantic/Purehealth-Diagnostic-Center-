@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, 
   X, 
@@ -10,10 +10,11 @@ import dashboardIcon from '../assets/icons/dashboard.png';
 import transactionIcon from '../assets/icons/transaction.png';
 import annualIcon from '../assets/icons/annual.png';
 import referralIcon from '../assets/icons/network.png';
-import PDCHI from '../assets/icons/purehealth_logo.jpg'; // Assuming you have a logo image - adjust path as needed
+import PDCHI from '../assets/icons/purehealth_logo.jpg'; 
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation(); 
   const isLogged = localStorage.getItem('user');
 
   const handleLogout = () => {
@@ -27,7 +28,6 @@ const Sidebar = () => {
     setIsOpen(!isOpen);
   };
 
-  // Define sidebar menu items
   const menuItems = [
     { title: 'Dashboard', path: '/dashboard', icon: dashboardIcon },
     { title: 'Transaction', path: '/transaction', icon: transactionIcon },
@@ -36,9 +36,30 @@ const Sidebar = () => {
     { title: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 
+  // ADD ROUTES HERE IF NEW PAGE IS CREATED FOR HOVER ACTIVE
+  const isRouteActive = (itemPath) => {
+   
+    if (location.pathname === itemPath) return true;
+    
+    if (itemPath === '/transaction') {
+      return ['/add-income', '/add-expenses', '/transaction'].includes(location.pathname) || 
+             location.pathname.startsWith('/transaction/');
+    }
+    else if (itemPath === '/monthly-income') {
+      return ['/monthly-expenses', '/monthly-income'].includes(location.pathname) ||
+             location.pathname.startsWith('/monthly-income/');
+    }
+    else if (itemPath === '/settings') {
+      return ['/view-accounts','/add-account', '/activity-log', '/department-management', '/test-management', '/referral-management', '/settings'].includes(location.pathname) ||
+      location.pathname.startsWith('/settings/');
+    }
+    
+    return false;
+  };
+
   return (
     <>
-      {/* Mobile hamburger button */}
+     
       <button 
         className="lg:hidden fixed z-20 top-4 left-4 p-2 rounded-md bg-white shadow-md transition-colors duration-300 hover:bg-green-100 focus:outline-none"
         onClick={toggleSidebar}
@@ -47,7 +68,6 @@ const Sidebar = () => {
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Sidebar overlay for mobile */}
       {isOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-10"
@@ -73,44 +93,39 @@ const Sidebar = () => {
         
         <nav className="mt-4">
           <ul className="space-y-2 px-4">
-            {menuItems.map((item, index) => (
-              <li key={index}>
-                <Link
-                  to={item.path}
-                  className="flex items-center p-4 rounded-lg transition-all duration-300 group relative overflow-hidden"
-                >
-                  {/* Green background that slides in on hover/active */}
-                  <span className="absolute inset-0 bg-green-600 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
-                  
-                  {/* Icon and text */}
-                  <span className="mr-4 text-white group-hover:text-green relative z-10">
-                    {typeof item.icon === 'string' ? (
-                      <img src={item.icon} alt={`${item.title} icon`} className="w-7 h-7" />
-                    ) : React.isValidElement(item.icon) ? (
-                      item.icon
-                    ) : (
-                      <img src={item.icon} alt={`${item.title} icon`} className="w-7 h-7" />
-                    )}
-                  </span>
-                  <span className="text-white group-hover:text-green relative z-10">{item.title}</span>
-                </Link>
-              </li>
-            ))}
+            {menuItems.map((item, index) => {
+              const isActive = isRouteActive(item.path);
+              return (
+                <li key={index}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center p-4 rounded-lg transition-all duration-300 ${isActive ? 'bg-green-600' : 'bg-transparent hover:bg-green-600'}`}
+                  >
+                    <span className="mr-4 text-white relative z-10">
+                      {typeof item.icon === 'string' ? (
+                        <img src={item.icon} alt={`${item.title} icon`} className="w-7 h-7" />
+                      ) : React.isValidElement(item.icon) ? (
+                        item.icon
+                      ) : (
+                        <img src={item.icon} alt={`${item.title} icon`} className="w-7 h-7" />
+                      )}
+                    </span>
+                    <span className="text-white relative z-10">{item.title}</span>
+                  </Link>
+                </li>
+              );
+            })}
             
             {/* Logout item with onClick handler */}
             <li>
               <div
                 onClick={handleLogout}
-                className="flex items-center p-4 rounded-lg transition-all duration-300 group relative overflow-hidden cursor-pointer"
+                className="flex items-center p-4 rounded-lg transition-all duration-300 bg-transparent hover:bg-green-600 cursor-pointer"
               >
-                {/* Green background that slides in on hover/active */}
-                <span className="absolute inset-0 bg-green-600 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
-                
-                {/* Icon and text */}
-                <span className="mr-4 text-white group-hover:text-green relative z-10">
+                <span className="mr-4 text-white relative z-10">
                   <LogOut size={20} />
                 </span>
-                <span className="text-white group-hover:text-green relative z-10">Logout</span>
+                <span className="text-white relative z-10">Logout</span>
               </div>
             </li>
 
