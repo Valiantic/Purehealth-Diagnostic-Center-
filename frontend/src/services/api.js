@@ -17,6 +17,9 @@ export const userAPI = {
   },
   findByEmail: (email) => {
     return apiClient.post('/users/find', { email });
+  },
+  getAllUsers: () => {
+    return apiClient.get('/users/all');
   }
 };
 
@@ -48,5 +51,18 @@ export const webauthnAPI = {
   },
   verifyAuthentication: (userId, response) => {
     return apiClient.post('/webauthn/authentication/verify', { userId, response });
+  }
+};
+
+// Department API
+export const departmentAPI = {
+  getAllDepartments: () => {
+    return apiClient.get('/departments');
+  },
+  createDepartment: (departmentName) => {
+    return apiClient.post('/departments', { name: departmentName });
+  },
+  updateDepartmentStatus: (departmentId, status) => {
+    return apiClient.patch(`/departments/${departmentId}`, { status });
   }
 };

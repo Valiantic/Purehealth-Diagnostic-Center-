@@ -1,7 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Login from './pages/Login';
-// import Register from './pages/Register'; Remove due to early development stage only!
+import Register from './pages/Register'; 
 import Dashboard from './pages/Dashboard';
 import Transaction from './pages/Transaction'
 import AddExpenses from './pages/AddExpenses';
@@ -18,27 +19,34 @@ import TestManagement from './pages/TestManagement';
 import ReferralManagement from './pages/ReferralManagement';
 import NotFound from './pages/NotFound';
 
+const queryClient = new QueryClient()
+
 function App() {
   return (
-    <Routes>
-        <Route index element={<Navigate to="/login" replace />} />
-        <Route path="login" element={<Login />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="transaction" element={<Transaction/>}/>
-        <Route path="add-expenses" element={<AddExpenses />} />
-        <Route path="add-income" element={<AddIncome />} />
-        <Route path="monthly-income" element={<MonthlyIncome />} />
-        <Route path="monthly-expenses" element={<MonthlyExpenses />} />
-        <Route path="referrals" element={<Referrals />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="view-accounts" element={<ViewAccounts />} />
-        <Route path="add-account" element={<AddAccount />} />
-        <Route path="activity-log" element={<ActivityLog />} />
-        <Route path="department-management" element={<DepartmentManagement />} />
-        <Route path="test-management" element={<TestManagement />} />
-        <Route path="referral-management" element={<ReferralManagement />} />
-        <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <QueryClientProvider client={queryClient}>
+        <Routes>
+          <Route index element={<Navigate to="/login" replace />} />
+          <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="transaction" element={<Transaction/>}/>
+          <Route path="add-expenses" element={<AddExpenses />} />
+          <Route path="add-income" element={<AddIncome />} />
+          <Route path="monthly-income" element={<MonthlyIncome />} />
+          <Route path="monthly-expenses" element={<MonthlyExpenses />} />
+          <Route path="referrals" element={<Referrals />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="view-accounts" element={<ViewAccounts />} />
+          <Route path="add-account" element={<AddAccount />} />
+          <Route path="activity-log" element={<ActivityLog />} />
+          <Route path="department-management" element={<DepartmentManagement />} />
+          <Route path="test-management" element={<TestManagement />} />
+          <Route path="referral-management" element={<ReferralManagement />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </QueryClientProvider>
+    </>
   );
 }
 

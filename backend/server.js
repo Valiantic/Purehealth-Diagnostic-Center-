@@ -6,6 +6,7 @@ const { sequelize } = require('./models');
 // Routes
 const userRoutes = require('./routes/userRoutes');
 const webauthnRoutes = require('./routes/webauthnRoutes');
+const departmentRoutes = require('./routes/departmentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/webauthn', webauthnRoutes);
+app.use('/api/departments',departmentRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
