@@ -60,9 +60,11 @@ const Department = () => {
     addDepartmentMutation.mutate(newDepartment.trim());
   }
 
-  // Filter departments based on search term
+  // filter deparments
   const filteredDepartments = departments.filter(dept => 
-    dept.name.toLowerCase().includes(searchTerm.toLowerCase())
+    dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(dept.testQuantity).includes(searchTerm) ||
+    new Date(dept.createdAt).toLocaleDateString().includes(searchTerm)
   )
 
   if (isAuthenticating) {
@@ -178,7 +180,7 @@ const Department = () => {
                              <td className="p-1 border-r border-green-200 text-center">{new Date(dept.createdAt).toLocaleDateString()}</td>
                              <td className="p-1 border-r border-green-200 text-center">
                                <span className={`px-2 py-1 rounded text-xs ${dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                 {dept.status}
+                                 {dept.status.charAt(0).toUpperCase() + dept.status.slice(1)}
                                </span>
                              </td>
                              <td className="p-1 border-r border-green-200 text-center">
