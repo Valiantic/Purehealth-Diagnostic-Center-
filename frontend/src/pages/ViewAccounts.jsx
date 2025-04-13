@@ -122,12 +122,14 @@ const ViewAccounts = () => {
                           </tr>
                         ) : (
                           filteredAccounts.map((account) => (
-                            <tr key={account.userId} className="border-b border-green-200 hover:bg-green-50">
-                              <td className="p-1 border-r border-green-200">{account.name}</td>
-                              <td className="p-1 border-r border-green-200">{account.username}</td>
-                              <td className="p-1 border-r border-green-200">{account.email}</td>
-                              <td className="p-1 border-r border-green-200">{account.status}</td>
-                              <td className="p-1 border-r border-green-200">
+                            <tr key={account.userId} className="border-b border-green-200">
+                              <td className="p-1 pl-5 border-r border-green-200">{account.name}</td>
+                              <td className="p-1 border-r border-green-200 text-center">{account.username}</td>
+                              <td className="p-1 border-r border-green-200 text-center">{account.email}</td>
+                              <td className="p-1 border-r border-green-200 text-center"> <span className={`px-2 py-1 rounded text-xs ${account.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                 {account.status}
+                               </span></td>
+                              <td className="p-1 border-r border-green-200 text-center">
                                 {new Date(account.createdAt).toLocaleDateString()}
                               </td>
                               <td className="p-1 text-center">
