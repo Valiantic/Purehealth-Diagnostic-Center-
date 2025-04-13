@@ -90,7 +90,7 @@ const Monthly = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-green-800 bg-green-200">
+                    <tr className="border-b border-green-800 bg-green-100">
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Day</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">UTZ</th>
@@ -101,13 +101,13 @@ const Monthly = () => {
                       <th className="p-1 border-r border-green-800 text-sm font-medium">X-Ray</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">GCash</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">SO</th>
-                      <th className="p-1">Opt.</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {/* Empty rows for data input */}
                     {[...Array(10)].map((_, index) => (
-                      <tr key={`income-row-${index}`} className="border-b border-green-200">
+                      <tr key={`income-row-${index}`} className="border-b border-green-100">
                         <td className="p-1 border-r border-green-200"></td>
                         <td className="p-1 border-r border-green-200"></td>
                         <td className="p-1 border-r border-green-200"></td>
@@ -124,7 +124,7 @@ const Monthly = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="p-1 border-t border-green-800 font-bold bg-green-200 text-green-800">
+              <div className="p-1 border-t border-green-800 font-bold bg-green-100 text-green-800">
                 TOTAL:
               </div>
             </div>
@@ -146,12 +146,12 @@ const Monthly = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-green-800 bg-green-200">
+                      <tr className="border-b border-green-800 bg-green-100">
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Company</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Coordinator</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Income</th>
-                        <th className="p-1 text-sm font-medium">Opt.</th>
+                        <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -167,7 +167,7 @@ const Monthly = () => {
                     </tbody>
                   </table>
                 </div>
-                <div className="p-1 border-t bg-green-200 border-green-800 font-bold text-green-800">
+                <div className="p-1 border-t bg-green-100 border-green-800 font-bold text-green-800">
                   TOTAL:
                 </div>
               </div>

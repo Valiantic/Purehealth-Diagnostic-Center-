@@ -84,7 +84,7 @@ const ViewAccounts = () => {
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
-                    <th className="p-1">Opt.</th>
+                    <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

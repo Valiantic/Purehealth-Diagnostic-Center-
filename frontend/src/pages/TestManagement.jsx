@@ -68,7 +68,7 @@ const Test = () => {
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Price</th>
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Description</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Opt</th>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                        </tr>
                      </thead>
                      <tbody>

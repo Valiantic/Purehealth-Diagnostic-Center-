@@ -78,8 +78,8 @@ const Department = () => {
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Test Quantity</th>
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
                          <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
-                         <th className="p-1 border-r border-green-800 text-sm font-medium">Opt</th>
-                       </tr>
+                         <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                         </tr>
                      </thead>
                      <tbody>
                        {/* Empty rows for data input */}
