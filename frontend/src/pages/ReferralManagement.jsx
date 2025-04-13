@@ -69,7 +69,7 @@ const ReferralManagement = () => {
                      <th className="p-1 border-r border-green-800 text-sm font-medium">Address</th>
                      <th className="p-1 border-r border-green-800 text-sm font-medium">Birth Date</th>
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Date Added</th>
-                     <th className="p-1 border-r border-green-800 text-sm font-medium">Opt</th>
+                     <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                    </tr>
                  </thead>
                  <tbody>

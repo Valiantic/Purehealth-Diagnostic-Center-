@@ -296,8 +296,8 @@ const Transaction = () => {
                     </tr>
                   ))}
                   
-                  <tr className="bg-gray-200">
-                    <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-gray-200">Total:</td>
+                  <tr className="bg-green-100">
+                    <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.utz}</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.lab}</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.xray}</td>
@@ -478,8 +478,8 @@ const Transaction = () => {
                     </tr>
                   ))}
                   
-                  <tr className="bg-gray-200">
-                    <td colSpan={3} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800">Total:</td>
+                  <tr className="bg-green-100">
+                    <td colSpan={3} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800">TOTAL:</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold">{expenseTotals.total}</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   </tr>

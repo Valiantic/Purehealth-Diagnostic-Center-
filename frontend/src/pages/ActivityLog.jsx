@@ -64,7 +64,7 @@ const ActivityLog = () => {
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Time</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Action</th>
+                        <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>

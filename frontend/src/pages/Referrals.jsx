@@ -55,7 +55,7 @@ const Referrals = () => {
                       <th className="p-1 border-r border-green-800 text-sm font-medium">ECG</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">X-Ray</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
-                      <th className="p-1">Opt.</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

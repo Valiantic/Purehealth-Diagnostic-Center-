@@ -92,11 +92,11 @@ const MonthlyExpenses = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-green-800 bg-green-200">
+                  <tr className="border-b border-green-800 bg-green-100">
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Payee</th>
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Purpose</th>
                     <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
-                    <th className="p-1">Opt.</th>
+                    <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -112,7 +112,7 @@ const MonthlyExpenses = () => {
                 </tbody>
               </table>
             </div>
-            <div className="p-1 border-t border-green-800 font-bold bg-green-200 text-green-800">
+            <div className="p-1 border-t border-green-800 font-bold bg-green-100 text-green-800">
               TOTAL:
             </div>
           </div>
