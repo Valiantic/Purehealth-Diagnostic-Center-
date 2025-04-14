@@ -27,10 +27,15 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  role: {
+    type: DataTypes.ENUM('admin', 'receptionist'),
+    allowNull: false,
+    defaultValue: 'receptionist'
+  },
   currentChallenge: {
     type: DataTypes.STRING(255),
     allowNull: true
   }
 });
 
-module.exports = User; 
+module.exports = User;

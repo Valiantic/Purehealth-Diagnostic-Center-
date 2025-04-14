@@ -8,7 +8,8 @@ const RegistrationForm = () => {
     email: '',
     firstName: '',
     middleName: '',
-    lastName: ''
+    lastName: '',
+    role: 'receptionist' // Default role
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +55,8 @@ const RegistrationForm = () => {
           userId: result.userId,
           email: formData.email,
           firstName: formData.firstName,
-          lastName: formData.lastName
+          lastName: formData.lastName,
+          role: formData.role
         });
         
         setStep(2);
@@ -94,8 +96,13 @@ const RegistrationForm = () => {
           localStorage.setItem('user', JSON.stringify(userData));
         }
         
-        // Redirect to dashboard
-        navigate('/dashboard');
+        // Redirect to view-accounts instead of dashboard
+        navigate('/view-accounts', { 
+          state: { 
+            success: true, 
+            message: 'Account successfully created!'
+          }
+        });
       } else {
         setError(result.message);
       }
@@ -113,8 +120,13 @@ const RegistrationForm = () => {
       localStorage.setItem('user', JSON.stringify(userData));
     }
     
-    // Redirect to dashboard
-    navigate('/dashboard');
+    // Redirect to view-accounts instead of dashboard
+    navigate('/view-accounts', { 
+      state: { 
+        success: true, 
+        message: 'Account successfully created!'
+      }
+    });
   };
 
   const goToLogin = () => {
@@ -187,6 +199,23 @@ const RegistrationForm = () => {
                 onChange={handleChange}
                 required
               />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="role">
+                Role
+              </label>
+              <select
+                className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                required
+              >
+                <option value="receptionist">Receptionist</option>
+                <option value="admin">Admin</option>
+              </select>
             </div>
             
             {error && (

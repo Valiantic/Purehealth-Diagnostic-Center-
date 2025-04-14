@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { PlusCircle } from 'lucide-react'
+import { PlusCircle, XCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { userAPI } from '../services/api'
 import Sidebar from '../components/Sidebar'
@@ -13,6 +13,23 @@ const ViewAccounts = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  
+  // Check for success message in location state
+  useEffect(() => {
+    if (location.state?.success && location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Clear the location state after displaying message
+      window.history.replaceState({}, document.title);
+      
+      // Auto-hide the success message after 5 seconds
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location]);
   
   // Fetch all accounts using TanStack Query
   const { data: accountsData, isLoading, isError, error } = useQuery({
@@ -35,7 +52,8 @@ const ViewAccounts = () => {
     return (
       account.name.toLowerCase().includes(searchLower) ||
       account.email.toLowerCase().includes(searchLower) ||
-      account.username.toLowerCase().includes(searchLower)
+      account.username.toLowerCase().includes(searchLower) ||
+      (account.role && account.role.toLowerCase().includes(searchLower)) // Add role to search criteria
     )
   }) || []
 
@@ -63,6 +81,16 @@ const ViewAccounts = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
           {/* Use the TabNavigation component */}
           <TabNavigation tabsConfig={tabsConfig} />
+          
+          {/* Success message */}
+          {successMessage && (
+            <div className="m-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
+              <span>{successMessage}</span>
+              <button onClick={() => setSuccessMessage('')} className="text-green-700 hover:text-green-900">
+                <XCircle size={18} />
+              </button>
+            </div>
+          )}
           
           {/* Content based on active tab */}
           {activeTab === 'Account' && (
@@ -100,6 +128,7 @@ const ViewAccounts = () => {
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Name</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Username</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Role</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Created</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
@@ -108,17 +137,17 @@ const ViewAccounts = () => {
                       <tbody>
                         {isLoading ? (
                           <tr>
-                            <td colSpan="6" className="text-center py-4">Loading...</td>
+                            <td colSpan="7" className="text-center py-4">Loading...</td>
                           </tr>
                         ) : isError ? (
                           <tr>
-                            <td colSpan="6" className="text-center py-4 text-red-500">
+                            <td colSpan="7" className="text-center py-4 text-red-500">
                               Error: {error?.message || 'Failed to load accounts'}
                             </td>
                           </tr>
                         ) : filteredAccounts.length === 0 ? (
                           <tr>
-                            <td colSpan="6" className="text-center py-4">No accounts found</td>
+                            <td colSpan="7" className="text-center py-4">No accounts found</td>
                           </tr>
                         ) : (
                           filteredAccounts.map((account) => (
@@ -126,9 +155,20 @@ const ViewAccounts = () => {
                               <td className="p-1 pl-5 border-r border-green-200">{account.name}</td>
                               <td className="p-1 border-r border-green-200 text-center">{account.username}</td>
                               <td className="p-1 border-r border-green-200 text-center">{account.email}</td>
-                              <td className="p-1 border-r border-green-200 text-center"> <span className={`px-2 py-1 rounded text-xs ${account.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                 {account.status}
-                               </span></td>
+                              <td className="p-1 border-r border-green-200 text-center">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  account.role === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {account.role 
+                                    ? (account.role === 'admin' ? 'Admin' : 'Receptionist') 
+                                    : 'Receptionist'}
+                                </span>
+                              </td>
+                              <td className="p-1 border-r border-green-200 text-center"> 
+                                <span className={`px-2 py-1 rounded text-xs ${account.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {account.status}
+                                </span>
+                              </td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 {new Date(account.createdAt).toLocaleDateString()}
                               </td>

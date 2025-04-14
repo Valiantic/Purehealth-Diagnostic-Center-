@@ -125,7 +125,8 @@ async function tempRegistrationVerify(req, res) {
         email: userData.email,
         firstName: userData.firstName,
         middleName: userData.middleName || null,
-        lastName: userData.lastName
+        lastName: userData.lastName,
+        role: userData.role || 'receptionist' // Use provided role or default to receptionist
       });
       
       // Instead of updating the existing authenticator object, create a new one with the real user ID
