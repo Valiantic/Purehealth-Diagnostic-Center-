@@ -23,7 +23,8 @@ const AddAccount = () => {
     email: '',
     firstName: '',
     middleName: '',
-    lastName: ''
+    lastName: '',
+    role: 'receptionist' // Default role
   });
   
   const handleChange = (e) => {
@@ -66,7 +67,8 @@ const AddAccount = () => {
           userId: result.userId,
           email: formData.email,
           firstName: formData.firstName,
-          lastName: formData.lastName
+          lastName: formData.lastName,
+          role: formData.role // Include role in userData
         });
         
         setStep(2);
@@ -106,7 +108,12 @@ const AddAccount = () => {
           localStorage.setItem('user', JSON.stringify(userData));
         }
         
-        navigate('/dashboard');
+        navigate('/view-accounts', { 
+          state: { 
+            success: true, 
+            message: 'Account successfully created!'
+          }
+        });
       } else {
         setError(result.message);
       }
@@ -123,7 +130,12 @@ const AddAccount = () => {
       localStorage.setItem('user', JSON.stringify(userData));
     }
   
-    navigate('/dashboard');
+    navigate('/view-accounts', { 
+      state: { 
+        success: true, 
+        message: 'Account successfully created!'
+      }
+    });
   };
   
   const goToLogin = () => {
@@ -208,6 +220,20 @@ const AddAccount = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                         readOnly={step === 2}
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block font-medium text-green-800">Role</label>
+                      <select
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                        disabled={step === 2}
+                      >
+                        <option value="receptionist">Receptionist</option>
+                        <option value="admin">Admin</option>
+                      </select>
                     </div>
                     
                     {error && step === 1 && (

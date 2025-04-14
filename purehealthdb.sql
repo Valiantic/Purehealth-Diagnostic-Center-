@@ -5,6 +5,7 @@ CREATE TABLE `Users` (
   `firstName` varchar(255) NOT NULL,
   `middleName` varchar(255) DEFAULT NULL,
   `lastName` varchar(255) NOT NULL,
+  `role` enum('admin','receptionist') NOT NULL DEFAULT 'receptionist',
   `currentChallenge` varchar(255) DEFAULT NULL,
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL,

@@ -101,9 +101,9 @@ async function findUserByEmail(req, res) {
 
 async function getAllUsers(req, res) {
   try {
-    // Get all users
+    // Get all users with role included in attributes
     const users = await User.findAll({
-      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'createdAt'],
+      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role', 'createdAt'],
       order: [['createdAt', 'DESC']]
     });
 
@@ -114,6 +114,7 @@ async function getAllUsers(req, res) {
         name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
         username: user.email.split('@')[0], // Generate username from email
         email: user.email,
+        role: user.role, // Include role in response
         status: 'Active', // Default status
         createdAt: user.createdAt
       }))
