@@ -30,3 +30,12 @@ CREATE TABLE `Authenticators` (
   KEY `userId` (`userId`),
   CONSTRAINT `Authenticators_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE CASCADE
 );
+
+CREATE TABLE Department (
+  departmentId INT PRIMARY KEY AUTO_INCREMENT,
+  departmentName VARCHAR(255) NOT NULL UNIQUE,
+  testQuantity INT DEFAULT 0,
+  status ENUM('active', 'inactive') DEFAULT 'active',
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
