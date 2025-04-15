@@ -20,6 +20,9 @@ export const userAPI = {
   },
   getAllUsers: () => {
     return apiClient.get('/users/all');
+  },
+  updateUserStatus: (userId, status) => {
+    return apiClient.patch(`/users/${userId}/status`, { status });
   }
 };
 

@@ -101,9 +101,9 @@ async function findUserByEmail(req, res) {
 
 async function getAllUsers(req, res) {
   try {
-    // Get all users with role included in attributes
+    // Get all users with role and status included in attributes
     const users = await User.findAll({
-      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role', 'createdAt'],
+      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role', 'status', 'createdAt'],
       order: [['createdAt', 'DESC']]
     });
 
@@ -112,10 +112,10 @@ async function getAllUsers(req, res) {
       users: users.map(user => ({
         userId: user.userId,
         name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
-        username: user.email.split('@')[0], // Generate username from email
+        username: user.email.split('@')[0], 
         email: user.email,
-        role: user.role, // Include role in response
-        status: 'Active', // Default status
+        role: user.role,
+        status: user.status, 
         createdAt: user.createdAt
       }))
     });
@@ -129,8 +129,61 @@ async function getAllUsers(req, res) {
   }
 }
 
+async function updateUserStatus(req, res) {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+
+    // Validate input
+    if (!userId || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and status are required'
+      });
+    }
+
+    // Validate status value
+    if (!['active', 'inactive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either active or inactive'
+      });
+    }
+
+    // Find the user
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update user status
+    await user.update({ status });
+
+    res.json({
+      success: true,
+      message: `User status updated to ${status}`,
+      user: {
+        userId: user.userId,
+        email: user.email,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user status',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   registerUserDetails,
   findUserByEmail,
-  getAllUsers
+  getAllUsers,
+  updateUserStatus
 };

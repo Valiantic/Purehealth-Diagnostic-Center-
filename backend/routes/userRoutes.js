@@ -11,4 +11,7 @@ router.post('/find', userController.findUserByEmail);
 // Get all users 
 router.get('/all', userController.getAllUsers);
 
-module.exports = router; 
+// Update user status
+router.patch('/:userId/status', userController.updateUserStatus);
+
+module.exports = router;
