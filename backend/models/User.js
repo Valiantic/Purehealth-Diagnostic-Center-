@@ -32,6 +32,11 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: 'receptionist'
   },
+  status: {
+    type: DataTypes.ENUM('active', 'inactive'),
+    allowNull: false,
+    defaultValue: 'active'
+  },
   currentChallenge: {
     type: DataTypes.STRING(255),
     allowNull: true
