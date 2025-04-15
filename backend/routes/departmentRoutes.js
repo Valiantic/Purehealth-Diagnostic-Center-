@@ -9,6 +9,6 @@ router.get('/', departmentController.getAllDepartments);
 router.post('/', departmentController.createDepartment);
 
 // Update department status
-router.patch('/:id', departmentController.updateDepartmentStatus);
+router.patch('/:departmentId', departmentController.updateDepartmentStatus);
 
 module.exports = router;

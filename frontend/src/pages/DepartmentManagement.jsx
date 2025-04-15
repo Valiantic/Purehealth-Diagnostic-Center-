@@ -34,7 +34,7 @@ const Department = () => {
 
   // Mutation for adding departments
   const addDepartmentMutation = useMutation({
-    mutationFn: (name) => departmentAPI.createDepartment(name),
+    mutationFn: (departmentName) => departmentAPI.createDepartment(departmentName),
     onSuccess: () => {
       // Invalidate the departments query to refetch
       queryClient.invalidateQueries({ queryKey: ['departments'] })
@@ -62,7 +62,7 @@ const Department = () => {
 
   // filter deparments
   const filteredDepartments = departments.filter(dept => 
-    dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dept.departmentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(dept.testQuantity).includes(searchTerm) ||
     new Date(dept.createdAt).toLocaleDateString().includes(searchTerm)
   )
@@ -174,8 +174,8 @@ const Department = () => {
                          </tr>
                        ) : (
                          filteredDepartments.map((dept) => (
-                           <tr key={dept.id} className="border-b border-green-200">
-                             <td className="p-1 pl-5 border-r border-green-200 text-left">{dept.name}</td>
+                           <tr key={dept.departmentId} className="border-b border-green-200">
+                             <td className="p-1 pl-5 border-r border-green-200 text-left">{dept.departmentName}</td>
                              <td className="p-1 border-r border-green-200 text-center">{dept.testQuantity}</td>
                              <td className="p-1 border-r border-green-200 text-center">{new Date(dept.createdAt).toLocaleDateString()}</td>
                              <td className="p-1 border-r border-green-200 text-center">
@@ -187,12 +187,12 @@ const Department = () => {
                                <button 
                                  className={`px-2 py-1 rounded text-xs ${dept.status === 'active' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
                                  onClick={() => updateStatusMutation.mutate({
-                                   id: dept.id,
+                                   id: dept.departmentId,
                                    status: dept.status === 'active' ? 'inactive' : 'active'
                                  })}
-                                 disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.id}
+                                 disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.departmentId}
                                >
-                                 {updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.id
+                                 {updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.departmentId
                                    ? 'Updating...'
                                    : dept.status === 'active' ? 'Deactivate' : 'Activate'
                                  }

@@ -59,10 +59,10 @@ export const departmentAPI = {
   getAllDepartments: () => {
     return apiClient.get('/departments');
   },
-  createDepartment: (departmentName) => {
-    return apiClient.post('/departments', { name: departmentName });
+  createDepartment: (name) => {
+    return apiClient.post('/departments', { departmentName: name });
   },
-  updateDepartmentStatus: (departmentId, status) => {
-    return apiClient.patch(`/departments/${departmentId}`, { status });
+  updateDepartmentStatus: (id, status) => {
+    return apiClient.patch(`/departments/${id}`, { status });
   }
 };
