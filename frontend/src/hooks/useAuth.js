@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Keep a global cache of authentication state to persist between navigations
@@ -12,15 +12,30 @@ const useAuth = () => {
   const [user, setUser] = useState(authCache.user);
   const [isAuthenticating, setIsAuthenticating] = useState(!authCache.isChecked);
 
+  // Create a refreshUser function to get fresh user data from localStorage
+  const refreshUser = useCallback(() => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        
+        if (!parsedUser.middleName && parsedUser.middleName !== '') {
+        }
+        
+        setUser(parsedUser);
+        authCache.user = parsedUser;
+        return parsedUser;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     // Skip the check if we're on the login page
     if (window.location.pathname === '/login') {
-      setIsAuthenticating(false);
-      return;
-    }
-
-    // If we've already checked auth status and user is authenticated, don't check again
-    if (authCache.isChecked && authCache.user) {
       setIsAuthenticating(false);
       return;
     }
@@ -61,12 +76,20 @@ const useAuth = () => {
   // Add login function to set user data and update cache
   const login = (userData) => {
     try {
+      // Log the received user data
+      console.log('User data received during login:', userData);
+      
+      const completeUserData = {
+        ...userData,
+        middleName: userData.middleName !== undefined ? userData.middleName : ''
+      };
+      
       // Save to localStorage
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(completeUserData));
       
       // Update state and cache
-      setUser(userData);
-      authCache.user = userData;
+      setUser(completeUserData);
+      authCache.user = completeUserData;
       authCache.isChecked = true;
       setIsAuthenticating(false);
       
@@ -85,7 +108,7 @@ const useAuth = () => {
     navigate('/login');
   };
 
-  return { user, isAuthenticating, login, logout };
+  return { user, isAuthenticating, login, logout, refreshUser };
 };
 
 export default useAuth;

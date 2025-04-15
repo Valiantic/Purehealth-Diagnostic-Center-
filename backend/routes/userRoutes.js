@@ -11,7 +11,13 @@ router.post('/find', userController.findUserByEmail);
 // Get all users 
 router.get('/all', userController.getAllUsers);
 
+// Get user by ID
+router.get('/:userId', userController.getUserById);
+
 // Update user status
 router.patch('/:userId/status', userController.updateUserStatus);
+
+// Update user details
+router.put('/:userId', userController.updateUserDetails);
 
 module.exports = router;
