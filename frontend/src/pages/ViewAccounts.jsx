@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { PlusCircle, XCircle, MoreVertical, AlertCircle, CheckCircle, X, UserX, UserCheck } from 'lucide-react'
+import { PlusCircle, XCircle, MoreVertical, AlertCircle, CheckCircle, X, UserX, UserCheck, Edit, Save } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userAPI } from '../services/api'
 import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
 import tabsConfig from '../config/tabsConfig'
+import { ToastContainer, toast } from 'react-toastify'
 
 const ViewAccounts = () => {
   const { user, isAuthenticating } = useAuth()
@@ -21,15 +22,20 @@ const ViewAccounts = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null) 
   const [selectedUser, setSelectedUser] = useState(null)
-
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editUserData, setEditUserData] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    email: ''
+  })
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth)
 
   useEffect(() => {
     if (location.state?.success && location.state?.message) {
       setSuccessMessage(location.state.message)
-      // Clear the location state after displaying message
       window.history.replaceState({}, document.title)
 
-      // Auto-hide the success message after 5 seconds
       const timer = setTimeout(() => {
         setSuccessMessage('')
       }, 5000)
@@ -38,7 +44,6 @@ const ViewAccounts = () => {
     }
   }, [location])
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (activeDropdown && !dropdownRefs.current[activeDropdown]?.contains(event.target)) {
@@ -52,7 +57,15 @@ const ViewAccounts = () => {
     }
   }, [activeDropdown])
 
-  // Fetch all accounts using TanStack Query
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const { data: accountsData, isLoading, isError, error } = useQuery({
     queryKey: ['accounts'],
     queryFn: async () => {
@@ -61,25 +74,44 @@ const ViewAccounts = () => {
     }
   })
 
-  // Mutation for updating user status
   const updateStatusMutation = useMutation({
     mutationFn: ({ userId, status }) => userAPI.updateUserStatus(userId, status),
     onSuccess: () => {
       queryClient.invalidateQueries(['accounts'])
-      setSuccessMessage('User status updated successfully')
+      toast.success('User status updated successfully')
 
-      // Auto-hide the success message after 5 seconds
-      setTimeout(() => {
-        setSuccessMessage('')
-      }, 5000)
     },
     onError: (error) => {
-      setErrorMessage(`Error updating user status: ${error.message}`)
+      toast.error(`Error updating user status: ${error.message}`)
 
-      // Auto-hide the error message after 5 seconds
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 5000)
+    }
+  })
+
+  const fetchUserDetails = async (userId) => {
+    try {
+      const response = await userAPI.getUserById(userId)
+      const userData = response.data.user
+      setEditUserData({
+        firstName: userData.firstName,
+        middleName: userData.middleName || '',
+        lastName: userData.lastName,
+        email: userData.email
+      })
+    } catch (error) {
+      toast.error('Failed to fetch user details')
+      console.error('Error fetching user details:', error)
+    }
+  }
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ userId, userData }) => userAPI.updateUserDetails(userId, userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['accounts'])
+      toast.success('User details updated successfully')
+      setShowEditModal(false)
+    },
+    onError: (error) => {
+      toast.error(`Error updating user: ${error.response?.data?.message || error.message}`)
     }
   })
 
@@ -88,16 +120,16 @@ const ViewAccounts = () => {
   }
 
   const toggleDropdown = (e, userId) => {
-    e.stopPropagation() // Prevent event bubbling
+    e.stopPropagation()
     setActiveDropdown(activeDropdown === userId ? null : userId)
   }
 
   const openConfirmModal = (e, userId, action) => {
-    e.stopPropagation() // Prevent event bubbling
+    e.stopPropagation()
     setSelectedUser(userId)
     setConfirmAction(action)
     setShowConfirmModal(true)
-    setActiveDropdown(null) // Close dropdown
+    setActiveDropdown(null)
   }
 
   const closeConfirmModal = () => {
@@ -114,28 +146,60 @@ const ViewAccounts = () => {
     closeConfirmModal()
   }
 
-  // Function to capitalize first letter
+  const openEditModal = (e, userId) => {
+    e.stopPropagation()
+    setSelectedUser(userId)
+    fetchUserDetails(userId)
+    setShowEditModal(true)
+    setActiveDropdown(null)
+  }
+
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setSelectedUser(null)
+    setEditUserData({
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      email: ''
+    })
+  }
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target
+    setEditUserData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault()
+    if (!selectedUser) return
+
+    updateUserMutation.mutate({
+      userId: selectedUser,
+      userData: editUserData
+    })
+  }
+
   const capitalizeFirstLetter = (string) => {
     if (!string) return ''
     return string.charAt(0).toUpperCase() + string.slice(1)
   }
 
-  // Function to format status for display (properly handle database values)
   const formatStatus = (status) => {
     if (!status) return 'Active'
 
-    // Handle different cases that might come from database
     const statusLower = status.toLowerCase()
     return statusLower === 'active' ? 'Active' : 'Inactive'
   }
 
-  // Function to determine if an account is active (used for disabling deactivate button)
   const isAccountActive = (status) => {
     if (!status) return true
     return status.toLowerCase() === 'active'
   }
 
-  // Filter accounts based on search term
   const filteredAccounts = accountsData?.users?.filter((account) => {
     if (!searchTerm) return true
 
@@ -156,7 +220,6 @@ const ViewAccounts = () => {
     return null
   }
 
-  // Determine which content to show based on current path
   const currentPath = location.pathname
   const activeTab =
     tabsConfig.find(
@@ -165,16 +228,16 @@ const ViewAccounts = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
+      
       <div className='md:sticky md:top-0 md:h-screen z-10'>
         <Sidebar />
       </div>
 
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
         <div className='bg-white rounded-lg border border-gray-200 shadow-sm h-full'>
-          {/* Use the TabNavigation component */}
           <TabNavigation tabsConfig={tabsConfig} />
 
-          {/* Success message */}
           {successMessage && (
             <div className='m-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center'>
               <span>{successMessage}</span>
@@ -187,7 +250,6 @@ const ViewAccounts = () => {
             </div>
           )}
 
-          {/* Error message */}
           {errorMessage && (
             <div className='m-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center'>
               <span>{errorMessage}</span>
@@ -200,7 +262,6 @@ const ViewAccounts = () => {
             </div>
           )}
 
-          {/* Content based on active tab */}
           {activeTab === 'Account' && (
             <>
               <div className='flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4'>
@@ -240,7 +301,6 @@ const ViewAccounts = () => {
                 </div>
               </div>
 
-              {/* User Accounts Table */}
               <div className='p-2'>
                 <div className='bg-green-800 p-2 rounded-t'>
                   <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>
@@ -360,28 +420,30 @@ const ViewAccounts = () => {
 
                                   {activeDropdown === account.userId && (
                                     <div
-                                      className='absolute z-10 w-48 bg-white rounded-md shadow-lg border border-gray-200'
+                                      className='absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200'
                                       style={{
-                                        right: '0',
-                                        ...(filteredAccounts.indexOf(account) === 0
+                                        right: windowWidth < 640 ? '220px' : '50px',
+                                        ...(filteredAccounts.indexOf(account) < 2
                                           ? { 
                                               top: '100%',
-                                              marginTop: '5px'
+                                              marginTop: '-30px'
                                             } 
-                                          : (filteredAccounts.length <= 3 || 
-                                              filteredAccounts.indexOf(account) >= filteredAccounts.length - 1)
-                                            ? { 
-                                                bottom: '100%',
-                                                marginBottom: '5px'
-                                              } 
-                                            : { 
-                                                top: '100%',
-                                                marginTop: '5px'
-                                              }
+                                          : { 
+                                              bottom: '100%',
+                                              marginBottom: '20px'
+                                            }
                                         )
                                       }}
                                     >
                                       <div className='py-1'>
+                                        <button 
+                                          className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
+                                          onClick={(e) => openEditModal(e, account.userId)}
+                                        >
+                                          <Edit size={16} className="mr-2" />
+                                          Edit Details
+                                        </button>
+                                        
                                         {isAccountActive(account.status) ? (
                                           <button 
                                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
@@ -417,7 +479,6 @@ const ViewAccounts = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full relative">
@@ -479,6 +540,91 @@ const ViewAccounts = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full relative">
+            <div className="bg-green-600 rounded-t-lg text-white p-4 text-center relative">
+              <h3 className="text-xl font-bold text-white">Edit User Details</h3>
+              <button
+                onClick={closeEditModal}
+                className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white hover:text-gray-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={editUserData.firstName}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                  <input
+                    type="text"
+                    name="middleName"
+                    value={editUserData.middleName}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={editUserData.lastName}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editUserData.email}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded flex items-center justify-center"
+                >
+                  <Save className="mr-2" size={18} />
+                  Save Changes
+                </button>
+                 
+                <button 
+                  type="button"
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded"
+                  onClick={closeEditModal}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
