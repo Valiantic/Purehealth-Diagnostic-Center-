@@ -86,7 +86,12 @@ async function findUserByEmail(req, res) {
       success: true,
       user: {
         userId: user.userId,
-        email: user.email
+        email: user.email,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status
       }
     });
   } catch (error) {
@@ -181,9 +186,112 @@ async function updateUserStatus(req, res) {
   }
 }
 
+async function updateUserDetails(req, res) {
+  try {
+    const { userId } = req.params;
+    const { firstName, middleName, lastName, email } = req.body;
+
+    if (!userId || !firstName || !lastName || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID, first name, last name, and email are required'
+      });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (email !== user.email) {
+      const existingUser = await User.findOne({ where: { email } });
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email is already in use by another account'
+        });
+      }
+    }
+
+    await user.update({
+      firstName,
+      middleName,
+      lastName,
+      email
+    });
+
+    res.json({
+      success: true,
+      message: 'User details updated successfully',
+      user: {
+        userId: user.userId,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user details',
+      error: error.message
+    });
+  }
+}
+
+async function getUserById(req, res) {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        userId: user.userId,
+        email: user.email,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    console.error('Error getting user details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting user details',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   registerUserDetails,
   findUserByEmail,
   getAllUsers,
-  updateUserStatus
+  updateUserStatus,
+  updateUserDetails,
+  getUserById
 };

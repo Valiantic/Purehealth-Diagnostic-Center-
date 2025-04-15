@@ -23,6 +23,12 @@ export const userAPI = {
   },
   updateUserStatus: (userId, status) => {
     return apiClient.patch(`/users/${userId}/status`, { status });
+  },
+  updateUserDetails: (userId, userData) => {
+    return apiClient.put(`/users/${userId}`, userData);
+  },
+  getUserById: (userId) => {
+    return apiClient.get(`/users/${userId}`);
   }
 };
 
