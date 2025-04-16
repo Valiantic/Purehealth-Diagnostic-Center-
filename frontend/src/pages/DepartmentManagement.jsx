@@ -7,6 +7,8 @@ import TabNavigation from '../components/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { departmentAPI } from '../services/api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const Department = () => {
   const { user, isAuthenticating } = useAuth()
@@ -14,7 +16,6 @@ const Department = () => {
   const queryClient = useQueryClient()
   const [newDepartment, setNewDepartment] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [success, setSuccess] = useState('')
 
   // Use React Query for fetching departments
   const { 
@@ -38,17 +39,24 @@ const Department = () => {
     onSuccess: () => {
       // Invalidate the departments query to refetch
       queryClient.invalidateQueries({ queryKey: ['departments'] })
-      setSuccess('Department added successfully')
+      toast.success('Department added successfully')
       setNewDepartment('')
-      setTimeout(() => setSuccess(''), 3000)
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to add department')
     }
   })
 
   // Mutation for updating department status
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }) => departmentAPI.updateDepartmentStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['departments'] })
+      const statusMessage = variables.status === 'active' ? 'activated' : 'deactivated'
+      toast.success(`Department successfully ${statusMessage}`)
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to update department status')
     }
   })
 
@@ -81,6 +89,8 @@ const Department = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
+        
         <div className='md:sticky md:top-0 md:h-screen z-10'>
             <Sidebar />
         </div>
@@ -93,20 +103,10 @@ const Department = () => {
          {/* Content based on active tab */}
          {activeTab === 'Departments' && (
            <>
-             {/* Error and Success Messages */}
+             {/* Error Messages */}
              {isError && (
                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
                  <p>{error?.message || 'An error occurred'}</p>
-               </div>
-             )}
-             {addDepartmentMutation.error && (
-               <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                 <p>{addDepartmentMutation.error?.response?.data?.message || 'Failed to add department'}</p>
-               </div>
-             )}
-             {success && (
-               <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
-                 <p>{success}</p>
                </div>
              )}
              
