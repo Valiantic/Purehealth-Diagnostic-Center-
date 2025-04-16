@@ -8,6 +8,7 @@ import TabNavigation from '../components/TabNavigation'
 import useAuth from '../hooks/useAuth'
 import tabsConfig from '../config/tabsConfig'
 import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const ViewAccounts = () => {
   const { user, isAuthenticating } = useAuth()
@@ -15,7 +16,6 @@ const ViewAccounts = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [activeDropdown, setActiveDropdown] = useState(null)
   const dropdownRefs = useRef({})
@@ -33,14 +33,8 @@ const ViewAccounts = () => {
 
   useEffect(() => {
     if (location.state?.success && location.state?.message) {
-      setSuccessMessage(location.state.message)
+      toast.success(location.state.message)
       window.history.replaceState({}, document.title)
-
-      const timer = setTimeout(() => {
-        setSuccessMessage('')
-      }, 5000)
-
-      return () => clearTimeout(timer)
     }
   }, [location])
 
@@ -237,18 +231,6 @@ const ViewAccounts = () => {
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
         <div className='bg-white rounded-lg border border-gray-200 shadow-sm h-full'>
           <TabNavigation tabsConfig={tabsConfig} />
-
-          {successMessage && (
-            <div className='m-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center'>
-              <span>{successMessage}</span>
-              <button
-                onClick={() => setSuccessMessage('')}
-                className='text-green-700 hover:text-green-900'
-              >
-                <XCircle size={18} />
-              </button>
-            </div>
-          )}
 
           {errorMessage && (
             <div className='m-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center'>
