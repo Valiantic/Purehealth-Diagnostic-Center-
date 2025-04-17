@@ -201,7 +201,6 @@ const ViewAccounts = () => {
     return (
       account.name.toLowerCase().includes(searchLower) ||
       account.email.toLowerCase().includes(searchLower) ||
-      account.username.toLowerCase().includes(searchLower) ||
       (account.role && account.role.toLowerCase().includes(searchLower))
     )
   }) || []
@@ -290,18 +289,15 @@ const ViewAccounts = () => {
                   </h1>
                 </div>
                 <div className='border border-green-800 rounded-b'>
-                  <div className='overflow-x-auto'>
-                    <table className='w-full text-sm'>
-                      <thead>
+                  <div className='overflow-x-auto max-h-[60vh]'>
+                    <table className='w-full text-sm '>
+                      <thead className='sticky top-0 bg-green-100 z-10'>
                         <tr className='border-b border-green-800 bg-green-100'>
                           <th className='p-1 border-r border-green-800 text-sm font-medium'>
-                            Name
-                          </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
-                            Username
-                          </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
                             Email
+                          </th>
+                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                            Fullname
                           </th>
                           <th className='p-1 border-r border-green-800 text-sm font-medium'>
                             Role
@@ -310,7 +306,7 @@ const ViewAccounts = () => {
                             Status
                           </th>
                           <th className='p-1 border-r border-green-800 text-sm font-medium'>
-                            Created
+                            Date Created
                           </th>
                           <th className='p-1 border-r border-green-800 text-sm font-medium'>
                             Actions
@@ -347,13 +343,10 @@ const ViewAccounts = () => {
                               className='border-b border-green-200'
                             >
                               <td className='p-1 pl-5 border-r border-green-200'>
-                                {account.name}
-                              </td>
-                              <td className='p-1 border-r border-green-200 text-center'>
-                                {account.username}
-                              </td>
-                              <td className='p-1 border-r border-green-200 text-center'>
                                 {account.email}
+                              </td>
+                              <td className='p-1 pl-5 border-r border-green-200'>
+                                {account.name}
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
                                 <span
