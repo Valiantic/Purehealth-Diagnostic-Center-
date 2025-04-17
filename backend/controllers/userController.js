@@ -1,4 +1,5 @@
 const { User, Authenticator } = require('../models');
+const { logActivity } = require('../utils/activityLogger');
 
 async function registerUserDetails(req, res) {
   try {
@@ -137,7 +138,7 @@ async function getAllUsers(req, res) {
 async function updateUserStatus(req, res) {
   try {
     const { userId } = req.params;
-    const { status } = req.body;
+    const { status, currentUserId } = req.body;
 
     // Validate input
     if (!userId || !status) {
@@ -167,6 +168,16 @@ async function updateUserStatus(req, res) {
     // Update user status
     await user.update({ status });
 
+    // After updating user status
+    await logActivity({
+      userId: currentUserId || userId, 
+      action: status === 'active' ? 'ACTIVATE_ACCOUNT' : 'DEACTIVATE_ACCOUNT',
+      resourceType: 'USER',
+      resourceId: user.userId,
+      details: `User account ${status === 'active' ? 'activated' : 'deactivated'} for ${user.email}`,
+      ipAddress: req.ip
+    });
+
     res.json({
       success: true,
       message: `User status updated to ${status}`,
@@ -189,7 +200,7 @@ async function updateUserStatus(req, res) {
 async function updateUserDetails(req, res) {
   try {
     const { userId } = req.params;
-    const { firstName, middleName, lastName, email } = req.body;
+    const { firstName, middleName, lastName, email, currentUserId } = req.body;
 
     if (!userId || !firstName || !lastName || !email) {
       return res.status(400).json({
@@ -221,6 +232,16 @@ async function updateUserDetails(req, res) {
       middleName,
       lastName,
       email
+    });
+
+    // After updating user details
+    await logActivity({
+      userId: currentUserId || userId, 
+      action: 'UPDATE_ACCOUNT',
+      resourceType: 'USER',
+      resourceId: user.userId,
+      details: `Updated account details for ${user.email}`,
+      ipAddress: req.ip
     });
 
     res.json({

@@ -1,4 +1,5 @@
 const { Department } = require('../models');
+const { logActivity } = require('../utils/activityLogger');
 
 // Get all departments
 const getAllDepartments = async (req, res) => {
@@ -14,7 +15,7 @@ const getAllDepartments = async (req, res) => {
 // Create a new department
 const createDepartment = async (req, res) => {
   try {
-    const { departmentName } = req.body;
+    const { departmentName, currentUserId } = req.body;
     
     if (!departmentName) {
       return res.status(400).json({ message: 'Department name is required' });
@@ -43,6 +44,16 @@ const createDepartment = async (req, res) => {
     
     console.log('Department created:', createdDepartment.toJSON());
     res.status(201).json(createdDepartment);
+
+    // Log department creation
+    await logActivity({
+      userId: currentUserId,
+      action: 'ADD_DEPARTMENT',
+      resourceType: 'DEPARTMENT',
+      resourceId: createdDepartment.departmentId,
+      details: `New department created: ${departmentName}`,
+      ipAddress: req.ip
+    });
   } catch (error) {
     console.error('Error creating department:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -53,7 +64,7 @@ const createDepartment = async (req, res) => {
 const updateDepartmentStatus = async (req, res) => {
   try {
     const { departmentId } = req.params;
-    const { status } = req.body;
+    const { status, currentUserId } = req.body;
     
     console.log("Finding department with ID:", departmentId);
     
@@ -72,6 +83,16 @@ const updateDepartmentStatus = async (req, res) => {
     await department.save();
     
     res.json(department);
+
+    // Log department status change
+    await logActivity({
+      userId: currentUserId,
+      action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
+      resourceType: 'DEPARTMENT',
+      resourceId: department.departmentId, 
+      details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${department.departmentName}`,
+      ipAddress: req.ip
+    });
   } catch (error) {
     console.error('Error updating department:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

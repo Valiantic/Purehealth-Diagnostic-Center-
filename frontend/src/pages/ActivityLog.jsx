@@ -1,14 +1,49 @@
-import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { Download, RefreshCw, X } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import TabNavigation from '../components/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
+import { activityLogAPI } from '../services/api'
+import { useQuery } from '@tanstack/react-query'
 
 const ActivityLog = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+
+  // Debounce search term to prevent too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const {
+    data: logsData,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['activityLogs', debouncedSearchTerm],
+    queryFn: async () => {
+      const params = {};
+      if (debouncedSearchTerm) {
+        params.search = debouncedSearchTerm;
+      }
+  
+      const response = await activityLogAPI.getAllLogs(params);
+      return response.data;
+    },
+    staleTime: 10000, 
+    refetchInterval: 15000,
+    retry: 2
+  })
 
   if (isAuthenticating) {
     return null;
@@ -22,6 +57,13 @@ const ActivityLog = () => {
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Activity';
 
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+  };
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
@@ -31,73 +73,121 @@ const ActivityLog = () => {
    
     <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
-        {/* Use the TabNavigation component */}
         <TabNavigation tabsConfig={tabsConfig} />
         
-        {/* Content based on active tab */}
         {activeTab === 'Activity' && (
           <>
-            <div className="flex flex-col sm:flex-row gap-3 sm:justify-end sm:items-center p-2 mt-4 mb-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
               <div className="relative w-full sm:w-64">
                 <input
                   type="text"
-                  placeholder="Search Activity..."
+                  placeholder="Search by Activity..."
                   className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                {searchTerm && (
+                  <button
+                    className="absolute right-9 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={clearSearch}
+                    title="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
               </div>
+              
+              <button 
+                className="bg-green-800 text-white p-2 rounded-full hover:bg-green-600"
+                onClick={handleRefresh}
+                title="Refresh logs"
+              >
+                <RefreshCw className="h-5 w-5" />
+              </button>
             </div>
 
-            {/* Activity Log Table */}
             <div className="p-2">
               <div className="bg-green-800 p-2 rounded-t">
                 <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Activity Log</h1>
               </div>
               <div className="border border-green-800 rounded-b">
-                <div className="overflow-x-auto">
+              
+                <div className="overflow-auto max-h-[60vh]">
                   <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-green-800 bg-green-100">
+                    <thead className="sticky top-0 bg-green-100 z-10">
+                      <tr className="border-b border-green-800">
                         <th className="p-1 border-r border-green-800 text-sm font-medium">User</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Email</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
+                        <th className="p-1 border-r border-green-800 text-sm font-medium">Role</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Time</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                        <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
+                        <th className="p-1 border-r border-green-800 text-sm font-medium">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {/* Empty rows for data input */}
-                      {[...Array(10)].map((_, index) => (
-                        <tr key={`activity-row-${index}`} className="border-b border-green-200">
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
+                      {isLoading ? (
+                        <tr>
+                          <td colSpan="5" className="text-center p-4">Loading activity logs...</td>
                         </tr>
-                      ))}
+                      ) : isError ? (
+                        <tr>
+                          <td colSpan="5" className="text-center p-4 text-red-500">Error: {error.message}</td>
+                        </tr>
+                      ) : !logsData?.logs?.length ? (
+                        <tr>
+                          <td colSpan="5" className="text-center p-4">No activity logs found</td>
+                        </tr>
+                      ) : (
+                        logsData.logs.map(log => (
+                          <tr key={log.logId} className="border-b border-green-200">
+                            <td className="p-1 pl-2 border-r border-green-200">
+                              {log.user?.name || 'System'}
+                            </td>
+                            <td className="p-1 border-r border-green-200 text-center">
+                              <span
+                                className={`px-2 py-1 rounded text-xs ${
+                                  log.user?.role === 'admin'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-green-100 text-green-800'
+                                }`}
+                              >
+                                {log.user?.role
+                                  ? log.user.role === 'admin'
+                                    ? 'Admin'
+                                    : 'Receptionist'
+                                  : 'SYSTEM'}
+                              </span>
+                            </td>
+                            <td className="p-1 border-r border-green-200 text-center">
+                              {log.time}
+                            </td>
+                            <td className="p-1 border-r border-green-200 text-center">
+                              {log.date}
+                            </td>
+                            <td className="p-1 pl-4 border-r border-green-200">
+                              {log.details}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
-
-
-                   {/* Expenses summary */}
-                   <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
-                            <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                                Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                              </button>
-                              
-                            </div>
-                          </div>
-
+              
+              {/* Move the Generate Report button outside the overflow container */}
+              <div className="mt-4 flex flex-col md:flex-row justify-end">
+                <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                  <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                    Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         )}
-        
-       
       </div>
     </div>
   </div>

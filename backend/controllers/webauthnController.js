@@ -6,6 +6,7 @@ const {
   generateAuthOptions,
   verifyAuthResponse
 } = require('../utils/webauthn-helpers');
+const { logActivity } = require('../utils/activityLogger');
 
 // Store temporary registrations with expiration (in a real app, use Redis or a database)
 const tempRegistrations = new Map();
@@ -142,6 +143,16 @@ async function tempRegistrationVerify(req, res) {
         credentialBackedUp: authenticatorData.credentialBackedUp,
         transports: authenticatorData.transports || [],
         isPrimary: true
+      });
+      
+      // Log activity for account creation
+      await logActivity({
+        userId: user.userId,
+        action: 'CREATE_ACCOUNT',
+        resourceType: 'USER',
+        resourceId: user.userId,
+        details: `New user account created for ${user.email}`,
+        ipAddress: req.ip
       });
       
       // Clean up the temporary registration

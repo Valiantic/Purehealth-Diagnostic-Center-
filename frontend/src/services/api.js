@@ -68,10 +68,23 @@ export const departmentAPI = {
   getAllDepartments: () => {
     return apiClient.get('/departments');
   },
-  createDepartment: (name) => {
-    return apiClient.post('/departments', { departmentName: name });
+  createDepartment: (name, currentUserId) => {
+    return apiClient.post('/departments', { 
+      departmentName: name,
+      currentUserId 
+    });
   },
-  updateDepartmentStatus: (id, status) => {
-    return apiClient.patch(`/departments/${id}`, { status });
+  updateDepartmentStatus: (id, status, currentUserId) => {
+    return apiClient.patch(`/departments/${id}`, { 
+      status,
+      currentUserId 
+    });
+  }
+};
+
+// Activity Log API
+export const activityLogAPI = {
+  getAllLogs: (params = {}) => {
+    return apiClient.get('/activity-logs', { params });
   }
 };

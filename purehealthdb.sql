@@ -40,3 +40,22 @@ CREATE TABLE Department (
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+CREATE TABLE `ActivityLogs` (
+  `logId` int NOT NULL AUTO_INCREMENT,
+  `userId` int DEFAULT NULL,
+  `action` varchar(255) NOT NULL,
+  `resourceType` varchar(255) NOT NULL,
+  `resourceId` int DEFAULT NULL,
+  `details` text,
+  `ipAddress` varchar(45) DEFAULT NULL,
+  `userInfo` text,
+  `createdAt` datetime NOT NULL,
+  `updatedAt` datetime NOT NULL,
+  PRIMARY KEY (`logId`),
+  KEY `activity_log_user_id` (`userId`),
+  KEY `activity_log_action` (`action`),
+  KEY `activity_log_resource_type` (`resourceType`),
+  KEY `activity_log_created_at` (`createdAt`),
+  CONSTRAINT `activitylogs_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
