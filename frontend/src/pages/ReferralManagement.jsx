@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Download, PlusCircle } from 'lucide-react'
+import { Download, PlusCircle, X, Calendar } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import TabNavigation from '../components/TabNavigation'
@@ -9,6 +9,17 @@ import tabsConfig from '../config/tabsConfig'
 const ReferralManagement = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
+  const [isOpen, setIsOpen] = useState(false);
+  const [firstName, setFirstName] = useState('Mang');
+  const [lastName, setLastName] = useState('Kepweng');
+  const [birthday, setBirthday] = useState('24-Mar-2024');
+  const [sex, setSex] = useState('Male');
+  const [clinicName, setClinicName] = useState('Kepweng\'s Nipa Hut');
+  const [clinicAddress, setClinicAddress] = useState('B12 L12 Mango St. Brgy. Ramon Cruz GMA Cavite');
+  const [contactNo, setContactNo] = useState('09123456789');
+
+  const openModal = () => setIsOpen(true);
+  const closeModal = () => setIsOpen(false);
   
   if (isAuthenticating) {
     return null;
@@ -37,7 +48,7 @@ const ReferralManagement = () => {
        <>
          <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
            
-           <button className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
+           <button onClick={openModal} className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
                             <PlusCircle className="mr-1 sm:mr-2" size={18} />
                             Add New Referrer
                           </button>
@@ -96,6 +107,128 @@ const ReferralManagement = () => {
                            
                          </div>
                        </div>
+
+
+                       {isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-full max-w-md rounded shadow-lg">
+            {/* Header with title and close button */}
+            <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center">
+              <h3 className="text-xl font-medium">New Referrer</h3>
+              <button onClick={closeModal} className="text-white hover:text-gray-200">
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Form content */}
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* First Name */}
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full border border-gray-300 rounded p-2"
+                  />
+                </div>
+
+                {/* Birthday */}
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Birthday</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={birthday}
+                      onChange={(e) => setBirthday(e.target.value)}
+                      className="w-full border border-gray-300 rounded p-2 pr-10"
+                    />
+                    <Calendar className="absolute right-2 top-2 text-gray-500" size={20} />
+                  </div>
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full border border-gray-300 rounded p-2"
+                  />
+                </div>
+
+                {/* Sex */}
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Sex</label>
+                  <div className="relative">
+                    <select
+                      value={sex}
+                      onChange={(e) => setSex(e.target.value)}
+                      className="w-full border border-gray-300 rounded p-2 appearance-none"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                        <path d="M7 10l5 5 5-5H7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clinic Name */}
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
+                  <input
+                    type="text"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
+                    className="w-full border border-gray-300 rounded p-2"
+                  />
+                </div>
+
+                {/* Contact No. */}
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Contact No.</label>
+                  <input
+                    type="text"
+                    value={contactNo}
+                    onChange={(e) => setContactNo(e.target.value)}
+                    className="w-full border border-gray-300 rounded p-2"
+                  />
+                </div>
+
+                {/* Clinic Address - Full Width */}
+                <div className="col-span-2">
+                  <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
+                  <input
+                    type="text"
+                    value={clinicAddress}
+                    onChange={(e) => setClinicAddress(e.target.value)}
+                    className="w-full border border-gray-300 rounded p-2"
+                  />
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-300 my-4"></div>
+
+              {/* Confirm Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={closeModal}
+                  className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium"
+                >
+                  CONFIRM
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
          </div>
        </>
