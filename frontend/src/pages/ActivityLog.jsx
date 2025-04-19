@@ -88,6 +88,14 @@ const ActivityLog = () => {
         {activeTab === 'Activity' && (
           <>
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
+              <button 
+                className="bg-green-800 text-white p-2 rounded-full hover:bg-green-600"
+                onClick={handleRefresh}
+                title="Refresh logs"
+              >
+                <RefreshCw className="h-5 w-5" />
+              </button>
+              
               <div className="relative w-full sm:w-64">
                 <input
                   type="text"
@@ -109,14 +117,6 @@ const ActivityLog = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
               </div>
-              
-              <button 
-                className="bg-green-800 text-white p-2 rounded-full hover:bg-green-600"
-                onClick={handleRefresh}
-                title="Refresh logs"
-              >
-                <RefreshCw className="h-5 w-5" />
-              </button>
             </div>
 
             <div className="p-2">
