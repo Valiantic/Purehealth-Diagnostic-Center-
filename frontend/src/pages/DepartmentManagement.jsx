@@ -317,7 +317,7 @@ const Department = () => {
                     </div>
                   </div>
                   
-                  {/* Pagination - moved outside table border but inside white container */}
+                    {/* Pagination controls */}
                   {filteredDepartments.length > itemsPerPage && (
                     <div className="flex justify-center mt-4">
                       <nav>
@@ -333,20 +333,35 @@ const Department = () => {
                               Prev
                             </button>
                           </li>
-                          {[...Array(totalPages)].map((_, index) => (
-                            <li key={index}>
-                              <button
-                                onClick={() => paginate(index + 1)}
-                                className={`px-3 py-1 border-t border-b border-gray-300 ${
-                                  currentPage === index + 1 
-                                    ? 'bg-green-800 text-white' 
-                                    : 'bg-white text-green-800 hover:bg-green-50'
-                                }`}
-                              >
-                                {index + 1}
-                              </button>
-                            </li>
-                          ))}
+                          {(() => {
+                          
+                            let startPage = Math.max(1, currentPage - 1);
+                            let endPage = Math.min(totalPages, startPage + 2);
+                                    
+                            if (endPage - startPage < 2 && startPage > 1) {
+                              startPage = Math.max(1, endPage - 2);
+                            }
+                            
+                            const pageNumbers = [];
+                            for (let i = startPage; i <= endPage; i++) {
+                              pageNumbers.push(i);
+                            }
+                            
+                            return pageNumbers.map(number => (
+                              <li key={number}>
+                                <button
+                                  onClick={() => paginate(number)}
+                                  className={`px-3 py-1 border-t border-b border-gray-300 ${
+                                    currentPage === number 
+                                      ? 'bg-green-800 text-white' 
+                                      : 'bg-white text-green-800 hover:bg-green-50'
+                                  }`}
+                                >
+                                  {number}
+                                </button>
+                              </li>
+                            ));
+                          })()}
                           <li>
                             <button 
                               onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
