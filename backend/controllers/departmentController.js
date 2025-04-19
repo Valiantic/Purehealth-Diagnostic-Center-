@@ -1,11 +1,42 @@
 const { Department } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
+const sequelize = require('../models').sequelize;
 
 // Get all departments
 const getAllDepartments = async (req, res) => {
   try {
-    const departments = await Department.findAll();
-    res.json(departments);
+    // Use Sequelize include to get fresh test counts directly from the database
+    const departments = await Department.findAll({
+      include: [
+        {
+          model: sequelize.models.Test,
+          attributes: [],
+          where: { status: 'active' },
+          required: false
+        }
+      ],
+      attributes: [
+        'departmentId', 
+        'departmentName', 
+        'status', 
+        'createdAt', 
+        'updatedAt',
+        [sequelize.fn('COUNT', sequelize.col('Tests.testId')), 'testQuantity']
+      ],
+      group: ['Department.departmentId'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Format the response to match the expected structure
+    const formattedDepartments = departments.map(dept => {
+      const plainDept = dept.get({ plain: true });
+      return {
+        ...plainDept,
+        testQuantity: parseInt(plainDept.testQuantity || 0)
+      };
+    });
+
+    res.json(formattedDepartments);
   } catch (error) {
     console.error('Error fetching departments:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
