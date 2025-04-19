@@ -80,6 +80,14 @@ export const departmentAPI = {
       status,
       currentUserId 
     });
+  },
+  updateDepartment: async (departmentId, departmentName, dateCreated, status, currentUserId) => {
+    return axios.put(`${API_BASE_URL}/departments/${departmentId}`, {
+      departmentName,
+      dateCreated,
+      status,
+      currentUserId
+    });
   }
 };
 

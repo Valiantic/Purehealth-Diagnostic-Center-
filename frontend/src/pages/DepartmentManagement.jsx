@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import { Download, X, Edit as EditIcon } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import TabNavigation from '../components/TabNavigation'
@@ -21,51 +21,50 @@ const Department = () => {
   const [filterOption, setFilterOption] = useState('default')
   const [showFilterOptions, setShowFilterOptions] = useState(false)
   const filterRef = useRef(null)
+  const [activeDropdown, setActiveDropdown] = useState(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingDepartment, setEditingDepartment] = useState(null)
+  const [departmentName, setDepartmentName] = useState('')
+  const [departmentDate, setDepartmentDate] = useState('')
+  const [departmentStatus, setDepartmentStatus] = useState('active')
 
-  // Add click outside handler to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
       if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setShowFilterOptions(false);
+        setShowFilterOptions(false)
       }
     }
-    
-    // Add event listener when dropdown is open
-    if (showFilterOptions) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    // Cleanup the event listener
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showFilterOptions]);
 
-  // Use React Query for fetching departments
-  const { 
-    data: departments = [], 
-    isLoading, 
-    isError, 
-    error 
+    if (showFilterOptions) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFilterOptions])
+
+  const {
+    data: departments = [],
+    isLoading,
+    isError,
+    error
   } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
-      // Add timestamp to prevent caching
-      const response = await departmentAPI.getAllDepartments(true);
-      return response.data;
+      const response = await departmentAPI.getAllDepartments(true)
+      return response.data
     },
-    staleTime: 10000, // 10 seconds before considering data stale
-    refetchInterval: 15000, // Automatically refetch every 15 seconds
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    refetchOnMount: true, // Always refetch when component mounts
+    staleTime: 10000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2
   })
 
-  // Mutation for adding departments
   const addDepartmentMutation = useMutation({
     mutationFn: (departmentName) => departmentAPI.createDepartment(departmentName, user.userId),
     onSuccess: () => {
-      // Invalidate the departments query to refetch
       queryClient.invalidateQueries({ queryKey: ['departments'] })
       toast.success('Department added successfully')
       setNewDepartment('')
@@ -75,7 +74,6 @@ const Department = () => {
     }
   })
 
-  // Mutation for updating department status
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }) => departmentAPI.updateDepartmentStatus(id, status, user.userId),
     onSuccess: (_, variables) => {
@@ -88,58 +86,113 @@ const Department = () => {
     }
   })
 
+  const updateDepartmentMutation = useMutation({
+    mutationFn: (departmentData) => departmentAPI.updateDepartment(
+      departmentData.id,
+      departmentData.name,
+      departmentData.dateCreated,
+      departmentData.status,
+      user.userId
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] })
+      toast.success('Department updated successfully')
+      closeEditModal()
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to update department')
+    }
+  })
+
   const handleAddDepartment = () => {
     if (!newDepartment.trim()) {
-      return;
+      return
     }
-    
-    addDepartmentMutation.mutate(newDepartment.trim());
+
+    addDepartmentMutation.mutate(newDepartment.trim())
   }
 
-  // filter departments
-  const filteredDepartments = departments.filter(dept => 
+  const filteredDepartments = departments.filter(dept =>
     dept.departmentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(dept.testQuantity).includes(searchTerm) ||
     new Date(dept.createdAt).toLocaleDateString().includes(searchTerm)
   )
 
-  // Apply sorting based on filter option
   const sortedDepartments = [...filteredDepartments].sort((a, b) => {
     switch (filterOption) {
       case 'highest':
-        return b.testQuantity - a.testQuantity;
+        return b.testQuantity - a.testQuantity
       case 'lowest':
-        return a.testQuantity - b.testQuantity;
+        return a.testQuantity - b.testQuantity
       default:
-        // Default sorting by creation date (newest first)
-        return new Date(b.createdAt) - new Date(a.createdAt);
+        return new Date(b.createdAt) - new Date(a.createdAt)
     }
-  });
+  })
 
-  // Apply pagination to sorted departments
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentDepartments = sortedDepartments.slice(indexOfFirstItem, indexOfLastItem)
   const totalPages = Math.ceil(sortedDepartments.length / itemsPerPage)
 
-  // Reset to first page when search term or filter changes
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, filterOption])
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
-  if (isAuthenticating) {
-    return null;
-  }
-  if (!user) {
-    return null;
+  const toggleDropdown = (departmentId) => {
+    setActiveDropdown(activeDropdown === departmentId ? null : departmentId)
   }
 
-  const currentPath = location.pathname;
-  const activeTab = tabsConfig.find(tab => 
+  const openEditModal = (department) => {
+    setEditingDepartment(department)
+    setDepartmentName(department.departmentName)
+    setDepartmentDate(new Date(department.createdAt).toISOString().split('T')[0])
+    setDepartmentStatus(department.status)
+    setEditModalOpen(true)
+    setActiveDropdown(null)
+  }
+
+  const closeEditModal = () => {
+    setEditModalOpen(false)
+    setEditingDepartment(null)
+  }
+
+  const handleEditSubmit = () => {
+    if (!departmentName.trim()) {
+      toast.error('Department name is required')
+      return
+    }
+
+    const duplicateDepartment = departments.find(
+      dept => dept.departmentName.toLowerCase() === departmentName.toLowerCase() &&
+              dept.departmentId !== editingDepartment.departmentId
+    )
+
+    if (duplicateDepartment) {
+      toast.error('Department name already exists')
+      return
+    }
+
+    updateDepartmentMutation.mutate({
+      id: editingDepartment.departmentId,
+      name: departmentName,
+      dateCreated: departmentDate,
+      status: departmentStatus,
+    })
+  }
+
+  if (isAuthenticating) {
+    return null
+  }
+  if (!user) {
+    return null
+  }
+
+  const currentPath = location.pathname
+  const activeTab = tabsConfig.find(tab =>
     currentPath === tab.route || currentPath.startsWith(tab.route)
-  )?.name || 'Departments';
+  )?.name || 'Departments'
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
@@ -151,13 +204,10 @@ const Department = () => {
 
         <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
-            {/* Use the TabNavigation component */}
             <TabNavigation tabsConfig={tabsConfig} />
             
-            {/* Content based on active tab */}
             {activeTab === 'Departments' && (
               <>
-                {/* Error Messages */}
                 {isError && (
                   <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
                     <p>{error?.message || 'An error occurred'}</p>
@@ -165,7 +215,6 @@ const Department = () => {
                 )}
                 
                 <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
-                  {/* New Department Input and Button */}
                   <div className="relative w-full sm:w-64">
                     <input
                       type="text"
@@ -184,10 +233,7 @@ const Department = () => {
                     </button>
                   </div>
 
-                  {/* Search and Filter Section */}
                   <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-
-                      {/* Filter Dropdown */}
                       <div className="relative" ref={filterRef}>
                       <button 
                         onClick={() => setShowFilterOptions(!showFilterOptions)}
@@ -209,8 +255,8 @@ const Department = () => {
                         <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-50 w-48">
                           <button 
                             onClick={() => {
-                              setFilterOption('default');
-                              setShowFilterOptions(false);
+                              setFilterOption('default')
+                              setShowFilterOptions(false)
                             }}
                             className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterOption === 'default' ? 'bg-gray-100' : ''}`}
                           >
@@ -218,8 +264,8 @@ const Department = () => {
                           </button>
                           <button 
                             onClick={() => {
-                              setFilterOption('highest');
-                              setShowFilterOptions(false);
+                              setFilterOption('highest')
+                              setShowFilterOptions(false)
                             }}
                             className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterOption === 'highest' ? 'bg-gray-100' : ''}`}
                           >
@@ -227,8 +273,8 @@ const Department = () => {
                           </button>
                           <button 
                             onClick={() => {
-                              setFilterOption('lowest');
-                              setShowFilterOptions(false);
+                              setFilterOption('lowest')
+                              setShowFilterOptions(false)
                             }}
                             className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${filterOption === 'lowest' ? 'bg-gray-100' : ''}`}
                           >
@@ -238,7 +284,6 @@ const Department = () => {
                       )}
                     </div>
 
-                    {/* Search Input */}
                     <div className="relative w-full sm:w-64">
                       <input
                         type="text"
@@ -260,7 +305,6 @@ const Department = () => {
                     <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Departments</h1>
                   </div>
                   <div className="border border-green-800 rounded-b">
-                    {/* Table container - without pagination */}
                     <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 350px)' }}>
                       <table className="w-full text-sm">
                         <thead className='sticky top-0 bg-green-100 z-10'>
@@ -295,19 +339,33 @@ const Department = () => {
                                   </span>
                                 </td>
                                 <td className="p-1 border-r border-green-200 text-center">
-                                  <button 
-                                    className={`px-2 py-1 rounded text-xs ${dept.status === 'active' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
-                                    onClick={() => updateStatusMutation.mutate({
-                                      id: dept.departmentId,
-                                      status: dept.status === 'active' ? 'inactive' : 'active'
-                                    })}
-                                    disabled={updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.departmentId}
-                                  >
-                                    {updateStatusMutation.isPending && updateStatusMutation.variables?.id === dept.departmentId
-                                      ? 'Updating...'
-                                      : dept.status === 'active' ? 'Deactivate' : 'Activate'
-                                    }
-                                  </button>
+                                  <div className="flex justify-center">
+                                    <button 
+                                      onClick={() => toggleDropdown(dept.departmentId)} 
+                                      className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                                    >
+                                      <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
+                                           strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="1"></circle>
+                                        <circle cx="12" cy="5" r="1"></circle>
+                                        <circle cx="12" cy="19" r="1"></circle>
+                                      </svg>
+                                    </button>
+                                    
+                                    {activeDropdown === dept.departmentId && (
+                                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                        <div className="py-1">
+                                          <button
+                                            onClick={() => openEditModal(dept)}
+                                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
+                                          >
+                                            <EditIcon size={16} className="mr-2" />
+                                            Edit Department
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))
@@ -317,7 +375,6 @@ const Department = () => {
                     </div>
                   </div>
                   
-                    {/* Pagination controls */}
                   {filteredDepartments.length > itemsPerPage && (
                     <div className="flex justify-center mt-4">
                       <nav>
@@ -334,17 +391,16 @@ const Department = () => {
                             </button>
                           </li>
                           {(() => {
-                          
-                            let startPage = Math.max(1, currentPage - 1);
-                            let endPage = Math.min(totalPages, startPage + 2);
+                            let startPage = Math.max(1, currentPage - 1)
+                            let endPage = Math.min(totalPages, startPage + 2)
                                     
                             if (endPage - startPage < 2 && startPage > 1) {
-                              startPage = Math.max(1, endPage - 2);
+                              startPage = Math.max(1, endPage - 2)
                             }
                             
-                            const pageNumbers = [];
+                            const pageNumbers = []
                             for (let i = startPage; i <= endPage; i++) {
-                              pageNumbers.push(i);
+                              pageNumbers.push(i)
                             }
                             
                             return pageNumbers.map(number => (
@@ -360,7 +416,7 @@ const Department = () => {
                                   {number}
                                 </button>
                               </li>
-                            ));
+                            ))
                           })()}
                           <li>
                             <button 
@@ -378,7 +434,6 @@ const Department = () => {
                     </div>
                   )}
                   
-                  {/* Generate Report button */}
                   <div className="mt-4 flex flex-col md:flex-row justify-end">
                     <div className="flex flex-wrap items-center mb-4 md:mb-0">
                       <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
@@ -387,6 +442,74 @@ const Department = () => {
                     </div>
                   </div>
                 </div>
+
+                {editModalOpen && editingDepartment && (
+                  <div className="fixed inset-0 flex items-start pt-20 justify-center bg-black bg-opacity-50 z-50">
+                    <div className="bg-white w-full max-w-md rounded shadow-lg">
+                      <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center">
+                        <h3 className="text-xl font-medium">Edit Department</h3>
+                        <button onClick={closeEditModal} className="text-white hover:text-gray-200">
+                          <X size={24} />
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <label className="block text-green-800 font-medium mb-1">Department Name</label>
+                            <input
+                              type="text"
+                              value={departmentName}
+                              onChange={(e) => setDepartmentName(e.target.value)}
+                              className="w-full border border-gray-300 rounded p-2"
+                              placeholder="Enter department name"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-green-800 font-medium mb-1">Date Created</label>
+                            <div className="relative" onClick={() => document.getElementById('edit-dept-date').showPicker()}>
+                              <input
+                                id="edit-dept-date"
+                                type="date"
+                                value={departmentDate}
+                                onChange={(e) => setDepartmentDate(e.target.value)}
+                                className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-green-800 font-medium mb-1">Status</label>
+                            <div className="relative">
+                              <select
+                                value={departmentStatus}
+                                onChange={(e) => setDepartmentStatus(e.target.value)}
+                                className="w-full border border-gray-300 rounded p-2 appearance-none"
+                              >
+                                <option value="active">Active</option>
+                                <option value="inactive">Deactivated</option>
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border-t border-gray-300 my-4"></div>
+                        <div className="flex justify-center">
+                          <button
+                            onClick={handleEditSubmit}
+                            disabled={updateDepartmentMutation.isPending}
+                            className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
+                          >
+                            {updateDepartmentMutation.isPending ? 'Saving...' : 'Save Changes'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

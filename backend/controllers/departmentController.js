@@ -1,6 +1,7 @@
 const { Department } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
 const sequelize = require('../models').sequelize;
+const { Op } = require('sequelize'); 
 
 // Get all departments
 const getAllDepartments = async (req, res) => {
@@ -97,9 +98,6 @@ const updateDepartmentStatus = async (req, res) => {
     const { departmentId } = req.params;
     const { status, currentUserId } = req.body;
     
-    console.log("Finding department with ID:", departmentId);
-    
-    // Use the correct parameter name
     const department = await Department.findOne({ 
       where: { departmentId: departmentId }
     });
@@ -108,22 +106,112 @@ const updateDepartmentStatus = async (req, res) => {
       return res.status(404).json({ message: 'Department not found' });
     }
     
-    console.log("Found department:", department.toJSON());
-    
+    const oldStatus = department.status;
     department.status = status;
     await department.save();
     
     res.json(department);
 
-    // Log department status change
     await logActivity({
       userId: currentUserId,
       action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
       resourceType: 'DEPARTMENT',
       resourceId: department.departmentId, 
       details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${department.departmentName}`,
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      metadata: {
+        oldStatus: oldStatus,
+        newStatus: status
+      }
     });
+  } catch (error) {
+    console.error('Error updating department status:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const updateDepartment = async (req, res) => {
+  try {
+    const { departmentId } = req.params;
+    const { departmentName, dateCreated, status, currentUserId } = req.body;
+    
+    const department = await Department.findOne({ 
+      where: { departmentId: departmentId }
+    });
+    
+    if (!department) {
+      return res.status(404).json({ message: 'Department not found' });
+    }
+    
+    if (departmentName !== department.departmentName) {
+      const existingDepartment = await Department.findOne({ 
+        where: { 
+          departmentName,
+          departmentId: { [Op.ne]: departmentId }
+        } 
+      });
+      
+      if (existingDepartment) {
+        return res.status(400).json({ message: 'Department name already exists' });
+      }
+    }
+    
+    const oldValues = {
+      departmentName: department.departmentName,
+      dateCreated: department.createdAt,
+      status: department.status
+    };
+    
+    const changingDetails = 
+      department.departmentName !== departmentName || 
+      (dateCreated && new Date(department.createdAt).toISOString() !== new Date(dateCreated).toISOString());
+      
+    const changingStatus = status && department.status !== status;
+    
+    await department.update({
+      departmentName,
+      createdAt: dateCreated || department.createdAt,
+      status: status || department.status
+    });
+    
+    res.json(department);
+
+    // SEPARATE LOGGING FOR DETAILS AND STATUS CHANGES
+    if (changingDetails) {
+      await logActivity({
+        userId: currentUserId,
+        action: 'UPDATE_DEPARTMENT_DETAILS',
+        resourceType: 'DEPARTMENT',
+        resourceId: department.departmentId,
+        details: `Updated department details: ${departmentName}`,
+        ipAddress: req.ip,
+        metadata: {
+          oldValues: {
+            departmentName: oldValues.departmentName,
+            dateCreated: oldValues.dateCreated ? new Date(oldValues.dateCreated).toISOString() : null
+          },
+          newValues: {
+            departmentName,
+            dateCreated: dateCreated ? new Date(dateCreated).toISOString() : new Date(oldValues.dateCreated).toISOString()
+          }
+        }
+      });
+    }
+    
+    if (changingStatus) {
+      await logActivity({
+        userId: currentUserId,
+        action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
+        resourceType: 'DEPARTMENT',
+        resourceId: department.departmentId,
+        details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${departmentName}`,
+        ipAddress: req.ip,
+        metadata: {
+          oldStatus: oldValues.status,
+          newStatus: status
+        }
+      });
+    }
   } catch (error) {
     console.error('Error updating department:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -133,5 +221,6 @@ const updateDepartmentStatus = async (req, res) => {
 module.exports = {
   getAllDepartments,
   createDepartment,
-  updateDepartmentStatus
+  updateDepartmentStatus,
+  updateDepartment
 };
