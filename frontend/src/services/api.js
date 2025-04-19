@@ -65,8 +65,10 @@ export const webauthnAPI = {
 
 // Department API
 export const departmentAPI = {
-  getAllDepartments: () => {
-    return apiClient.get('/departments');
+  getAllDepartments: (forceRefresh = false) => {
+    // Add cache-busting timestamp parameter to prevent caching
+    const timestamp = forceRefresh ? `?_t=${new Date().getTime()}` : '';
+    return apiClient.get(`/departments${timestamp}`);
   },
   createDepartment: (name, currentUserId) => {
     return apiClient.post('/departments', { 
@@ -86,5 +88,32 @@ export const departmentAPI = {
 export const activityLogAPI = {
   getAllLogs: (params = {}) => {
     return apiClient.get('/activity-logs', { params });
+  }
+};
+
+// Test API
+export const testAPI = {
+  getAllTests: () => {
+    return apiClient.get('/tests');
+  },
+  createTest: (testData, currentUserId) => {
+    // Ensure currentUserId is explicitly included in both the data AND the URL parameters
+    return apiClient.post('/tests', {
+      ...testData,
+      currentUserId: currentUserId 
+    });
+  },
+  updateTest: (id, testData, currentUserId) => {
+    // Ensure currentUserId is explicitly included in both the data AND the URL parameters
+    return apiClient.put(`/tests/${id}`, {
+      ...testData,
+      currentUserId: currentUserId 
+    });
+  },
+  updateTestStatus: (id, status, currentUserId) => {
+    return apiClient.patch(`/tests/${id}`, {
+      status,
+      currentUserId
+    });
   }
 };
