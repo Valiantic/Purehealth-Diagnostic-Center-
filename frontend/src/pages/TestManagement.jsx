@@ -25,7 +25,7 @@ const Test = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(7);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
   const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
@@ -458,7 +458,7 @@ const Test = () => {
                     </nav>
                   </div>
                 )}
-                <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
+                <div className="mt-4 flex flex-col md:flex-row justify-end">
                   <div className="flex flex-wrap items-center mb-4 md:mb-0">
                     <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
                       Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
