@@ -488,20 +488,34 @@ const Test = () => {
                             Prev
                           </button>
                         </li>
-                        {[...Array(totalPages)].map((_, index) => (
-                          <li key={index}>
-                            <button
-                              onClick={() => paginate(index + 1)}
-                              className={`px-3 py-1 border-t border-b border-gray-300 ${
-                                currentPage === index + 1 
-                                  ? 'bg-green-800 text-white' 
-                                  : 'bg-white text-green-800 hover:bg-green-50'
-                              }`}
-                            >
-                              {index + 1}
-                            </button>
-                          </li>
-                        ))}
+                        {(() => {
+                          let startPage = Math.max(1, currentPage - 1);
+                          let endPage = Math.min(totalPages, startPage + 2);
+                          
+                          if (endPage - startPage < 2 && startPage > 1) {
+                            startPage = Math.max(1, endPage - 2);
+                          }
+                          
+                          const pageNumbers = [];
+                          for (let i = startPage; i <= endPage; i++) {
+                            pageNumbers.push(i);
+                          }
+                          
+                          return pageNumbers.map(number => (
+                            <li key={number}>
+                              <button
+                                onClick={() => paginate(number)}
+                                className={`px-3 py-1 border-t border-b border-gray-300 ${
+                                  currentPage === number 
+                                    ? 'bg-green-800 text-white' 
+                                    : 'bg-white text-green-800 hover:bg-green-50'
+                                }`}
+                              >
+                                {number}
+                              </button>
+                            </li>
+                          ));
+                        })()}
                         <li>
                           <button 
                             onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
@@ -517,6 +531,7 @@ const Test = () => {
                     </nav>
                   </div>
                 )}
+                
                 <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
                   <div className="flex flex-wrap items-center mb-4 md:mb-0">
                     <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">

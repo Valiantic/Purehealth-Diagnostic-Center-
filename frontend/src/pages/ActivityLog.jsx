@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Download, RefreshCw, X } from 'lucide-react'
+import { Download, RefreshCw, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import TabNavigation from '../components/TabNavigation'
@@ -13,6 +13,8 @@ const ActivityLog = () => {
   const location = useLocation()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(7) 
 
   // Debounce search term to prevent too many API calls
   useEffect(() => {
@@ -64,6 +66,14 @@ const ActivityLog = () => {
   const clearSearch = () => {
     setSearchTerm('');
   };
+
+  const totalPages = Math.ceil(logsData?.logs?.length / itemsPerPage);
+
+  const indexOfLastLog = currentPage * itemsPerPage;
+  const indexOfFirstLog = indexOfLastLog - itemsPerPage;
+  const currentLogs = logsData?.logs ? logsData.logs.slice(indexOfFirstLog, indexOfLastLog) : [];
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
@@ -140,7 +150,7 @@ const ActivityLog = () => {
                           <td colSpan="5" className="text-center p-4">No activity logs found</td>
                         </tr>
                       ) : (
-                        logsData.logs.map(log => (
+                        currentLogs.map(log => (
                           <tr key={log.logId} className="border-b border-green-200">
                             <td className="p-1 pl-2 border-r border-green-200">
                               {log.user?.name || 'System'}
@@ -176,8 +186,71 @@ const ActivityLog = () => {
                   </table>
                 </div>
               </div>
-              
-              {/* Move the Generate Report button outside the overflow container */}
+
+              {/* Pagination controls */}
+              {logsData?.logs?.length > itemsPerPage && (
+                <div className="flex justify-center mt-4">
+                  <nav>
+                    <ul className="flex list-none">
+                      <li>
+                        <button 
+                          onClick={() => paginate(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className={`px-3 py-1 border border-gray-300 rounded-l ${
+                            currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                          }`}
+                        >
+                          Prev
+                        </button>
+                      </li>
+                      {/* Create a sliding window of page numbers */}
+                      {(() => {
+                        
+                        let startPage = Math.max(1, currentPage - 1);
+                        let endPage = Math.min(totalPages, startPage + 2);
+                        
+                        if (endPage - startPage < 2 && startPage > 1) {
+                          startPage = Math.max(1, endPage - 2);
+                        }
+                        
+                        const pageNumbers = [];
+                        for (let i = startPage; i <= endPage; i++) {
+                          pageNumbers.push(i);
+                        }
+                        
+                        return pageNumbers.map(number => (
+                          <li key={number}>
+                            <button
+                              onClick={() => paginate(number)}
+                              className={`px-3 py-1 border-t border-b border-gray-300 ${
+                                currentPage === number 
+                                  ? 'bg-green-800 text-white' 
+                                  : 'bg-white text-green-800 hover:bg-green-50'
+                              }`}
+                            >
+                              {number}
+                            </button>
+                          </li>
+                        ));
+                      })()}
+                      <li>
+                        <button 
+                          onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                          className={`px-3 py-1 border border-gray-300 rounded-r ${
+                            currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                          }`}
+                        >
+                          Next
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              )}
+
+
+              {/* Generate Report button */}
               <div className="mt-4 flex flex-col md:flex-row justify-end">
                 <div className="flex flex-wrap items-center mb-4 md:mb-0">
                   <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
