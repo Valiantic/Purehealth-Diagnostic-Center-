@@ -59,3 +59,15 @@ CREATE TABLE `ActivityLogs` (
   KEY `activity_log_created_at` (`createdAt`),
   CONSTRAINT `activitylogs_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `tests` (
+  `testId` INT AUTO_INCREMENT PRIMARY KEY,
+  `testName` VARCHAR(255) NOT NULL,
+  `departmentId` INT NOT NULL,
+  `price` DECIMAL(10, 2) NOT NULL,
+  `status` ENUM('active', 'inactive') DEFAULT 'active',
+  `dateCreated` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`departmentId`) REFERENCES `Departments`(`departmentId`) ON DELETE RESTRICT ON UPDATE CASCADE
+);
