@@ -1,4 +1,4 @@
-import React, { useState, useEffect} from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Download, PlusCircle, X, Edit as EditIcon } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
@@ -29,12 +29,10 @@ const Test = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
   const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('all');
+  const [showDepartmentFilter, setShowDepartmentFilter] = useState(false);
+  const departmentFilterRef = useRef(null);
 
-  useEffect(() => {
-    if (user) {
-      console.log('User object structure:', user);
-    }
-  }, [user]);
 
   const fetchDepartments = async (forceRefresh = false) => {
     try {
@@ -67,6 +65,22 @@ const Test = () => {
     fetchDepartments();
     fetchTests();
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (departmentFilterRef.current && !departmentFilterRef.current.contains(event.target)) {
+        setShowDepartmentFilter(false);
+      }
+    }
+    
+    if (showDepartmentFilter) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDepartmentFilter]);
 
   const openModal = () => {
     setTestName('');
@@ -127,9 +141,7 @@ const Test = () => {
       }
       
       const userId = user.userId || user.id; 
-      
-      console.log('Submitting test with userId:', userId);
-      
+            
       if (!userId) {
         console.error('User ID is missing from user object:', user);
         toast.error('Authentication error. Please log in again.');
@@ -223,9 +235,7 @@ const Test = () => {
       }
 
       const userId = user.userId || user.id;
-      
-      console.log('Updating test with userId:', userId);
-      
+            
       if (!userId) {
         console.error('User ID is missing from user object:', user);
         toast.error('Authentication error. Please log in again.');
@@ -252,17 +262,21 @@ const Test = () => {
     }
   };
 
-  // SEARCH FUNCTIONALITY 
   const filteredTests = tests.filter(test => {
-    if (!searchTerm.trim()) return true;
+    if (!searchTerm.trim() && selectedDepartmentFilter === 'all') return true;
+    
+    const departmentMatch = selectedDepartmentFilter === 'all' || 
+      (test.departmentId === parseInt(selectedDepartmentFilter));
     
     const searchTermLower = searchTerm.toLowerCase();
-    return (
+    const searchMatch = !searchTerm.trim() || (
       test.testName.toLowerCase().includes(searchTermLower) ||
       test.Department?.departmentName.toLowerCase().includes(searchTermLower) ||
       test.price.toString().includes(searchTerm) ||
       test.status.toLowerCase().includes(searchTermLower)
     );
+    
+    return departmentMatch && searchMatch;
   });
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -272,7 +286,7 @@ const Test = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, selectedDepartmentFilter]);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -308,16 +322,61 @@ const Test = () => {
                   <PlusCircle className="mr-1 sm:mr-2" size={18} />
                   Add New Test
                 </button>
-                <div className="relative w-full sm:w-64">
-                  <input
-                    type="text"
-                    placeholder="Search Test..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
-                  />
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <div className="relative" ref={departmentFilterRef}>
+                    <button 
+                      onClick={() => setShowDepartmentFilter(!showDepartmentFilter)}
+                      className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between"
+                    >
+                      <span>
+                        {selectedDepartmentFilter === 'all' 
+                          ? 'All Departments' 
+                          : departments.find(d => d.departmentId === parseInt(selectedDepartmentFilter))?.departmentName || 'Select Department'}
+                      </span>
+                      <svg className="w-4 h-4 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    {showDepartmentFilter && (
+                      <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-50 w-48 max-h-60 overflow-y-auto">
+                        <button 
+                          onClick={() => {
+                            setSelectedDepartmentFilter('all');
+                            setShowDepartmentFilter(false);
+                          }}
+                          className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${selectedDepartmentFilter === 'all' ? 'bg-gray-100' : ''}`}
+                        >
+                          All Departments
+                        </button>
+                        {departments.map(dept => (
+                          <button 
+                            key={dept.departmentId}
+                            onClick={() => {
+                              setSelectedDepartmentFilter(dept.departmentId.toString());
+                              setShowDepartmentFilter(false);
+                            }}
+                            className={`block px-4 py-2 text-sm w-full text-left hover:bg-gray-100 ${selectedDepartmentFilter === dept.departmentId.toString() ? 'bg-gray-100' : ''}`}
+                          >
+                            {dept.departmentName}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      type="text"
+                      placeholder="Search Test..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
+                    />
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -341,18 +400,18 @@ const Test = () => {
                       <tbody>
                         {isLoading ? (
                           <tr>
-                            <td colSpan="6" className="text-center p-3">Loading...</td>
+                            <td colSpan="6" className="text-center p-4">Loading...</td>
                           </tr>
                         ) : filteredTests.length === 0 ? (
                           <tr>
-                            <td colSpan="6" className="text-center p-3">
+                            <td colSpan="6" className="text-center p-4">
                               {searchTerm ? 'No tests match your search' : 'No tests found'}
                             </td>
                           </tr>
                         ) : (
                           currentTests.map((test, index) => (
                             <tr key={`test-row-${test.testId}`} className="border-b border-green-200">
-                              <td className="p-1 pl-4 border-r border-green-200">{test.testName}</td>
+                              <td className="p-1 pl-5 border-r border-green-200 text-left">{test.testName}</td>
                               <td className="p-1 border-r border-green-200 text-center">{test.Department?.departmentName}</td>
                               <td className="p-1 border-r border-green-200 text-center">₱{parseFloat(test.price).toFixed(2)}</td>
                               <td className="p-1 border-r border-green-200 text-center">
@@ -363,7 +422,7 @@ const Test = () => {
                                   {test.status === 'active' ? 'Active' : 'Deactivated'}
                                 </span>
                               </td>
-                              <td className="p-1 border-r border-green-200 relative">
+                              <td className="p-1 border-r border-green-200 text-center">
                                 <div className="flex justify-center">
                                   <button 
                                     onClick={() => toggleDropdown(test.testId)} 
@@ -401,12 +460,12 @@ const Test = () => {
                         {!isLoading && currentTests.length > 0 && currentTests.length < itemsPerPage && (
                           [...Array(itemsPerPage - currentTests.length)].map((_, index) => (
                             <tr key={`empty-row-${index}`} className="border-b border-green-200">
-                              <td className="p-1 border-r border-green-200"></td>
-                              <td className="p-1 border-r border-green-200"></td>
-                              <td className="p-1 border-r border-green-200"></td>
-                              <td className="p-1 border-r border-green-200"></td>
-                              <td className="p-1 border-r border-green-200"></td>
-                              <td className="p-1 border-r border-green-200"></td>
+                              <td className="p-1 border-r border-green-200">&nbsp;</td>
+                              <td className="p-1 border-r border-green-200">&nbsp;</td>
+                              <td className="p-1 border-r border-green-200">&nbsp;</td>
+                              <td className="p-1 border-r border-green-200">&nbsp;</td>
+                              <td className="p-1 border-r border-green-200">&nbsp;</td>
+                              <td className="p-1 border-r border-green-200">&nbsp;</td>
                             </tr>
                           ))
                         )}
@@ -458,7 +517,7 @@ const Test = () => {
                     </nav>
                   </div>
                 )}
-                <div className="mt-4 flex flex-col md:flex-row justify-end">
+                <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
                   <div className="flex flex-wrap items-center mb-4 md:mb-0">
                     <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
                       Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
