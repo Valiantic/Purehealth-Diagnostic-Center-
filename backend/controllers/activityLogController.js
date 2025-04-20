@@ -5,14 +5,13 @@ const { Op } = Sequelize;
 // Get all activity logs with pagination, filtering, and search
 const getActivityLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 50, sort = 'createdAt', order = 'DESC', search } = req.query;
+    const { page = 1, limit = 50, sort = 'createdAt', order = 'DESC', search, date } = req.query;
     
     const offset = (page - 1) * limit;
     let whereClause = {};
     
     // Apply search filter 
     if (search) {
-    
       whereClause = {
         [Op.or]: [
           // Search in the action field
@@ -29,6 +28,21 @@ const getActivityLogs = async (req, res) => {
           
           // Use simpler approach for userInfo search
           { userInfo: { [Op.like]: `%${search}%` } }
+        ]
+      };
+    }
+    
+    // DATE FILTERING 
+    if (date) {
+      const formattedDate = new Date(date).toISOString().split('T')[0];
+    
+      whereClause = {
+        ...whereClause,
+        [Op.and]: [
+          Sequelize.where(
+            Sequelize.fn('DATE', Sequelize.col('ActivityLog.createdAt')),
+            formattedDate
+          )
         ]
       };
     }
@@ -90,7 +104,12 @@ const getActivityLogs = async (req, res) => {
       logs: formattedLogs,
       totalCount: logs.count,
       totalPages: Math.ceil(logs.count / limit),
-      currentPage: parseInt(page)
+      // DATE FILTERING 
+      currentPage: parseInt(page),
+      filters: {
+        date: date || null,
+        search: search || null
+      }
     });
   } catch (error) {
     console.error('Error fetching activity logs:', error);
