@@ -161,74 +161,74 @@ const AddAccount = () => {
         <Sidebar />
       </div>
      
-      <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
+      <div className='flex-1 overflow-auto p-2 pt-16 lg:pt-6 lg:ml-64'>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full overflow-hidden">
           <TabNavigation tabsConfig={tabsConfig} />
           
           {activeTab === 'Account' && (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 md:p-6">
-                <div className="bg-white rounded-lg border border-green-800">
-                  <div className="bg-green-800 text-white p-3">
-                    <h2 className="text-lg font-medium">Create New Account</h2>
+            <div className="p-2 overflow-auto">
+              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="bg-white rounded-lg border border-green-800 h-auto">
+                  <div className="bg-green-800 text-white p-1.5 md:p-2">
+                    <h2 className="text-sm md:text-base font-medium">Create New Account</h2>
                   </div>
                   
-                  <form onSubmit={handleSubmit} className="space-y-4 p-4">
-                    <div className="space-y-2">
-                      <label className="block font-medium text-green-800">Email Address</label>
+                  <form onSubmit={handleSubmit} className="space-y-2 p-2 md:p-3">
+                    <div className="space-y-1">
+                      <label className="block font-medium text-green-800 text-xs md:text-sm">Email Address</label>
                       <input 
                         type="email"
                         name="email" 
                         value={formData.email}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
                         readOnly={step === 2}
                       />
                     </div>
     
-                    <div className="space-y-2">
-                      <label className="block font-medium text-green-800">First Name</label>
+                    <div className="space-y-1">
+                      <label className="block font-medium text-green-800 text-xs md:text-sm">First Name</label>
                       <input 
                         type="text" 
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
                         readOnly={step === 2}
                       />
                     </div>
     
-                    <div className="space-y-2">
-                      <label className="block font-medium text-green-800">Middle Name</label>
+                    <div className="space-y-1">
+                      <label className="block font-medium text-green-800 text-xs md:text-sm">Middle Name</label>
                       <input 
                         type="text" 
                         name="middleName"
                         value={formData.middleName}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
                         readOnly={step === 2}
                       />
                     </div>
                     
-                    <div className="space-y-2">
-                      <label className="block font-medium text-green-800">Last Name</label>
+                    <div className="space-y-1">
+                      <label className="block font-medium text-green-800 text-xs md:text-sm">Last Name</label>
                       <input 
                         type="text" 
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
                         readOnly={step === 2}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block font-medium text-green-800">Role</label>
+                    <div className="space-y-1">
+                      <label className="block font-medium text-green-800 text-xs md:text-sm">Role</label>
                       <select
                         name="role"
                         value={formData.role}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
                         disabled={step === 2}
                       >
                         <option value="receptionist">Receptionist</option>
@@ -237,21 +237,21 @@ const AddAccount = () => {
                     </div>
                     
                     {error && step === 1 && (
-                      <div className="text-red-500 text-sm mt-2">{error}</div>
+                      <div className="text-red-500 text-xs">{error}</div>
                     )}
 
-                    <div className="pt-2">
+                    <div className="pt-1">
                       {step === 1 && (
                         <button 
                           type="submit" 
                           disabled={loading}
-                          className="w-full py-2 px-4 bg-green-800 hover:bg-green-700 text-white font-medium rounded-md transition"
+                          className="w-full py-1 px-3 bg-green-800 hover:bg-green-700 text-white font-medium rounded-md transition text-xs md:text-sm"
                         >
                           {loading ? 'Creating Account...' : 'Create Account'}
                         </button>
                       )}
                       {step === 2 && (
-                        <div className="py-2 px-4 bg-gray-100 text-center text-gray-500 rounded-md">
+                        <div className="py-1 px-3 bg-gray-100 text-center text-gray-500 rounded-md text-xs md:text-sm">
                           Account created successfully!
                         </div>
                       )}
@@ -259,19 +259,19 @@ const AddAccount = () => {
                   </form>
                 </div>
                 
-                <div className="flex flex-col space-y-4 mt-8 sm:mt-4 md:mt-0">
-                  <div className="flex justify-center items-center space-x-2 text-center">
+                <div className="flex flex-col space-y-2 md:space-y-3 mt-1">
+                  <div className="flex justify-center items-center space-x-1 text-center">
                     <div className="flex-shrink-0">
-                        <Shield className="w-6 h-6 text-green-800" />
+                        <Shield className="w-4 h-4 md:w-5 md:h-5 text-green-800" />
                     </div>
-                    <span className="font-medium text-green-800 underline text-sm md:text-base">Create Account using FIDO2 WebAuthn</span>
+                    <span className="font-medium text-green-800 underline text-xs md:text-sm">Create Account using FIDO2 WebAuthn</span>
                   </div>
                   
-                  <div className="border border-green-800 rounded-lg p-4 flex justify-center items-center bg-white mt-2">
-                    <div className="relative w-64 h-48 mt-3">
+                  <div className="border border-green-800 rounded-lg p-2 flex justify-center items-center bg-white">
+                    <div className="relative w-40 md:w-48 h-32 md:h-36">
                       <div className="absolute right-0 top-10">
                         <div className="bg-green-800 rounded-full p-2">
-                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                           </svg>
                         </div>
@@ -285,7 +285,7 @@ const AddAccount = () => {
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
