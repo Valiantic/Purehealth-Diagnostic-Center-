@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { PlusCircle, XCircle, MoreVertical, AlertCircle, CheckCircle, X, UserX, UserCheck, Edit, Save } from 'lucide-react'
+import { PlusCircle, XCircle, MoreVertical, X, Edit, Save } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userAPI } from '../services/api'
 import Sidebar from '../components/Sidebar'
@@ -19,16 +19,16 @@ const ViewAccounts = () => {
   const [errorMessage, setErrorMessage] = useState('')
   const [activeDropdown, setActiveDropdown] = useState(null)
   const dropdownRefs = useRef({})
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [confirmAction, setConfirmAction] = useState(null) 
-  const [selectedUser, setSelectedUser] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
   const [editUserData, setEditUserData] = useState({
     firstName: '',
     middleName: '',
     lastName: '',
-    email: ''
+    email: '',
+    status: 'active'
   })
+  const [originalUserData, setOriginalUserData] = useState(null)
   const [windowWidth, setWindowWidth] = useState(window.innerWidth)
 
   useEffect(() => {
@@ -68,35 +68,6 @@ const ViewAccounts = () => {
     }
   })
 
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ userId, status }) => userAPI.updateUserStatus(userId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['accounts'])
-      toast.success('User status updated successfully')
-
-    },
-    onError: (error) => {
-      toast.error(`Error updating user status: ${error.message}`)
-
-    }
-  })
-
-  const fetchUserDetails = async (userId) => {
-    try {
-      const response = await userAPI.getUserById(userId)
-      const userData = response.data.user
-      setEditUserData({
-        firstName: userData.firstName,
-        middleName: userData.middleName || '',
-        lastName: userData.lastName,
-        email: userData.email
-      })
-    } catch (error) {
-      toast.error('Failed to fetch user details')
-      console.error('Error fetching user details:', error)
-    }
-  }
-
   const updateUserMutation = useMutation({
     mutationFn: ({ userId, userData }) => userAPI.updateUserDetails(userId, userData),
     onSuccess: () => {
@@ -118,26 +89,25 @@ const ViewAccounts = () => {
     setActiveDropdown(activeDropdown === userId ? null : userId)
   }
 
-  const openConfirmModal = (e, userId, action) => {
-    e.stopPropagation()
-    setSelectedUser(userId)
-    setConfirmAction(action)
-    setShowConfirmModal(true)
-    setActiveDropdown(null)
-  }
-
-  const closeConfirmModal = () => {
-    setShowConfirmModal(false)
-    setSelectedUser(null)
-    setConfirmAction(null)
-  }
-
-  const confirmStatusChange = () => {
-    if (!selectedUser || !confirmAction) return
-
-    const newStatus = confirmAction === 'activate' ? 'active' : 'inactive'
-    updateStatusMutation.mutate({ userId: selectedUser, status: newStatus })
-    closeConfirmModal()
+  const fetchUserDetails = async (userId) => {
+    try {
+      const response = await userAPI.getUserById(userId)
+      const userData = response.data.user
+      const userDataForEdit = {
+        firstName: userData.firstName,
+        middleName: userData.middleName || '',
+        lastName: userData.lastName,
+        email: userData.email,
+        status: userData.status || 'active'
+      }
+      
+      setEditUserData(userDataForEdit)
+      // Create a true deep copy of the data to preserve original values
+      setOriginalUserData(JSON.parse(JSON.stringify(userDataForEdit)))
+    } catch (error) {
+      toast.error('Failed to fetch user details')
+      console.error('Error fetching user details:', error)
+    }
   }
 
   const openEditModal = (e, userId) => {
@@ -155,8 +125,10 @@ const ViewAccounts = () => {
       firstName: '',
       middleName: '',
       lastName: '',
-      email: ''
+      email: '',
+      status: 'active'
     })
+    setOriginalUserData(null)
   }
 
   const handleEditFormChange = (e) => {
@@ -171,27 +143,24 @@ const ViewAccounts = () => {
     e.preventDefault()
     if (!selectedUser) return
 
+    // Force string comparison to ensure differences are detected
+    const statusChanged = String(originalUserData.status) !== String(editUserData.status);
+    const detailsChanged = 
+      String(originalUserData.firstName) !== String(editUserData.firstName) ||
+      String(originalUserData.middleName) !== String(editUserData.middleName) ||
+      String(originalUserData.lastName) !== String(editUserData.lastName) ||
+      String(originalUserData.email) !== String(editUserData.email);
+
+    // Always send these as explicit boolean values
     updateUserMutation.mutate({
       userId: selectedUser,
-      userData: editUserData
-    })
-  }
-
-  const capitalizeFirstLetter = (string) => {
-    if (!string) return ''
-    return string.charAt(0).toUpperCase() + string.slice(1)
-  }
-
-  const formatStatus = (status) => {
-    if (!status) return 'Active'
-
-    const statusLower = status.toLowerCase()
-    return statusLower === 'active' ? 'Active' : 'Inactive'
-  }
-
-  const isAccountActive = (status) => {
-    if (!status) return true
-    return status.toLowerCase() === 'active'
+      userData: {
+        ...editUserData,
+        statusChanged: statusChanged === true,
+        detailsChanged: detailsChanged === true,
+        currentUserId: user.userId
+      }
+    });
   }
 
   const filteredAccounts = accountsData?.users?.filter((account) => {
@@ -366,12 +335,12 @@ const ViewAccounts = () => {
                               <td className='p-1 border-r border-green-200 text-center'>
                                 <span
                                   className={`px-2 py-1 rounded text-xs ${
-                                    isAccountActive(account.status)
+                                    account.status === 'active'
                                       ? 'bg-green-100 text-green-800'
                                       : 'bg-red-100 text-red-800'
                                   }`}
                                 >
-                                  {formatStatus(account.status)}
+                                  {account.status === 'active' ? 'Active' : 'Inactive'}
                                 </span>
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
@@ -416,26 +385,8 @@ const ViewAccounts = () => {
                                           onClick={(e) => openEditModal(e, account.userId)}
                                         >
                                           <Edit size={16} className="mr-2" />
-                                          Edit Details
+                                          Edit User
                                         </button>
-                                        
-                                        {isAccountActive(account.status) ? (
-                                          <button 
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
-                                            onClick={(e) => openConfirmModal(e, account.userId, 'deactivate')}
-                                          >
-                                            <AlertCircle size={16} className="mr-2" />
-                                            Deactivate User
-                                          </button>
-                                        ) : (
-                                          <button 
-                                            className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-gray-100 flex items-center"
-                                            onClick={(e) => openConfirmModal(e, account.userId, 'activate')}
-                                          >
-                                            <CheckCircle size={16} className="mr-2" />
-                                            Activate User
-                                          </button>
-                                        )}
                                       </div>
                                     </div>
                                   )}
@@ -454,76 +405,11 @@ const ViewAccounts = () => {
         </div>
       </div>
 
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full relative">
-            <div className={`${confirmAction === 'activate' ? 'bg-green-800' : 'bg-red-600'} rounded-t-lg text-white p-4 text-center relative`}>
-              <h3 className="text-xl font-bold text-white">
-                {confirmAction === 'activate' ? 'Activate User Account' : 'Deactivate User Account'}
-              </h3>
-              <button
-                onClick={closeConfirmModal}
-                className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white hover:text-gray-200"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className='p-6'>
-              <div className='flex flex-col items-center mb-6'>
-                <div className='mb-6 p-4 rounded-full bg-gray-100'>
-                  {confirmAction === 'activate' ? (
-                    <UserCheck size={64} className="text-green-600" />
-                  ) : (
-                    <UserX size={64} className="text-red-600" />
-                  )}
-                </div>
-                <p className="text-gray-700 text-center text-sm md:text-base mb-2">
-                  {confirmAction === 'activate' 
-                    ? 'Are you sure you want to activate this user account? The user will regain access to the system.'
-                    : 'Are you sure you want to deactivate this user account? The user will lose access to the system.'}
-                </p>
-              </div>
-
-              <div className='space-y-3'>
-                <button
-                  className={`w-full ${
-                    confirmAction === 'activate' 
-                      ? 'bg-green-800 hover:bg-green-700' 
-                      : 'bg-red-600 hover:bg-red-700'
-                  } text-white py-3 px-4 rounded flex items-center justify-center`}
-                  onClick={confirmStatusChange}
-                >
-                  {confirmAction === 'activate' ? (
-                    <>
-                      <CheckCircle className="mr-2" size={18} />
-                      Confirm Activation
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="mr-2" size={18} />
-                      Confirm Deactivation
-                    </>
-                  )}
-                </button>
-                 
-                <button 
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded"
-                  onClick={closeConfirmModal}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full relative">
-            <div className="bg-green-600 rounded-t-lg text-white p-4 text-center relative">
-              <h3 className="text-xl font-bold text-white">Edit User Details</h3>
+            <div className="bg-green-800 rounded-t-lg text-white p-4 text-center relative">
+              <h3 className="text-xl font-bold text-white text-left">Edit User</h3>
               <button
                 onClick={closeEditModal}
                 className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white hover:text-gray-200"
@@ -541,7 +427,7 @@ const ViewAccounts = () => {
                     name="firstName"
                     value={editUserData.firstName}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
                     required
                   />
                 </div>
@@ -553,7 +439,7 @@ const ViewAccounts = () => {
                     name="middleName"
                     value={editUserData.middleName}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
                 
@@ -564,7 +450,7 @@ const ViewAccounts = () => {
                     name="lastName"
                     value={editUserData.lastName}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
                     required
                   />
                 </div>
@@ -576,27 +462,41 @@ const ViewAccounts = () => {
                     name="email"
                     value={editUserData.email}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
                     required
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <div className="relative">
+                    <select
+                      name="status"
+                      value={editUserData.status}
+                      onChange={handleEditFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 appearance-none"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="border-t border-gray-300 my-4"></div>
+              
+              <div className="flex justify-center">
                 <button
                   type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded flex items-center justify-center"
+                  className="bg-green-800 hover:bg-green-700 text-white py-3 px-8 rounded flex items-center justify-center"
                 >
                   <Save className="mr-2" size={18} />
                   Save Changes
-                </button>
-                 
-                <button 
-                  type="button"
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded"
-                  onClick={closeEditModal}
-                >
-                  Cancel
                 </button>
               </div>
             </form>

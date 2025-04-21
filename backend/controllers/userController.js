@@ -200,69 +200,187 @@ async function updateUserStatus(req, res) {
 async function updateUserDetails(req, res) {
   try {
     const { userId } = req.params;
-    const { firstName, middleName, lastName, email, currentUserId } = req.body;
-
-    if (!userId || !firstName || !lastName || !email) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID, first name, last name, and email are required'
-      });
-    }
-
+    const { 
+      firstName, 
+      middleName, 
+      lastName, 
+      email, 
+      status, 
+      statusChanged, 
+      detailsChanged,
+      currentUserId  
+    } = req.body;
+    
+    console.log('Update request received with raw data:', JSON.stringify(req.body));
+    
+    const boolStatusChanged = statusChanged === true || statusChanged === 'true';
+    const boolDetailsChanged = detailsChanged === true || detailsChanged === 'true';
+    
+    console.log('Parsed change flags:', {
+      statusChanged: boolStatusChanged,
+      detailsChanged: boolDetailsChanged
+    });
+    
     const user = await User.findByPk(userId);
+    
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
       });
     }
-
-    if (email !== user.email) {
-      const existingUser = await User.findOne({ where: { email } });
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: 'Email is already in use by another account'
-        });
+    
+    // Save original values for logging
+    const oldValues = {
+      firstName: user.firstName,
+      middleName: user.middleName,
+      lastName: user.lastName,
+      email: user.email,
+      status: user.status
+    };
+    
+    // Fetch the editor (user making the changes) to include their email in the log
+    let editorEmail = user.email; 
+    let editorId = currentUserId || userId; 
+    
+    if (currentUserId) {
+      try {
+        const editor = await User.findByPk(currentUserId);
+        if (editor) {
+          editorEmail = editor.email;
+          editorId = editor.userId;
+          console.log(`Editor identified: ${editorEmail} (ID: ${editorId})`);
+        } else {
+          console.warn(`Editor with ID ${currentUserId} not found`);
+        }
+      } catch (error) {
+        console.error('Error fetching editor details:', error);
       }
+    } else {
+      console.warn('No currentUserId provided for logging, using user being edited');
     }
-
+    
+    const updatedStatus = status !== undefined ? status : user.status;
+    
+    // Update user with new values
     await user.update({
       firstName,
       middleName,
       lastName,
-      email
+      email,
+      status: updatedStatus 
     });
-
-    // After updating user details
-    await logActivity({
-      userId: currentUserId || userId, 
-      action: 'UPDATE_ACCOUNT',
-      resourceType: 'USER',
-      resourceId: user.userId,
-      details: `Updated account details for ${user.email}`,
-      ipAddress: req.ip
+    
+    await user.reload();
+    
+    const shouldLogDetailsChange = boolDetailsChanged || false;
+    const shouldLogStatusChange = boolStatusChanged || false;
+    
+    console.log('Will log changes:', {
+      detailsChange: shouldLogDetailsChange,
+      statusChange: shouldLogStatusChange
     });
+    
+    if (shouldLogDetailsChange || 
+        oldValues.firstName !== firstName || 
+        oldValues.middleName !== middleName || 
+        oldValues.lastName !== lastName || 
+        oldValues.email !== email) {
+      
+      console.log('Detected field changes, logging details update');
+      
+      try {
+        let detailsMessage;
+        
+        // Check if email changed
+        if (oldValues.email !== email) {
+          // Email changed - show both old and new
+          detailsMessage = `User email updated for ${oldValues.email} (old email) to ${email} (new email) by ${editorEmail}`;
+        } else {
+          // Only name fields changed - simpler message
+          detailsMessage = `User details updated: ${email}`;
+        }
 
+        const activityLog = await logActivity({
+          userId: editorId,
+          action: 'UPDATE_USER_DETAILS',
+          resourceType: 'USER',
+          resourceId: userId,
+          details: detailsMessage,
+          ipAddress: req.ip || '127.0.0.1',
+          metadata: {
+            editor: {
+              userId: editorId,
+              email: editorEmail
+            },
+            oldValues: {
+              firstName: oldValues.firstName,
+              middleName: oldValues.middleName,
+              lastName: oldValues.lastName,
+              email: oldValues.email
+            },
+            newValues: {
+              firstName,
+              middleName,
+              lastName,
+              email
+            }
+          }
+        });
+        console.log('Activity log result:', activityLog ? 'Success' : 'Failed');
+      } catch (logError) {
+        console.error('Failed to log user details change:', logError);
+      }
+    }
+        const hasStatusChanged = oldValues.status !== updatedStatus && updatedStatus !== undefined;
+    
+    // INDEPENDENT OF STATUS LOG CHANGE
+    if (hasStatusChanged) {
+      console.log('Detected status change, logging status update');
+      
+      try {
+        const statusMessage = `User account ${updatedStatus === 'active' ? 'activated' : 'deactivated'} for ${email} (${oldValues.status} → ${updatedStatus}) by ${editorEmail}`;
+        
+        const activityLog = await logActivity({
+          userId: editorId,
+          action: updatedStatus === 'active' ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
+          resourceType: 'USER',
+          resourceId: userId,
+          details: statusMessage,
+          ipAddress: req.ip || '127.0.0.1',
+          metadata: {
+            editor: {
+              userId: editorId,
+              email: editorEmail
+            },
+            oldStatus: oldValues.status,
+            newStatus: updatedStatus
+          }
+        });
+        console.log('Activity log result:', activityLog ? 'Success' : 'Failed');
+      } catch (logError) {
+        console.error('Failed to log user status change:', logError);
+      }
+    }
+    
     res.json({
       success: true,
-      message: 'User details updated successfully',
+      message: 'User updated successfully',
       user: {
         userId: user.userId,
         firstName: user.firstName,
         middleName: user.middleName,
         lastName: user.lastName,
         email: user.email,
-        role: user.role,
         status: user.status
       }
     });
   } catch (error) {
     console.error('Error updating user details:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating user details',
-      error: error.message
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error',
+      error: error.message 
     });
   }
 }

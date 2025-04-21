@@ -71,20 +71,22 @@ const getActivityLogs = async (req, res) => {
       distinct: true 
     });
     
-    // Format response data
-    const formattedLogs = logs.rows.map(log => {
+       // Format response data 
+      const formattedLogs = logs.rows.map(log => {
       const plainLog = log.get({ plain: true });
       
-      const userData = plainLog.User ? {
-        id: plainLog.User.userId,
-        name: `${plainLog.User.firstName} ${plainLog.User.middleName ? plainLog.User.middleName + ' ' : ''}${plainLog.User.lastName}`,
-        email: plainLog.User.email,
-        role: plainLog.User.role
-      } : plainLog.userInfo || {
-        name: 'Deleted User',
-        email: 'deleted@user.com',
-        role: 'unknown'
-      };
+      // FIXED: Always use stored userInfo if it exists - this preserves historical data
+      const userData = plainLog.userInfo ? plainLog.userInfo : 
+                       plainLog.User ? {
+                         id: plainLog.User.userId,
+                         name: `${plainLog.User.firstName} ${plainLog.User.middleName ? plainLog.User.middleName + ' ' : ''}${plainLog.User.lastName}`,
+                         email: plainLog.User.email,
+                         role: plainLog.User.role
+                       } : {
+                         name: 'Deleted User',
+                         email: 'deleted@user.com',
+                         role: 'unknown'
+                       };
       
       return {
         logId: plainLog.logId,
@@ -104,7 +106,6 @@ const getActivityLogs = async (req, res) => {
       logs: formattedLogs,
       totalCount: logs.count,
       totalPages: Math.ceil(logs.count / limit),
-      // DATE FILTERING 
       currentPage: parseInt(page),
       filters: {
         date: date || null,
