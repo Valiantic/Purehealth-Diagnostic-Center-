@@ -162,10 +162,18 @@ const updateDepartment = async (req, res) => {
       status: department.status
     };
     
-    const changingDetails = 
-      department.departmentName !== departmentName || 
-      (dateCreated && new Date(department.createdAt).toISOString() !== new Date(dateCreated).toISOString());
-      
+    // CHECK ACTUAL CHANGES ON DEPARTMENT NAME
+    const departmentNameChanged = department.departmentName !== departmentName;
+    
+    // CHECK ACTUAL CHANGES ON DATE CREATED
+    let dateChanged = false;
+    if (dateCreated) {
+      const oldDate = department.createdAt ? new Date(department.createdAt).toISOString().split('T')[0] : null;
+      const newDate = new Date(dateCreated).toISOString().split('T')[0];
+      dateChanged = oldDate !== newDate;
+    }
+    
+    const changingDetails = departmentNameChanged || dateChanged;
     const changingStatus = status && department.status !== status;
     
     await department.update({
