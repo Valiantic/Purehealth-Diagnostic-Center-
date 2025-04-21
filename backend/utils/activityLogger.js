@@ -12,31 +12,75 @@ const { ActivityLog, User } = require('../models');
  */
 const logActivity = async (logData) => {
   try {
-    // Fetch user information to store in case user is deleted later
+    console.log('Attempting to log activity:', JSON.stringify({
+      userId: logData.userId,
+      action: logData.action,
+      resourceType: logData.resourceType,
+      resourceId: logData.resourceId,
+      details: logData.details
+    }));
+    
+    // Validate required fields
+    if (!logData.action || !logData.resourceType) {
+      console.error('Missing required fields for activity logging');
+      return;
+    }
+    
+    // Ensure userId is present
+    if (!logData.userId) {
+      console.warn('No userId provided for activity log, using system default');
+    }
+    
+    // Ensure metadata is properly formatted for storage
+    if (logData.metadata && typeof logData.metadata === 'object') {
+      logData.metadata = JSON.stringify(logData.metadata);
+    }
+    
     let userInfo = null;
+    
     if (logData.userId) {
-      const user = await User.findByPk(logData.userId);
-      if (user) {
-        // Store full name components to make searching easier
-        userInfo = {
-          userId: user.userId,
-          name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
-          firstName: user.firstName,
-          middleName: user.middleName || '',
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role
-        };
+      try {
+        const user = await User.findByPk(logData.userId);
+        if (user) {
+          userInfo = {
+            userId: user.userId,
+            name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
+            firstName: user.firstName,
+            middleName: user.middleName || '',
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role
+          };
+        } else {
+          console.warn(`User with ID ${logData.userId} not found for activity logging`);
+        }
+      } catch (userError) {
+        console.error('Error fetching user for activity log:', userError);
       }
     }
 
-    await ActivityLog.create({
-      ...logData,
-      userInfo
-    });
+    // Create new log entry
+    const logEntry = {
+      userId: logData.userId,
+      action: logData.action,
+      resourceType: logData.resourceType,
+      resourceId: logData.resourceId,
+      details: logData.details,
+      ipAddress: logData.ipAddress || '0.0.0.0',
+      userInfo: userInfo,
+      metadata: logData.metadata
+    };
+    
+    console.log('Creating activity log with data:', JSON.stringify(logEntry));
+    
+    // Create the activity log entry
+    const activityLog = await ActivityLog.create(logEntry);
+    
+    console.log('Activity log created successfully with ID:', activityLog.logId);
+    return activityLog;
   } catch (error) {
     console.error('Error logging activity:', error);
-    // Don't throw the error to prevent disrupting main operation
+    console.error('Error details:', error.stack);
   }
 };
 
