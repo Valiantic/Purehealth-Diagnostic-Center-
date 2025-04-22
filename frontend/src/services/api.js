@@ -122,3 +122,37 @@ export const testAPI = {
     });
   }
 };
+
+export const referrerAPI = {
+  getAllReferrers: (forceRefresh = false) => {
+    const timestamp = forceRefresh ? `?_t=${new Date().getTime()}` : '';
+    return apiClient.get(`/referrers${timestamp}`);
+  },
+  searchReferrers: (params = {}) => {
+    return apiClient.get('/referrers/search', { params });
+  },
+  createReferrer: (referrerData, currentUserId) => {
+    return apiClient.post('/referrers', {
+      ...referrerData,
+      currentUserId: currentUserId 
+    });
+  },
+  updateReferrer: (id, referrerData, currentUserId) => {
+    return apiClient.put(`/referrers/${id}`, {
+      ...referrerData,
+      currentUserId: currentUserId 
+    });
+  },
+  updateReferrerStatus: async (id, status, userId, actionType) => {
+    try {
+      const response = await apiClient.put(`/referrers/${id}`, { 
+        status,
+        currentUserId: userId,
+        actionType
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+};
