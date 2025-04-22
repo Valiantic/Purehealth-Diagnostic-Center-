@@ -9,6 +9,7 @@ const webauthnRoutes = require('./routes/webauthnRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const testRoutes = require('./routes/testRoutes');
+const referrerRoutes = require('./routes/referrerRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,6 +30,7 @@ app.use('/api/webauthn', webauthnRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/tests', testRoutes);
+app.use('/api/referrers', referrerRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

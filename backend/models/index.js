@@ -4,6 +4,7 @@ const Authenticator = require('./Authenticator');
 const Department = require('./Department')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
 const Test = require('./Test')(sequelize);
+const Referrer = require('./Referrer')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
@@ -29,5 +30,6 @@ module.exports = {
   Authenticator,
   Department,
   ActivityLog,
-  Test
+  Test,
+  Referrer
 };
