@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { PlusCircle, XCircle, MoreVertical, X, Edit, Save } from 'lucide-react'
+import { PlusCircle, XCircle, MoreVertical, X, Edit, Save, Key } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userAPI } from '../services/api'
 import Sidebar from '../components/Sidebar'
@@ -407,95 +407,108 @@ const ViewAccounts = () => {
 
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full relative">
-            <div className="bg-green-800 rounded-t-lg text-white p-4 text-center relative">
-              <h3 className="text-xl font-bold text-white text-left">Edit User</h3>
+          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full relative">
+            <div className="bg-green-800 rounded-t-lg text-white p-3 relative">
+              <h3 className="text-lg font-bold text-white text-left">Edit User</h3>
               <button
                 onClick={closeEditModal}
-                className="absolute top-1/2 right-4 transform -translate-y-1/2 text-white hover:text-gray-200"
+                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-white hover:text-gray-200"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-6">
-              <div className="space-y-4">
+            <form onSubmit={handleEditSubmit} className="p-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
                   <input
                     type="text"
                     name="firstName"
                     value={editUserData.firstName}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Middle Name</label>
                   <input
                     type="text"
                     name="middleName"
                     value={editUserData.middleName}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
                   <input
                     type="text"
                     name="lastName"
                     value={editUserData.lastName}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
                   <input
                     type="email"
                     name="email"
                     value={editUserData.email}
                     onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm"
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <div className="relative">
-                    <select
-                      name="status"
-                      value={editUserData.status}
-                      onChange={handleEditFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 appearance-none"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                      </svg>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                    <div className="relative">
+                      <select
+                        name="status"
+                        value={editUserData.status}
+                        onChange={handleEditFormChange}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 appearance-none text-sm"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                        </svg>
+                      </div>
                     </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Security</label>
+                    <button 
+                      type="button"
+                      className="w-full px-2 py-1.5 border border-blue-300 bg-blue-50 text-blue-600 rounded-md shadow-sm hover:bg-blue-100 flex items-center justify-center text-sm"
+                    >
+                      <Key className="mr-1" size={14} />
+                      Change Passkey
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-gray-300 my-4"></div>
+              <div className="border-t border-gray-300 my-3"></div>
               
               <div className="flex justify-center">
                 <button
                   type="submit"
-                  className="bg-green-800 hover:bg-green-700 text-white py-3 px-8 rounded flex items-center justify-center"
+                  className="bg-green-800 hover:bg-green-700 text-white py-2 px-6 rounded flex items-center justify-center text-sm"
                 >
-                  <Save className="mr-2" size={18} />
+                  <Save className="mr-1" size={16} />
                   Save Changes
                 </button>
               </div>
