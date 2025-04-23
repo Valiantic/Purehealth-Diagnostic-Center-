@@ -40,6 +40,10 @@ const ReferralManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(7);
 
+  // State for window width and dropdown refs
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const dropdownRefs = useRef({});
+
   // Fetch referrers using React Query
   const {
     data: referrersData = { data: [] },
@@ -268,7 +272,6 @@ const ReferralManagement = () => {
       actionType: actionType 
     });
   };
-wn
   const handleStatusChange = (e) => {
     const normalizedStatus = e.target.value.toLowerCase();
     
@@ -288,13 +291,36 @@ wn
     console.log(`Status changed in dropdown to: ${normalizedStatus}`);
   };
 
-  const toggleMenu = (id) => {
+  const toggleMenu = (e, id) => {
+    e.stopPropagation(); // Stop event propagation
     setActiveMenu(activeMenu === id ? null : id);
   };
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sortDirection]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeMenu && !dropdownRefs.current[activeMenu]?.contains(event.target)) {
+        setActiveMenu(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeMenu]);
 
   const filterReferrers = (referrers, query) => {
     if (!query || query.trim() === '') return referrers;
@@ -482,7 +508,7 @@ wn
                           <td className="p-1 border-r border-green-200 text-center relative">
                             <div className="flex justify-center relative">
                               <button 
-                                onClick={() => toggleMenu(referrer.referrerId)} 
+                                onClick={(e) => toggleMenu(e, referrer.referrerId)} 
                                 className="text-gray-500 hover:text-gray-700 focus:outline-none"
                               >
                                 <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
@@ -494,10 +520,19 @@ wn
                               </button>
                               
                               {activeMenu === referrer.referrerId && (
-                                <div className="absolute top-0 right-full mr-1 mt-6 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                <div 
+                                  ref={(el) => (dropdownRefs.current[referrer.referrerId] = el)}
+                                  className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                                  style={{
+                                    right: '50px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)'
+                                  }}
+                                >
                                   <div className="py-1">
                                     <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Stop event propagation
                                         setActiveMenu(null);
                                         openEditModal(referrer);
                                       }}
