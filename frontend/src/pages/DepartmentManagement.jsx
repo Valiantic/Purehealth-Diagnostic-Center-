@@ -27,6 +27,8 @@ const Department = () => {
   const [departmentName, setDepartmentName] = useState('')
   const [departmentDate, setDepartmentDate] = useState('')
   const [departmentStatus, setDepartmentStatus] = useState('active')
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth)
+  const dropdownRefs = useRef({})
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -43,6 +45,28 @@ const Department = () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showFilterOptions])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown && !dropdownRefs.current[activeDropdown]?.contains(event.target)) {
+        setActiveDropdown(null)
+      }
+    }
+
+    document.addEventListener('click', handleClickOutside)
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [activeDropdown])
 
   const {
     data: departments = [],
@@ -140,7 +164,8 @@ const Department = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
-  const toggleDropdown = (departmentId) => {
+  const toggleDropdown = (e, departmentId) => {
+    e.stopPropagation() // Stop event propagation
     setActiveDropdown(activeDropdown === departmentId ? null : departmentId)
   }
 
@@ -302,7 +327,7 @@ const Department = () => {
     
                 <div className="p-2 mt-2">
                   <div className="bg-green-800 p-2 rounded-t">
-                    <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Departments</h1>
+                    <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Test Departments</h1>
                   </div>
                   <div className="border border-green-800 rounded-b">
                     <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 350px)' }}>
@@ -341,7 +366,7 @@ const Department = () => {
                                 <td className="p-1 border-r border-green-200 text-center">
                                   <div className="flex justify-center">
                                     <button 
-                                      onClick={() => toggleDropdown(dept.departmentId)} 
+                                      onClick={(e) => toggleDropdown(e, dept.departmentId)} 
                                       className="text-gray-500 hover:text-gray-700 focus:outline-none"
                                     >
                                       <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
@@ -353,10 +378,21 @@ const Department = () => {
                                     </button>
                                     
                                     {activeDropdown === dept.departmentId && (
-                                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                      <div 
+                                        ref={(el) => (dropdownRefs.current[dept.departmentId] = el)}
+                                        className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                                        style={{
+                                          right: '50px',
+                                          top: '50%',
+                                          transform: 'translateY(-50%)'
+                                        }}
+                                      >
                                         <div className="py-1">
                                           <button
-                                            onClick={() => openEditModal(dept)}
+                                            onClick={(e) => {
+                                              e.stopPropagation() // Stop event propagation
+                                              openEditModal(dept)
+                                            }}
                                             className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
                                           >
                                             <EditIcon size={16} className="mr-2" />
