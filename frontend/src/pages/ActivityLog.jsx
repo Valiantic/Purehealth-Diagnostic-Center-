@@ -193,15 +193,15 @@ const ActivityLog = () => {
                 </div>
                 <div className="border border-green-800 rounded-b">
                 
-                  <div className="overflow-auto max-h-[60vh]">
-                    <table className="w-full text-sm">
+                  <div className="overflow-x-auto w-full max-h-[calc(100vh-380px)]">
+                    <table className="min-w-[800px] w-full text-sm">
                       <thead className="sticky top-0 bg-green-100 z-10">
                         <tr className="border-b border-green-800">
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">User</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Role</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Time</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Action</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[120px] w-[15%]">User</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[10%]">Role</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[10%]">Time</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[10%]">Date</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[250px] w-[55%]">Action</th>
                         </tr>
                       </thead>
                       <tbody>
