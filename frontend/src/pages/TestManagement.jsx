@@ -8,64 +8,127 @@ import tabsConfig from '../config/tabsConfig'
 import { departmentAPI, testAPI } from '../services/api'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 const Test = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [isOpen, setIsOpen] = useState(false);
   const [testName, setTestName] = useState('');
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
   const [testDepartment, setTestDepartment] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [price, setPrice] = useState('');
-  const [departments, setDepartments] = useState([]);
-  const [tests, setTests] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(7);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
-  const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('all');
   const [showDepartmentFilter, setShowDepartmentFilter] = useState(false);
   const departmentFilterRef = useRef(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const dropdownRefs = useRef({});
 
-  const fetchDepartments = async (forceRefresh = false) => {
-    try {
-      const response = await departmentAPI.getAllDepartments(forceRefresh);
-      setDepartments(response.data);
-      
-      if (response.data.length > 0 && !departmentId && !userSelectedDepartment) {
-        setTestDepartment(response.data[0].departmentName);
-        setDepartmentId(response.data[0].departmentId);
+  // React Query for departments
+  const { 
+    data: departmentsData = [],
+    isLoading: isDepartmentsLoading,
+  } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const response = await departmentAPI.getAllDepartments(false);
+      return response.data;
+    },
+    onSuccess: (departments) => {
+      if (departments.length > 0 && !departmentId && !userSelectedDepartment) {
+        setTestDepartment(departments[0].departmentName);
+        setDepartmentId(departments[0].departmentId);
       }
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error fetching departments:', error);
       toast.error('Failed to fetch departments');
-    }
-  };
+    },
+    staleTime: 10000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true
+  });
 
-  const fetchTests = async () => {
-    try {
-      setIsLoading(true);
+  // React Query for tests
+  const { 
+    data: testsData = [],
+    isLoading: isTestsLoading,
+  } = useQuery({
+    queryKey: ['tests'],
+    queryFn: async () => {
       const response = await testAPI.getAllTests();
-      setTests(response.data);
-      setIsLoading(false);
-    } catch (error) {
+      return response.data;
+    },
+    onError: (error) => {
       console.error('Error fetching tests:', error);
-      setIsLoading(false);
-    }
-  };
+      toast.error('Failed to fetch tests');
+    },
+    staleTime: 10000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true
+  });
 
-  useEffect(() => {
-    fetchDepartments();
-    fetchTests();
-  }, []);
+  // Add test mutation
+  const createTestMutation = useMutation({
+    mutationFn: ({ testData, userId }) => testAPI.createTest(testData, userId),
+    onSuccess: () => {
+      toast.success('Test created successfully');
+      closeModal();
+      queryClient.invalidateQueries({ queryKey: ['tests'] });
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+    },
+    onError: (error) => {
+      console.error('Error creating test:', error);
+      toast.error(error.response?.data?.message || 'Failed to create test');
+    }
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ testId, newStatus, userId }) => 
+      testAPI.updateTestStatus(testId, newStatus, userId),
+    onSuccess: (_, variables) => {
+      toast.success(`Test ${variables.newStatus === 'active' ? 'Activated' : 'Deactivated'} successfully`);
+      setActiveDropdown(null);
+      queryClient.invalidateQueries({ queryKey: ['tests'] });
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+    },
+    onError: (error) => {
+      console.error('Error updating test status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update test status');
+    }
+  });
+
+  const updateTestMutation = useMutation({
+    mutationFn: ({ testId, testData, userId }) => 
+      testAPI.updateTest(testId, testData, userId),
+    onSuccess: () => {
+      toast.success('Test updated successfully');
+      closeEditModal();
+      queryClient.invalidateQueries({ queryKey: ['tests'] });
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+    },
+    onError: (error) => {
+      console.error('Error updating test:', error);
+      toast.error(error.response?.data?.message || 'Failed to update test');
+    }
+  });
+
+  // Derived state from query results
+  const departments = departmentsData || [];
+  const tests = testsData || [];
+  const isLoading = isTestsLoading;
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -83,6 +146,7 @@ const Test = () => {
     };
   }, [showDepartmentFilter]);
 
+  // ... existing window resize effect
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
@@ -92,6 +156,7 @@ const Test = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ... existing dropdown click outside effect
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (activeDropdown && !dropdownRefs.current[activeDropdown]?.contains(event.target)) {
@@ -179,29 +244,10 @@ const Test = () => {
         currentUserId: userId 
       };
 
-      await testAPI.createTest(testData, userId);
-      toast.success('Test created successfully');
-      closeModal();
-      fetchTests();
-      fetchDepartments(true);
+      createTestMutation.mutate({ testData, userId });
     } catch (error) {
-      console.error('Error creating test:', error);
-      toast.error(error.response?.data?.message || 'Failed to create test');
-    }
-  };
-
-  const handleStatusChange = async (testId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await testAPI.updateTestStatus(testId, newStatus, user.id);
-      toast.success(`Test ${newStatus === 'active' ? 'Activated' : 'Deactivated'} successfully`);
-      fetchTests();
-      fetchDepartments(true); 
-    } catch (error) {
-      console.error('Error updating test status:', error);
-      toast.error(error.response?.data?.message || 'Failed to update test status');
-    } finally {
-      setActiveDropdown(null);
+      console.error('Error in form submission:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
@@ -274,14 +320,10 @@ const Test = () => {
         currentUserId: userId
       };
 
-      await testAPI.updateTest(editingTest.testId, testData, userId);
-      toast.success('Test updated successfully');
-      closeEditModal();
-      fetchTests();
-      fetchDepartments(true);
+      updateTestMutation.mutate({ testId: editingTest.testId, testData, userId });
     } catch (error) {
-      console.error('Error updating test:', error);
-      toast.error(error.response?.data?.message || 'Failed to update test');
+      console.error('Error in form submission:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
@@ -314,7 +356,7 @@ const Test = () => {
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const toggleDropdown = (e, testId) => {
-    e.stopPropagation(); // Stop event propagation
+    e.stopPropagation();
     setActiveDropdown(activeDropdown === testId ? null : testId);
   };
 
@@ -649,9 +691,10 @@ const Test = () => {
                         <div className="flex justify-center">
                           <button
                             onClick={handleSubmit}
+                            disabled={createTestMutation.isPending}
                             className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
                           >
-                            Confirm
+                            {createTestMutation.isPending ? 'Creating...' : 'Confirm'}
                           </button>
                         </div>
                       </div>
@@ -753,9 +796,10 @@ const Test = () => {
                         <div className="flex justify-center">
                           <button
                             onClick={handleEditSubmit}
+                            disabled={updateTestMutation.isPending}
                             className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
                           >
-                            Save Changes
+                            {updateTestMutation.isPending ? 'Saving...' : 'Save Changes'}
                           </button>
                         </div>
                       </div>
