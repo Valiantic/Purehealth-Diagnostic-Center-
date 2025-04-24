@@ -1,9 +1,16 @@
-import React, { useState, useEffect} from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
+import { useQuery } from '@tanstack/react-query'
+import { testAPI, departmentAPI } from '../services/api'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
   const { user, isAuthenticating } = useAuth()
+  const [showDeptFilter, setShowDeptFilter] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const deptFilterRef = useRef(null);
 
   const [formData, setFormData] = useState({
     firstName: 'Juan Ponce',
@@ -15,15 +22,91 @@ const AddIncome = () => {
   });
 
   const [searchTest, setSearchTest] = useState('');
-  const [selectedTests, setSelectedTests] = useState(Array(15).fill('Urinalysis'));
-  const [testsTable, setTestsTable] = useState(Array(15).fill({
-    name: 'Urinalysis',
-    disc: '20%',
-    cash: '250.0',
-    gCash: '250.0',
-    bal: '250.0'
-  }));
+  const [selectedTests, setSelectedTests] = useState([]);
+  const [testsTable, setTestsTable] = useState([]);
 
+  // Fetch tests data
+  const {
+    data: testsData = { data: [] },
+    isLoading,
+    isError,
+    error
+  } = useQuery({
+    queryKey: ['tests'],
+    queryFn: async () => {
+      const response = await testAPI.getAllTests(true)
+      return response || { data: [] }
+    },
+    staleTime: 10000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    retry: 2
+  });
+
+  const tests = Array.isArray(testsData) ? testsData : 
+                Array.isArray(testsData.data) ? testsData.data : [];
+
+  // Fetch departments data
+  const {
+    data: departmentsData = { data: [] },
+    isLoadingDepts,
+  } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const response = await departmentAPI.getAllDepartments(true)
+      return response || { data: [] }
+    },
+    staleTime: 10000,
+    refetchOnWindowFocus: true,
+  });
+
+  const departments = Array.isArray(departmentsData) ? departmentsData : 
+                     Array.isArray(departmentsData.data) ? departmentsData.data : [];
+
+  const filteredTests = tests.filter(test => {
+    const matchesSearch = test?.testName?.toLowerCase?.().includes(searchTest.toLowerCase()) || false;
+    const matchesDepartment = selectedDepartment ? 
+                            test?.departmentId === selectedDepartment : true;
+    return matchesSearch && matchesDepartment;
+  });
+
+  const handleSelectTest = (test) => {
+    // Check if this test is already selected
+    if (selectedTests.some(t => t.testId === test.testId)) {
+      return;
+    }
+    
+  
+    const newTest = {
+      testId: test.testId,
+      name: test.testName,
+      disc: '20%',
+      cash: test.price || '250.0',
+      gCash: test.price || '250.0',
+      bal: test.price || '250.0'
+    };
+    
+    setSelectedTests([...selectedTests, test]);
+    setTestsTable([...testsTable, newTest]);
+    
+  };
+
+  const handleRemoveTest = (index) => {
+    const newSelectedTests = [...selectedTests];
+    newSelectedTests.splice(index, 1);
+    setSelectedTests(newSelectedTests);
+    
+    const newTestsTable = [...testsTable];
+    newTestsTable.splice(index, 1);
+    setTestsTable(newTestsTable);
+  };
+
+  // Clear all tests
+  const handleClearAll = () => {
+    setSelectedTests([]);
+    setTestsTable([]);
+  };
  
   // Return nothing while authenticating to prevent flash of protected content
   if (isAuthenticating) {
@@ -35,9 +118,38 @@ const AddIncome = () => {
     return null;
   }
 
+  // Handle department selection
+  const handleDepartmentSelect = (deptId) => {
+    setSelectedDepartment(deptId === selectedDepartment ? null : deptId);
+    setShowDeptFilter(false);
+  };
+
+  // Toggle department filter
+  const toggleDeptFilter = () => {
+    setShowDeptFilter(!showDeptFilter);
+  };
+
+  // Close department filter when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (deptFilterRef.current && !deptFilterRef.current.contains(event.target)) {
+        setShowDeptFilter(false);
+      }
+    }
+
+    if (showDeptFilter) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDeptFilter]);
+
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
     <Sidebar/>
+    <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
     
     {/* Main content */}
     <div className="flex flex-col lg:flex-row gap-4">
@@ -140,14 +252,19 @@ const AddIncome = () => {
           {/* Add Test Column */}
           <div className="bg-white border-2 border-green-800 rounded-lg overflow-hidden">
             <div className="bg-green-800 text-white p-3">
-              <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">Add Test</h2>
+              <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">
+                Select Test {selectedDepartment ? 
+                  `- ${departments.find(d => d.departmentId === selectedDepartment)?.departmentName || ''}` : 
+                  '(All Departments)'}
+              </h2>
             </div>
             
             <div className="p-4">
+              {/* Inside the search box section */}
               <div className="relative mb-4">
                 <input
                   type="text"
-                  placeholder="Electrocardiogram"
+                  placeholder="Search for test..."
                   value={searchTest}
                   onChange={(e) => setSearchTest(e.target.value)}
                   className="w-full border rounded p-2 pl-3 pr-10"
@@ -158,34 +275,98 @@ const AddIncome = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </span>
-                <span className="absolute right-3 top-2.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span 
+                  className="absolute right-3 top-2.5 cursor-pointer" 
+                  onClick={toggleDeptFilter}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </span>
 
+                {/* Department Filter Dropdown */}
+                {showDeptFilter && (
+                  <div 
+                    ref={deptFilterRef}
+                    className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded shadow-lg z-50 max-h-60 overflow-y-auto"
+                  >
+                    <div className="p-2 bg-green-800 text-white sticky top-0">
+                      <h3 className="font-medium">Filter by Department</h3>
+                    </div>
+                    <div className="p-2 hover:bg-green-100 cursor-pointer" onClick={() => handleDepartmentSelect(null)}>
+                      <div className="flex items-center">
+                        <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-green-800 mr-2 ${!selectedDepartment ? 'bg-green-800' : ''}`}>
+                          {!selectedDepartment && <span className="text-white text-xs">✓</span>}
+                        </span>
+                        <span>All Departments</span>
+                      </div>
+                    </div>
+                    {isLoadingDepts ? (
+                      <div className="p-3 text-center text-gray-500">Loading departments...</div>
+                    ) : (
+                      departments.map(dept => (
+                        <div 
+                          key={dept.departmentId} 
+                          className="p-2 hover:bg-green-100 cursor-pointer"
+                          onClick={() => handleDepartmentSelect(dept.departmentId)}
+                        >
+                          <div className="flex items-center">
+                            <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-green-800 mr-2 ${selectedDepartment === dept.departmentId ? 'bg-green-800' : ''}`}>
+                              {selectedDepartment === dept.departmentId && <span className="text-white text-xs">✓</span>}
+                            </span>
+                            <span>{dept.departmentName}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
               
-              <div className="grid grid-cols-2 gap-2">
-                {selectedTests.map((test, index) => (
-                  <div key={index} className="flex items-center bg-green-100 border border-green-300 rounded-lg p-2">
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-800 text-white text-xs mr-1">✓</span>
-                    <span className="flex-1 text-green-800">{test}</span>
-                    <button className="text-green-800">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
+              {isLoading ? (
+                <div className="text-center py-4">Loading tests...</div>
+              ) : isError ? (
+                <div className="text-center py-4 text-red-500">
+                  Error loading tests: {error?.message || 'Unknown error'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {filteredTests.length === 0 ? (
+                    <p className="text-gray-500 col-span-2 text-center py-2">No tests match your search</p>
+                  ) : (
+                    filteredTests.map((test) => {
+                      // Check if this test is already selected
+                      const isSelected = selectedTests.some(t => t.testId === test.testId);
+                      return (
+                        <div 
+                          key={test.testId} 
+                          className={`flex items-center ${isSelected ? 'bg-green-200' : 'bg-green-100'} border border-green-300 rounded-lg p-2 cursor-pointer`}
+                          onClick={() => handleSelectTest(test)}
+                        >
+                          {isSelected ? (
+                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-800 text-white text-xs mr-1">✓</span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-green-800 text-green-800 text-xs mr-1"></span>
+                          )}
+                          <span className="flex-1 text-green-800">{test.testName}</span>
+                          <button className="text-green-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           </div>
           
           {/* Tests Conducted Column */}
           <div className="bg-white border-2 border-green-800 rounded-lg overflow-hidden">
             <div className="bg-green-800 text-white p-3">
-              <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">Tests Conducted</h2>
+              <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">Test Registration Summary</h2>
             </div>
             
             <div className="p-4">
@@ -202,39 +383,61 @@ const AddIncome = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {testsTable.map((test, index) => (
-                      <tr key={index} className="border-b text-sm">
-                        <td className="px-2 py-1">{test.name}</td>
-                        <td className="px-2 py-1">{test.disc}</td>
-                        <td className="px-2 py-1">{test.cash}</td>
-                        <td className="px-2 py-1">{test.gCash}</td>
-                        <td className="px-2 py-1">{test.bal}</td>
-                        <td className="px-2 py-1">
-                          <button className="text-green-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                          </button>
-                        </td>
+                    {testsTable.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="text-center p-4">No tests selected</td>
                       </tr>
-                    ))}
-                    <tr className="bg-green-100 font-bold">
-                      <td className="px-2 py-1 text-left text-green-800">TOTAL:</td>
-                      <td className="px-2 py-1 text-left text-green-800">20%</td>                      
-                      <td className="px-2 py-1 text-left text-green-800">250.00</td>
-                      <td className="px-2 py-1 text-left text-green-800">100.0</td>
-                      <td className="px-2 py-1 text-left text-green-800">--</td>
-                      <td className="px-2 py-1 text-left text-green-800"></td>
-                    </tr>
+                    ) : (
+                      testsTable.map((test, index) => (
+                        <tr key={index} className="border-b text-sm">
+                          <td className="px-2 py-1">{test.name}</td>
+                          <td className="px-2 py-1">{test.disc}</td>
+                          <td className="px-2 py-1">{test.cash}</td>
+                          <td className="px-2 py-1">{test.gCash}</td>
+                          <td className="px-2 py-1">{test.bal}</td>
+                          <td className="px-2 py-1">
+                            <button 
+                              className="text-green-800"
+                              onClick={() => handleRemoveTest(index)}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    {testsTable.length > 0 && (
+                      <tr className="bg-green-100 font-bold">
+                        <td className="px-2 py-1 text-left text-green-800">TOTAL:</td>
+                        <td className="px-2 py-1 text-left text-green-800">20%</td>                      
+                        <td className="px-2 py-1 text-left text-green-800">
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td className="px-2 py-1 text-left text-green-800">
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td className="px-2 py-1 text-left text-green-800">--</td>
+                        <td className="px-2 py-1 text-left text-green-800"></td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
               
               <div className="flex flex-wrap gap-2 justify-end mt-4">
-                <button className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded">
-                  Clear All
+                <button 
+                  className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded"
+                  onClick={handleClearAll}
+                  disabled={testsTable.length === 0}
+                >
+                  Clear
                 </button>
-                <button className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-4 rounded">
+                <button 
+                  className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-4 rounded"
+                  disabled={testsTable.length === 0}
+                >
                   Process Transaction
                 </button>
               </div>
