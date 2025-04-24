@@ -330,7 +330,7 @@ const Department = () => {
                     <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Test Departments</h1>
                   </div>
                   <div className="border border-green-800 rounded-b">
-                    <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+                    <div className="overflow-x-auto max-h-[calc(100vh-380px)]">
                       <table className="w-full text-sm">
                         <thead className='sticky top-0 bg-green-100 z-10'>
                           <tr className="border-b border-green-800 bg-green-100">
