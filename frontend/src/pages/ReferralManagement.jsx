@@ -242,11 +242,6 @@ const ReferralManagement = () => {
     // Check if status has changed - use lowercase for comparison
     const statusChanged = originalValues.status !== currentValues.status;
     
-    console.log('Original status:', originalValues.status);
-    console.log('Current status:', currentValues.status); 
-    console.log('Details changed:', detailsChanged);
-    console.log('Status changed:', statusChanged);
-    
     // Determine the appropriate action type based on what changed
     let actionType = 'UPDATE_REFERRER_DETAILS';
     
@@ -288,7 +283,6 @@ const ReferralManagement = () => {
       });
     }
     
-    console.log(`Status changed in dropdown to: ${normalizedStatus}`);
   };
 
   const toggleMenu = (e, id) => {
