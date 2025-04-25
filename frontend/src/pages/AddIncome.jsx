@@ -330,34 +330,36 @@ const AddIncome = () => {
                   Error loading tests: {error?.message || 'Unknown error'}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 content-start h-[350] overflow-y-auto">
-                  {filteredTests.length === 0 ? (
-                    <p className="text-gray-500 col-span-2 text-center py-2">No tests match your search</p>
-                  ) : (
-                    filteredTests.map((test) => {
-                      // Check if this test is already selected
-                      const isSelected = selectedTests.some(t => t.testId === test.testId);
-                      return (
-                        <div 
-                          key={test.testId} 
-                          className={`flex items-center ${isSelected ? 'bg-green-200' : 'bg-green-100'} border border-green-300 rounded-lg p-2 cursor-pointer h-auto`}
-                          onClick={() => handleSelectTest(test)}
-                        >
-                          {isSelected ? (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-800 text-white text-xs mr-1">✓</span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-green-800 text-green-800 text-xs mr-1"></span>
-                          )}
-                          <span className="flex-1 text-green-800">{test.testName}</span>
-                          <button className="text-green-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                          </button>
-                        </div>
-                      );
-                    })
-                  )}
+                <div className="h-72 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2 content-start">
+                    {filteredTests.length === 0 ? (
+                      <p className="text-gray-500 col-span-2 text-center py-2">No tests match your search</p>
+                    ) : (
+                      filteredTests.map((test) => {
+                        // Check if this test is already selected
+                        const isSelected = selectedTests.some(t => t.testId === test.testId);
+                        return (
+                          <div 
+                            key={test.testId} 
+                            className={`flex items-center ${isSelected ? 'bg-green-200' : 'bg-green-100'} border border-green-300 rounded-lg p-2 cursor-pointer h-auto`}
+                            onClick={() => handleSelectTest(test)}
+                          >
+                            {isSelected ? (
+                              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-800 text-white text-xs mr-1">✓</span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-green-800 text-green-800 text-xs mr-1"></span>
+                            )}
+                            <span className="flex-1 text-green-800">{test.testName}</span>
+                            <button className="text-green-800">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
