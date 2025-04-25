@@ -107,6 +107,17 @@ const AddIncome = () => {
     setSelectedTests([]);
     setTestsTable([]);
   };
+  
+  // Remove a specific test by index
+  const handleRemoveTest = (index) => {
+    
+    const newSelectedTests = [...selectedTests];
+    const newTestsTable = [...testsTable];
+    newSelectedTests.splice(index, 1);
+    newTestsTable.splice(index, 1);
+    setSelectedTests(newSelectedTests);
+    setTestsTable(newTestsTable);
+  };
  
   // Return nothing while authenticating to prevent flash of protected content
   if (isAuthenticating) {
@@ -372,9 +383,9 @@ const AddIncome = () => {
             </div>
             
             <div className="p-4">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto h-72 overflow-y-auto">
                 <table className="w-full min-w-full">
-                  <thead>
+                  <thead className="sticky top-0 bg-white">
                     <tr className="bg-green-100 text-left border-b py-2 px-4 text-green-800">
                       <th className="px-2 py-1 text-sm">Name</th>
                       <th className="px-2 py-1 text-sm">Disc.</th>
