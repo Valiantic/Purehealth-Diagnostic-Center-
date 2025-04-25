@@ -73,33 +73,33 @@ const AddIncome = () => {
 
   const handleSelectTest = (test) => {
     // Check if this test is already selected
-    if (selectedTests.some(t => t.testId === test.testId)) {
-      return;
+    const isAlreadySelected = selectedTests.some(t => t.testId === test.testId);
+    
+    if (isAlreadySelected) {
+      // Remove the test if it's already selected
+      const testIndex = selectedTests.findIndex(t => t.testId === test.testId);
+      
+      const newSelectedTests = [...selectedTests];
+      newSelectedTests.splice(testIndex, 1);
+      setSelectedTests(newSelectedTests);
+      
+      const newTestsTable = [...testsTable];
+      newTestsTable.splice(testIndex, 1);
+      setTestsTable(newTestsTable);
+    } else {
+      // Add the test if it's not selected
+      const newTest = {
+        testId: test.testId,
+        name: test.testName,
+        disc: '20%',
+        cash: test.price || '250.0',
+        gCash: test.price || '250.0',
+        bal: test.price || '250.0'
+      };
+      
+      setSelectedTests([...selectedTests, test]);
+      setTestsTable([...testsTable, newTest]);
     }
-    
-  
-    const newTest = {
-      testId: test.testId,
-      name: test.testName,
-      disc: '20%',
-      cash: test.price || '250.0',
-      gCash: test.price || '250.0',
-      bal: test.price || '250.0'
-    };
-    
-    setSelectedTests([...selectedTests, test]);
-    setTestsTable([...testsTable, newTest]);
-    
-  };
-
-  const handleRemoveTest = (index) => {
-    const newSelectedTests = [...selectedTests];
-    newSelectedTests.splice(index, 1);
-    setSelectedTests(newSelectedTests);
-    
-    const newTestsTable = [...testsTable];
-    newTestsTable.splice(index, 1);
-    setTestsTable(newTestsTable);
   };
 
   // Clear all tests
@@ -330,7 +330,7 @@ const AddIncome = () => {
                   Error loading tests: {error?.message || 'Unknown error'}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 content-start h-[350] overflow-y-auto">
                   {filteredTests.length === 0 ? (
                     <p className="text-gray-500 col-span-2 text-center py-2">No tests match your search</p>
                   ) : (
@@ -340,7 +340,7 @@ const AddIncome = () => {
                       return (
                         <div 
                           key={test.testId} 
-                          className={`flex items-center ${isSelected ? 'bg-green-200' : 'bg-green-100'} border border-green-300 rounded-lg p-2 cursor-pointer`}
+                          className={`flex items-center ${isSelected ? 'bg-green-200' : 'bg-green-100'} border border-green-300 rounded-lg p-2 cursor-pointer h-auto`}
                           onClick={() => handleSelectTest(test)}
                         >
                           {isSelected ? (
