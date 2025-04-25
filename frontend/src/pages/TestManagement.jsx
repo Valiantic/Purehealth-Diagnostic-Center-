@@ -126,8 +126,10 @@ const Test = () => {
   });
 
   // Derived state from query results
-  const departments = departmentsData || [];
-  const tests = testsData || [];
+  const departments = Array.isArray(departmentsData) ? departmentsData : 
+                     Array.isArray(departmentsData?.data) ? departmentsData.data : [];
+  const tests = Array.isArray(testsData) ? testsData : 
+                Array.isArray(testsData?.data) ? testsData.data : [];
   const isLoading = isTestsLoading;
 
   useEffect(() => {
@@ -327,7 +329,7 @@ const Test = () => {
     }
   };
 
-  const filteredTests = tests.filter(test => {
+  const filteredTests = Array.isArray(tests) ? tests.filter(test => {
     if (!searchTerm.trim() && selectedDepartmentFilter === 'all') return true;
     
     const departmentMatch = selectedDepartmentFilter === 'all' || 
@@ -335,14 +337,14 @@ const Test = () => {
     
     const searchTermLower = searchTerm.toLowerCase();
     const searchMatch = !searchTerm.trim() || (
-      test.testName.toLowerCase().includes(searchTermLower) ||
-      test.Department?.departmentName.toLowerCase().includes(searchTermLower) ||
-      test.price.toString().includes(searchTerm) ||
-      test.status.toLowerCase().includes(searchTermLower)
+      test.testName?.toLowerCase?.().includes(searchTermLower) ||
+      test.Department?.departmentName?.toLowerCase?.().includes(searchTermLower) ||
+      test.price?.toString?.().includes(searchTerm) ||
+      test.status?.toLowerCase?.().includes(searchTermLower)
     );
     
     return departmentMatch && searchMatch;
-  });
+  }) : [];
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -416,7 +418,7 @@ const Test = () => {
                         >
                           All Departments
                         </button>
-                        {departments.map(dept => (
+                        {Array.isArray(departments) ? departments.map(dept => (
                           <button 
                             key={dept.departmentId}
                             onClick={() => {
@@ -427,7 +429,7 @@ const Test = () => {
                           >
                             {dept.departmentName}
                           </button>
-                        ))}
+                        )) : <div className="px-4 py-2 text-sm text-gray-500">No departments found</div>}
                       </div>
                     )}
                   </div>
@@ -658,9 +660,9 @@ const Test = () => {
                                 className="w-full border border-gray-300 rounded p-2 appearance-none"
                                 required
                               >
-                                {departments.map(dept => (
+                                {Array.isArray(departments) ? departments.map(dept => (
                                   <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                                ))}
+                                )) : <option value="">No departments available</option>}
                                 <option value="add-department">+ Add Department</option>
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">

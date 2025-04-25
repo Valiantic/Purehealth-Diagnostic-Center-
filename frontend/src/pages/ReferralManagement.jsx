@@ -656,14 +656,14 @@ const ReferralManagement = () => {
                         {/* Birthday */}
                         <div>
                           <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                          <div className="relative">
+                          <div className="relative" onClick={() => document.getElementById('add-referrer-date').showPicker()}>
                             <input
+                              id="add-referrer-date"
                               type="date"
                               value={birthday}
                               onChange={(e) => setBirthday(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2 pr-10"
+                              className="w-full border border-gray-300 rounded p-2 cursor-pointer"
                             />
-                            <Calendar className="absolute right-2 top-2 text-gray-500" size={20} />
                           </div>
                         </div>
 
@@ -786,7 +786,6 @@ const ReferralManagement = () => {
                               onChange={(e) => setBirthday(e.target.value)}
                               className="w-full border border-gray-300 rounded p-2 cursor-pointer"
                             />
-                            <Calendar className="absolute right-2 top-2 text-gray-500" size={20} />
                           </div>
                         </div>
 
