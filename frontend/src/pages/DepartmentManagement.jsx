@@ -69,22 +69,28 @@ const Department = () => {
   }, [activeDropdown])
 
   const {
-    data: departments = [],
+    data: departmentsData = [],
     isLoading,
     isError,
     error
   } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
-      const response = await departmentAPI.getAllDepartments(true)
-      return response.data
+      const response = await departmentAPI.getAllDepartments(true);
+      return response;
     },
     staleTime: 10000,
     refetchInterval: 15000,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     retry: 2
-  })
+  });
+  
+  // First check if it's directly an array, if not extract from the nested structure
+  const departments = Array.isArray(departmentsData) ? departmentsData : 
+                    departmentsData?.data?.success ? departmentsData.data.data : 
+                    departmentsData?.data ? departmentsData.data : [];
+  
 
   const addDepartmentMutation = useMutation({
     mutationFn: (departmentName) => departmentAPI.createDepartment(departmentName, user.userId),

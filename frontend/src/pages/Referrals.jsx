@@ -8,24 +8,26 @@ const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
 
-  const { data, isLoading, error } = useQuery({
+  const { data: referrersData, isLoading, error } = useQuery({
     queryKey: ['referrers'],
     queryFn: async () => {
+      // Return the full response object
       const response = await referrerAPI.getAllReferrers(true)
-      if (!response.data.success) {
-        throw new Error('Failed to fetch referrers data')
-      }
-      return response.data.data
+      return response
     },
     enabled: !!user, 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false 
   })
 
-  const filteredReferrers = data?.filter(referrer => {
+  // Extract the referrers array from the nested data structure
+  const referrers = referrersData?.data?.data || []
+
+  // Now filter the properly extracted array
+  const filteredReferrers = referrers.filter(referrer => {
     const fullName = `${referrer.firstName} ${referrer.lastName}`.toLowerCase()
     return fullName.includes(searchTerm.toLowerCase())
-  }) || []
+  })
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value)
@@ -46,7 +48,6 @@ const Referrals = () => {
       </div>
       
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-        <h1 className="text-2xl font-bold text-green-800 mb-4">Referrals Management</h1>
 
         {/* Search Bar - Now outside the table */}
         <div className="flex justify-end mb-4 pr-2">
