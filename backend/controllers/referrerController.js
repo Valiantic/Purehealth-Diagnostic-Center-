@@ -87,6 +87,7 @@ exports.updateReferrer = async (req, res) => {
         const {
             firstName, lastName, birthday, sex, contactNo,
             clinicName, clinicAddress, status, currentUserId,
+            statusOnly = false // Add a flag to indicate status-only update
         } = req.body;
 
         const referrer = await Referrer.findByPk(id);
@@ -113,30 +114,33 @@ exports.updateReferrer = async (req, res) => {
         // Determine if status is changing
         const statusChanged = oldValues.status !== status;
         
-        // Determine if details are changing
-        const detailsChanged = 
+        // Only check for details changes if this is not a status-only update
+        const detailsChanged = !statusOnly && (
             oldValues.firstName !== firstName ||
             oldValues.lastName !== lastName ||
             oldValues.birthday !== birthday ||
             oldValues.sex !== sex ||
             oldValues.contactNo !== contactNo ||
             oldValues.clinicName !== clinicName ||
-            oldValues.clinicAddress !== clinicAddress;
+            oldValues.clinicAddress !== clinicAddress
+        );
 
-        // Update the referrer with all fields
-        await referrer.update({
-            firstName,
-            lastName,
-            birthday,
-            sex,
-            contactNo,
-            clinicName,
-            clinicAddress,
-            status: status || referrer.status
-        });
+        // Update the referrer with all fields or just status if statusOnly is true
+        if (statusOnly) {
+            await referrer.update({ status });
+        } else {
+            await referrer.update({
+                firstName,
+                lastName,
+                birthday,
+                sex,
+                contactNo,
+                clinicName,
+                clinicAddress,
+                status: status || referrer.status
+            });
+        }
 
-        // SEPAREATE ACTIVITY LOGGING FOR STATUS AND DETAILS
-        
         // Log status change if status changed
         if (statusChanged) {
             const statusText = status === 'active' ? 'activated' : 'deactivated';
