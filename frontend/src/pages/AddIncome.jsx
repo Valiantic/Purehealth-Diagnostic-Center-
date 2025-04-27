@@ -78,19 +78,25 @@ const AddIncome = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Filter data to only show active items
   const tests = Array.isArray(testsData) ? testsData : 
                 Array.isArray(testsData.data) ? testsData.data : [];
   
   const departments = Array.isArray(departmentsData) ? departmentsData : 
                      Array.isArray(departmentsData.data) ? departmentsData.data : [];
    
-  const referrers = referrersData?.data?.data || [];
+  // Get referrers and filter to only show active ones
+  const allReferrers = referrersData?.data?.data || [];
+  const referrers = allReferrers.filter(referrer => referrer.status === 'active');
 
+  // Filter tests based on search terms and selected department
   const filteredTests = tests.filter(test => {
     const matchesSearch = test?.testName?.toLowerCase?.().includes(searchTest.toLowerCase()) || false;
     const matchesDepartment = selectedDepartment ? 
                             test?.departmentId === selectedDepartment : true;
-    return matchesSearch && matchesDepartment;
+    // Only include active tests
+    const isActive = test.status === 'active';
+    return matchesSearch && matchesDepartment && isActive;
   });
 
   const handleSelectTest = (test) => {
@@ -245,8 +251,8 @@ const AddIncome = () => {
                         <option value="">Loading referrers...</option>
                       ) : isErrorReferrers ? (
                         <option value="">Error: {referrerError?.message || 'Unknown error'}</option>
-                      ) : !referrers || referrers.length === 0 ? (
-                        <option value="">No referrers available</option>
+                      ) : referrers.length === 0 ? (
+                        <option value="">No active referrers available</option>
                       ) : (
                         referrers.map(referrer => (
                           <option 
