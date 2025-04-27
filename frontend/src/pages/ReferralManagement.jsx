@@ -251,6 +251,8 @@ const ReferralManagement = () => {
       actionType = 'UPDATE_REFERRER_ALL';
     }
     
+    const statusOnlyChanged = statusChanged && !detailsChanged;
+    
     updateReferrerMutation.mutate({
       id: selectedReferrer.referrerId,
       referrerData: {
@@ -262,7 +264,7 @@ const ReferralManagement = () => {
         clinicAddress: currentValues.clinicAddress,
         contactNo: currentValues.contactNo,
         status: currentValues.status,
-        statusOnly: statusChanged && !detailsChanged
+        statusOnly: statusOnlyChanged  
       },
       actionType: actionType 
     });
