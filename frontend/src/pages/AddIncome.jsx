@@ -4,6 +4,7 @@ import useAuth from '../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI } from '../services/api'
 import { ToastContainer, toast } from 'react-toastify'
+import { X } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
@@ -11,11 +12,24 @@ const AddIncome = () => {
   const [showDeptFilter, setShowDeptFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const deptFilterRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Add state to track currently selected test for modal
+  const [selectedModalTest, setSelectedModalTest] = useState(null);
+  const [basePrice, setBasePrice] = useState(0); 
+  const [price, setPrice] = useState(0); 
+  const [discount, setDiscount] = useState(20); 
+  const [cashPaid, setCashPaid] = useState(0); 
+  const [gCashPaid, setGCashPaid] = useState(0); 
+  
+  const [discountedPrice, setDiscountedPrice] = useState(0); 
+  const [balance, setBalance] = useState(0);
 
   const [formData, setFormData] = useState({
-    firstName: 'Juan Ponce',
-    lastName: 'Enrile',
-    birthDate: '24-Mar-2024',
+    firstName: '',
+    lastName: '',
+    birthDate: '',
     id: 'Person with Disability',
     referrer: '',
     sex: 'Male'
@@ -115,14 +129,16 @@ const AddIncome = () => {
       newTestsTable.splice(testIndex, 1);
       setTestsTable(newTestsTable);
     } else {
-      // Add the test if it's not selected
+      
+      const testPrice = parseFloat(test.price) || 0;
+      const roundedPrice = roundToTwoDecimals(testPrice);
       const newTest = {
         testId: test.testId,
         name: test.testName,
-        disc: '20%',
-        cash: test.price || '250.0',
-        gCash: test.price || '250.0',
-        bal: test.price || '250.0'
+        disc: '0%',
+        cash: roundedPrice.toFixed(2), 
+        gCash: '0.00', 
+        bal: '0.00' 
       };
       
       setSelectedTests([...selectedTests, test]);
@@ -157,30 +173,168 @@ const AddIncome = () => {
     setShowDeptFilter(!showDeptFilter);
   };
 
-  // Close department filter when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (deptFilterRef.current && !deptFilterRef.current.contains(event.target)) {
-        setShowDeptFilter(false);
-      }
+  // Modified toggle dropdown function to work with specific test ID
+  const toggleDropdown = (testId, e) => {
+    e.stopPropagation();
+    setActiveDropdownId(prevId => prevId === testId ? null : testId);
+  };
+
+  // Fix precision issues with calculations
+  const roundToTwoDecimals = (value) => {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+  };
+
+  // Update openModal to set up a simpler state with proper rounding
+  const openModal = (test) => {
+    setSelectedModalTest(test);
+    const testPrice = parseFloat(test.price) || 0;
+    const roundedPrice = roundToTwoDecimals(testPrice);
+    
+    setBasePrice(roundedPrice); 
+    setPrice(roundedPrice); 
+    
+    // Reset all other values
+    setDiscount(0);
+    setDiscountedPrice(roundedPrice); 
+    setBalance(roundedPrice);
+    setCashPaid(0);
+    setGCashPaid(0);
+    
+    setIsModalOpen(true);
+    setActiveDropdownId(null);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedModalTest(null);
+  };
+
+  // Modified handlers to update the price dynamically with proper rounding
+  const handleDiscountChange = (value) => {
+    const discountValue = parseInt(value) || 0;
+    setDiscount(discountValue);
+    
+    // Calculate new discounted price with proper rounding
+    const discounted = roundToTwoDecimals(basePrice * (1 - discountValue/100));
+    setDiscountedPrice(discounted);
+    
+    // Update displayed price and balance to reflect discount
+    const newBalance = roundToTwoDecimals(Math.max(0, discounted - cashPaid - gCashPaid));
+    setBalance(newBalance);
+    setPrice(newBalance);
+  };
+
+  const handleCashPaidChange = (value) => {
+    // Parse the entered value
+    const cashValue = parseFloat(value) || 0;
+    
+    // Check if the total payment would exceed the discounted price
+    if (cashValue + gCashPaid > discountedPrice) {
+      // Limit cash payment to the remaining amount (with proper rounding)
+      const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - gCashPaid));
+      setCashPaid(maxAllowed);
+      
+      // Update the displayed price - should be 0 at this point
+      setBalance(0);
+      setPrice(0);
+      
+      // Optionally show a toast notification
+      toast.info("Payment amount cannot exceed the price");
+    } else {
+      // If within limits, set the value normally
+      setCashPaid(cashValue);
+      
+      // Update the displayed price with proper rounding
+      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashPaid));
+      setBalance(newBalance);
+      setPrice(newBalance);
     }
+  };
 
-    if (showDeptFilter) {
-      document.addEventListener('mousedown', handleClickOutside);
+  const handleGCashPaidChange = (value) => {
+    // Parse the entered value
+    const gCashValue = parseFloat(value) || 0;
+    
+    // Check if the total payment would exceed the discounted price
+    if (cashPaid + gCashValue > discountedPrice) {
+      // Limit GCash payment to the remaining amount (with proper rounding)
+      const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid));
+      setGCashPaid(maxAllowed);
+      
+      // Update the displayed price - should be 0 at this point
+      setBalance(0);
+      setPrice(0);
+      
+      // Optionally show a toast notification
+      toast.info("Payment amount cannot exceed the price");
+    } else {
+      // If within limits, set the value normally
+      setGCashPaid(gCashValue);
+      
+      // Update the displayed price with proper rounding
+      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashValue));
+      setBalance(newBalance);
+      setPrice(newBalance);
     }
+  };
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+  // Add confirmation handler with validation and handling for empty payment
+  const handleConfirmPayment = () => {
+    if (!selectedModalTest) return;
+    
+    // Check if payment exceeds the discounted price
+    if (cashPaid + gCashPaid > discountedPrice) {
+      toast.error("Total payment cannot exceed the price");
+      return;
     }
-  }, [showDeptFilter]);
-
-  if (isAuthenticating) {
-    return null;
-  }
-
-  if (!user) {
-    return null;
-  }
+    
+    // Calculate final values with proper rounding
+    const finalDiscount = discount;
+    const finalDiscountedPrice = roundToTwoDecimals(discountedPrice);
+    
+    // Handle case where user only provided discount (no payment details)
+    let finalCash = roundToTwoDecimals(cashPaid);
+    let finalGCash = roundToTwoDecimals(gCashPaid);
+    let finalBalance = roundToTwoDecimals(balance);
+    
+    // If user only set discount but didn't enter payments, put the full amount in cash
+    if (finalCash === 0 && finalGCash === 0 && discount > 0) {
+      finalCash = finalDiscountedPrice;
+      finalBalance = 0;
+    }
+    
+    // Check if test is already in the selected tests
+    const testIndex = selectedTests.findIndex(t => t.testId === selectedModalTest.testId);
+    
+    // Create the updated test object with payment details
+    const updatedTest = {
+      testId: selectedModalTest.testId,
+      name: selectedModalTest.testName,
+      disc: `${finalDiscount}%`,
+      cash: finalCash.toFixed(2),
+      gCash: finalGCash.toFixed(2),
+      bal: finalBalance.toFixed(2)
+    };
+    
+    if (testIndex >= 0) {
+      // Update existing test
+      const newSelectedTests = [...selectedTests];
+      const newTestsTable = [...testsTable];
+      
+      newSelectedTests[testIndex] = selectedModalTest;
+      newTestsTable[testIndex] = updatedTest;
+      
+      setSelectedTests(newSelectedTests);
+      setTestsTable(newTestsTable);
+    } else {
+      // Add as new test
+      setSelectedTests([...selectedTests, selectedModalTest]);
+      setTestsTable([...testsTable, updatedTest]);
+    }
+    
+    toast.success(`${selectedModalTest.testName} added with payment details`);
+    closeModal();
+  };
 
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
@@ -404,11 +558,34 @@ const AddIncome = () => {
                                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-green-800 text-green-800 text-xs mr-1"></span>
                               )}
                               <span className="flex-1 text-green-800">{test.testName}</span>
-                              <button className="text-green-800">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                </svg>
-                              </button>
+                              <div className="relative">
+                                <button 
+                                  className="text-green-800" 
+                                  onClick={(e) => toggleDropdown(test.testId, e)}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Only show dropdown if this test's ID matches activeDropdownId */}
+                                {activeDropdownId === test.testId && (
+                                  <div 
+                                    ref={dropdownRef}
+                                    className="absolute right-0 mt-1 w-48 bg-white rounded shadow-lg z-10 border border-gray-200"
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openModal(test); // Pass the test to openModal
+                                      }}
+                                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-green-800" 
+                                    >
+                                      Payment Details
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })
@@ -467,7 +644,7 @@ const AddIncome = () => {
                       {testsTable.length > 0 && (
                         <tr className="bg-green-100 font-bold">
                           <td className="px-2 py-1 text-left text-green-800">TOTAL:</td>
-                          <td className="px-2 py-1 text-left text-green-800">20%</td>                      
+                          <td className="px-2 py-1 text-left text-green-800"></td>                      
                           <td className="px-2 py-1 text-left text-green-800">
                             {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                           </td>
@@ -502,6 +679,83 @@ const AddIncome = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal - update fields to reflect new functionality */}
+      {isModalOpen && selectedModalTest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
+            <div className="bg-green-700 text-white p-3 flex justify-between items-center">
+              <h2 className="font-medium">Payment Details - {selectedModalTest.testName}</h2>
+              <button 
+                onClick={closeModal}
+                className="text-white hover:text-gray-200 focus:outline-none"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-green-700 mb-1">Price</label>
+                  <input
+                    type="text"
+                    value={basePrice.toFixed(2)}
+                    readOnly
+                    className="w-full p-2 bg-gray-100 rounded border border-gray-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-green-700 mb-1">Discount</label>
+                  <div className="flex">
+                    <input
+                      type="text"
+                      value={`${discount}`}
+                      onChange={(e) => handleDiscountChange(e.target.value)}
+                      className="w-full p-2 rounded border border-gray-300"
+                    />
+                    <span className="inline-flex items-center px-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-green-700 mb-1">Cash Paid</label>
+                  <input
+                    type="text"
+                    value={cashPaid}
+                    onChange={(e) => handleCashPaidChange(e.target.value)}
+                    className="w-full p-2 rounded border border-gray-300"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-green-700 mb-1">GCash Paid</label>
+                  <input
+                    type="text"
+                    value={gCashPaid}
+                    onChange={(e) => handleGCashPaidChange(e.target.value)}
+                    className="w-full p-2 rounded border border-gray-300"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              {/* Confirm Button */}
+              <div className="flex justify-center mt-4">
+                <button 
+                  className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800 focus:outline-none"
+                  onClick={handleConfirmPayment}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
