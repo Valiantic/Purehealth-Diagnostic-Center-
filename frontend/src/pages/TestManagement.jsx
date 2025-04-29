@@ -491,7 +491,7 @@ const Test = () => {
                                 </span>
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
-                                <div className="flex justify-center">
+                                <div className="flex justify-center relative">
                                   <button 
                                     onClick={(e) => toggleDropdown(e, test.testId)} 
                                     className="text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -507,12 +507,7 @@ const Test = () => {
                                   {activeDropdown === test.testId && (
                                     <div 
                                       ref={(el) => (dropdownRefs.current[test.testId] = el)}
-                                      className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200"
-                                      style={{
-                                        right: '50px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)'
-                                      }}
+                                      className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200 top-0 right-1/2 mr-2.5"
                                     >
                                       <div className="py-1">
                                         <button
