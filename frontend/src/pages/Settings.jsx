@@ -259,24 +259,26 @@ const Settings = () => {
                       </button>
                     </>
                   ) : (
-                    <button 
-                      onClick={handleEditToggle}
-                      className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
-                    >
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Edit Account
-                    </button>
+                    <>
+                      <button 
+                        onClick={handleEditToggle}
+                        className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit Account
+                      </button>
+                      
+                      <button className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
+                        <Key className="w-4 h-4 mr-2" />
+                        Change Passkey
+                      </button>
+                      
+                      <button onClick={handleViewAccounts} className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
+                        <Users className="w-4 h-4 mr-2" />
+                        View Accounts
+                      </button>
+                    </>
                   )}
-                  
-                  <button className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
-                    <Key className="w-4 h-4 mr-2" />
-                    Change Passkey
-                  </button>
-                  
-                  <button onClick={handleViewAccounts} className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
-                    <Users className="w-4 h-4 mr-2" />
-                    View Accounts
-                  </button>
                 </div>
               </div>
             )}
