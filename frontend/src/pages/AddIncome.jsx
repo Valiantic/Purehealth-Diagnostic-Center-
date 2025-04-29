@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
@@ -8,6 +9,7 @@ import { X } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticating } = useAuth()
   const [showDeptFilter, setShowDeptFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -29,7 +31,7 @@ const AddIncome = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    birthDate: '',
+    birthDate: '',  // Keep as empty string initially
     id: 'Person with Disability',
     referrer: '',
     sex: 'Male'
@@ -336,6 +338,23 @@ const AddIncome = () => {
     closeModal();
   };
 
+
+  // Handle date input change
+  const handleDateChange = (e) => {
+    const newDate = e.target.value;
+    setFormData({...formData, birthDate: newDate});
+  };
+
+  // Handle referrer selection
+  const handleReferrerChange = (e) => {
+    const value = e.target.value;
+    if (value === 'add-referrer') {
+      navigate('/referral-management');
+      return;
+    }
+    setFormData({...formData, referrer: value});
+  };
+
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
       <Sidebar/>
@@ -397,7 +416,7 @@ const AddIncome = () => {
                   <div className="relative">
                     <select
                       value={formData.referrer}
-                      onChange={(e) => setFormData({...formData, referrer: e.target.value})}
+                      onChange={handleReferrerChange}
                       className="w-full border-2 border-green-800 rounded p-2"
                     >
                       <option value="">Select a referrer</option>
@@ -417,26 +436,21 @@ const AddIncome = () => {
                           </option>
                         ))
                       )}
+                      <option value="add-referrer">+ Add Referrer</option>
                     </select>
-                    
-                    {/* ...existing code... */}
                   </div>
                 </div>
                 
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Birth Date</label>
-                  <div className="relative">
+                  <div className="relative" onClick={() => document.getElementById('birth-date-input').showPicker()}>
                     <input
-                      type="text"
+                      id="birth-date-input"
+                      type="date"
                       value={formData.birthDate}
-                      onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                      className="w-full border-2 border-green-800 rounded p-2"
-                      />
-                    <span className="absolute right-2 top-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </span>
+                      onChange={handleDateChange}
+                      className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
+                    />
                   </div>
                 </div>
                 
