@@ -408,492 +408,488 @@ const ReferralManagement = () => {
         <Sidebar />
       </div>
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm min-h-0 md:h-full"> {/* Added min-h-0 for mobile */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm min-h-0 md:h-full">
           <TabNavigation tabsConfig={tabsConfig} />
-          <div className="flex-1 p-4 md:p-2">
-            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-2 mb-2"> {/* Reduced margin */}
-              <button 
-                onClick={openAddModal} 
-                className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start"
-              >
-                <PlusCircle className="mr-1 sm:mr-2" size={18} />
-                Add New Referrer
-              </button>
-              
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <div className="relative">
-                  <button 
-                    onClick={toggleSortDirection}
-                    className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between hover:bg-green-50"
-                  >
-                    <span>Sort First Name {sortDirection === 'asc' ? 'A-Z' : 'Z-A'}</span>
-                    {sortDirection === 'asc' ? (
-                      <ArrowUp size={16} className="ml-2" />
-                    ) : (
-                      <ArrowDown size={16} className="ml-2" />
-                    )}
-                  </button>
-                </div>
-
-                <div className="relative w-full sm:w-64">
-                  <input
-                    type="text"
-                    placeholder="Search by name, date, clinic..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
-                  />
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
+            <button 
+              onClick={openAddModal} 
+              className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start"
+            >
+              <PlusCircle className="mr-1 sm:mr-2" size={18} />
+              Add New Referrer
+            </button>
             
-            <div className="p-2"> 
-              <div className="bg-green-800 p-2 rounded-t">
-                <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Doctors</h1>
-              </div>
-              <div className="border border-green-800 rounded-b">
-                <div className="overflow-x-auto w-full" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-                  <table className="min-w-[800px] w-full text-sm">
-                    <thead className="sticky top-0 bg-green-100 z-10">
-                      <tr className="border-b border-green-800 bg-green-100">
-                        <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[150px] w-[20%]">Doctor Name</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[120px] w-[15%]">Clinic Name</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[120px] w-[20%]">Address</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[12%]">Birth Date</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[12%]">Date Created</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[90px] w-[10%]">Status</th>
-                        <th className="p-1 text-sm font-medium min-w-[80px] w-[10%]">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>{isLoading ? (
-                      <tr>
-                        <td colSpan="7" className="text-center py-4">Loading...</td>
-                      </tr>
-                    ) : isError ? (
-                      <tr>
-                        <td colSpan="7" className="text-center py-4 text-red-500">{error}</td>
-                      </tr>
-                    ) : !Array.isArray(referrersData?.data) || referrersData?.data.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" className="text-center py-4">No referrers found</td>
-                      </tr>
-                    ) : (
-                      currentReferrers.map((referrer) => (
-                        <tr key={referrer.referrerId} className="border-b border-green-200">
-                          <td className="p-1 pl-5 border-r border-green-200 text-left truncate">
-                            {referrer.firstName} {referrer.lastName}
-                          </td>
-                          <td className="p-1 border-r border-green-200 text-center truncate">{referrer.clinicName}</td>
-                          <td className="p-1 border-r border-green-200 text-center truncate">{referrer.clinicAddress}</td>
-                          <td className="p-1 border-r border-green-200 text-center">
-                            {referrer.birthday ? new Date(referrer.birthday).toLocaleDateString() : 'N/A'}
-                          </td>
-                          <td className="p-1 border-r border-green-200 text-center">
-                            {referrer.createdAt ? new Date(referrer.createdAt).toLocaleDateString() : 'N/A'}
-                          </td>
-                          <td className="p-1 border-r border-green-200 text-center">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              referrer.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {referrer.status?.toLowerCase() === 'active' ? 'Active' : 'Deactivated'}
-                            </span>
-                          </td>
-                          <td className="p-1 border-r border-green-200 text-center relative">
-                            <div className="flex justify-center relative">
-                              <button 
-                                onClick={(e) => toggleMenu(e, referrer.referrerId)} 
-                                className="text-gray-500 hover:text-gray-700 focus:outline-none"
-                              >
-                                <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
-                                     strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="1"></circle>
-                                  <circle cx="12" cy="5" r="1"></circle>
-                                  <circle cx="12" cy="19" r="1"></circle>
-                                </svg>
-                              </button>
-                              
-                              {activeMenu === referrer.referrerId && (
-                                <div 
-                                  ref={(el) => (dropdownRefs.current[referrer.referrerId] = el)}
-                                  className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200"
-                                  style={{
-                                    right: '50px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)'
-                                  }}
-                                >
-                                  <div className="py-1">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Stop event propagation
-                                        setActiveMenu(null);
-                                        openEditModal(referrer);
-                                      }}
-                                      className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
-                                    >
-                                      <Edit size={16} className="mr-2" />
-                                      Edit Referrer
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                    {!isLoading && currentReferrers.length > 0 && currentReferrers.length < itemsPerPage && (
-                      [...Array(itemsPerPage - currentReferrers.length)].map((_, index) => (
-                        <tr key={`empty-row-${index}`} className="border-b border-green-200">
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                          <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        </tr>
-                      ))
-                    )}</tbody>
-                  </table>
-                </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative">
+                <button 
+                  onClick={toggleSortDirection}
+                  className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between hover:bg-green-50"
+                >
+                  <span>Sort First Name {sortDirection === 'asc' ? 'A-Z' : 'Z-A'}</span>
+                  {sortDirection === 'asc' ? (
+                    <ArrowUp size={16} className="ml-2" />
+                  ) : (
+                    <ArrowDown size={16} className="ml-2" />
+                  )}
+                </button>
               </div>
 
-              {/* Pagination */}
-              {filteredReferrers.length > itemsPerPage && (
-                <div className="flex justify-center mt-4">
-                  <nav>
-                    <ul className="flex list-none">
-                      <li>
-                        <button 
-                          onClick={() => paginate(Math.max(1, currentPage - 1))}
-                          disabled={currentPage === 1}
-                          className={`px-3 py-1 border border-gray-300 rounded-l ${
-                            currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                          }`}
-                        >
-                          Prev
-                        </button>
-                      </li>
-                      {(() => {
-                        let startPage = Math.max(1, currentPage - 1);
-                        let endPage = Math.min(totalPages, startPage + 2);
-                        
-                        if (endPage - startPage < 2 && startPage > 1) {
-                          startPage = Math.max(1, endPage - 2);
-                        }
-                        
-                        const pageNumbers = [];
-                        for (let i = startPage; i <= endPage; i++) {
-                          pageNumbers.push(i);
-                        }
-                        
-                        return pageNumbers.map(number => (
-                          <li key={number}>
-                            <button
-                              onClick={() => paginate(number)}
-                              className={`px-3 py-1 border-t border-b border-gray-300 ${
-                                currentPage === number 
-                                  ? 'bg-green-800 text-white' 
-                                  : 'bg-white text-green-800 hover:bg-green-50'
-                              }`}
-                            >
-                              {number}
-                            </button>
-                          </li>
-                        ));
-                      })()}
-                      <li>
-                        <button 
-                          onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
-                          className={`px-3 py-1 border border-gray-300 rounded-r ${
-                            currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                          }`}
-                        >
-                          Next
-                        </button>
-                      </li>
-                    </ul>
-                  </nav>
-                </div>
-              )}
-
-              <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
-                <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                  <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                    Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                  </button>
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Search by name, date, clinic..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
+                />
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
               </div>
-
-              {/* Add Referrer Modal - Updated positioning */}
-              {isAddModalOpen && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"> {/* Unchanged */}
-                  <div className="bg-white w-full max-w-md rounded shadow-lg"> {/* Removed max-height and overflow */}
-                    <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10"> {/* Unchanged */}
-                      <h3 className="text-xl font-medium">New Referrer</h3>
-                      <button onClick={closeAddModal} className="text-white hover:text-gray-200">
-                        <X size={24} />
-                      </button>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* First Name */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">First Name</label>
-                          <input
-                            type="text"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                            required
-                          />
-                        </div>
-
-                        {/* Birthday */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                          <div className="relative" onClick={() => document.getElementById('add-referrer-date').showPicker()}>
-                            <input
-                              id="add-referrer-date"
-                              type="date"
-                              value={birthday}
-                              onChange={(e) => setBirthday(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Last Name */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Last Name</label>
-                          <input
-                            type="text"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                            required
-                          />
-                        </div>
-
-                        {/* Sex */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Sex</label>
-                          <div className="relative">
-                            <select
-                              value={sex}
-                              onChange={(e) => setSex(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2 appearance-none"
-                            >
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
-                            </select>
-                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                              <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                                <path d="M7 10l5 5 5-5H7z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Clinic Name */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
-                          <input
-                            type="text"
-                            value={clinicName}
-                            onChange={(e) => setClinicName(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                          />
-                        </div>
-
-                        {/* Contact No. */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Contact No.</label>
-                          <input
-                            type="text"
-                            value={contactNo}
-                            onChange={(e) => setContactNo(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                          />
-                        </div>
-
-                        {/* Clinic Address - Full Width */}
-                        <div className="col-span-2">
-                          <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
-                          <input
-                            type="text"
-                            value={clinicAddress}
-                            onChange={(e) => setClinicAddress(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="border-t border-gray-300 my-4"></div>
-
-                      {/* Confirm Button */}
-                      <div className="flex justify-center">
-                        <button
-                          onClick={handleAddReferrer}
-                          className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium"
-                        >
-                          CONFIRM
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Edit Referrer Modal - Updated positioning */}
-              {isEditModalOpen && selectedReferrer && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"> {/* Unchanged */}
-                  <div className="bg-white w-full max-w-md rounded shadow-lg"> {/* Removed max-height and overflow */}
-                    <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10"> {/* Unchanged */}
-                      <h3 className="text-xl font-medium">Edit Referrer</h3>
-                      <button onClick={closeEditModal} className="text-white hover:text-gray-200">
-                        <X size={24} />
-                      </button>
-                    </div>
-
-                    <div className="p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* First Name */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">First Name</label>
-                          <input
-                            type="text"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                            required
-                          />
-                        </div>
-
-                        {/* Birthday */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                          <div className="relative" onClick={() => document.getElementById('edit-referrer-date').showPicker()}>
-                            <input
-                              id="edit-referrer-date"
-                              type="date"
-                              value={birthday}
-                              onChange={(e) => setBirthday(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Last Name */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Last Name</label>
-                          <input
-                            type="text"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                            required
-                          />
-                        </div>
-
-                        {/* Sex */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Sex</label>
-                          <div className="relative">
-                            <select
-                              value={sex}
-                              onChange={(e) => setSex(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2 appearance-none"
-                            >
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
-                            </select>
-                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                              <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Clinic Name */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
-                          <input
-                            type="text"
-                            value={clinicName}
-                            onChange={(e) => setClinicName(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                          />
-                        </div>
-
-                        {/* Contact No. */}
-                        <div>
-                          <label className="block text-green-800 font-medium mb-1">Contact No.</label>
-                          <input
-                            type="text"
-                            value={contactNo}
-                            onChange={(e) => setContactNo(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                          />
-                        </div>
-
-                        {/* Clinic Address - Full Width */}
-                        <div className="col-span-2">
-                          <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
-                          <input
-                            type="text"
-                            value={clinicAddress}
-                            onChange={(e) => setClinicAddress(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2"
-                          />
-                        </div>
-
-                        {/* Status Dropdown */}
-                        <div className="col-span-2">
-                          <label className="block text-green-800 font-medium mb-1">Status</label>
-                          <div className="relative">
-                            <select
-                              value={selectedReferrer.status?.toLowerCase() === 'active' ? 'active' : 'inactive'}
-                              onChange={handleStatusChange}
-                              className="w-full border border-gray-300 rounded p-2 appearance-none"
-                            >
-                              <option value="active">Active</option>
-                              <option value="inactive">Deactivated</option>
-                            </select>
-                            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                              <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="border-t border-gray-300 my-4"></div>
-
-                      {/* Save Changes Button */}
-                      <div className="flex justify-center">
-                        <button
-                          onClick={handleUpdateReferrer}
-                          className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
-                        >
-                          Save Changes
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
+          </div>
+          
+          <div className="p-2">
+            <div className="bg-green-800 p-2 rounded-t">
+              <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Doctors</h1>
+            </div>
+            <div className="border border-green-800 rounded-b">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-green-800 bg-green-100">
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Doctor Name</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Clinic Name</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Address</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Birth Date</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Date Created</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>{isLoading ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4">Loading...</td>
+                    </tr>
+                  ) : isError ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4 text-red-500">{error}</td>
+                    </tr>
+                  ) : !Array.isArray(referrersData?.data) || referrersData?.data.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4">No referrers found</td>
+                    </tr>
+                  ) : (
+                    currentReferrers.map((referrer) => (
+                      <tr key={referrer.referrerId} className="border-b border-green-200">
+                        <td className="p-1 border-r border-green-200 text-left">{referrer.firstName} {referrer.lastName}</td>
+                        <td className="p-1 border-r border-green-200 text-center">{referrer.clinicName}</td>
+                        <td className="p-1 border-r border-green-200 text-center">{referrer.clinicAddress}</td>
+                        <td className="p-1 border-r border-green-200 text-center">
+                          {referrer.birthday ? new Date(referrer.birthday).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="p-1 border-r border-green-200 text-center">
+                          {referrer.createdAt ? new Date(referrer.createdAt).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="p-1 border-r border-green-200 text-center">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            referrer.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {referrer.status?.toLowerCase() === 'active' ? 'Active' : 'Deactivated'}
+                          </span>
+                        </td>
+                        <td className="p-1 border-r border-green-200 text-center relative">
+                          <div className="flex justify-center relative">
+                            <button 
+                              onClick={(e) => toggleMenu(e, referrer.referrerId)} 
+                              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                            >
+                              <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
+                                   strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="1"></circle>
+                                <circle cx="12" cy="5" r="1"></circle>
+                                <circle cx="12" cy="19" r="1"></circle>
+                              </svg>
+                            </button>
+                            
+                            {activeMenu === referrer.referrerId && (
+                              <div 
+                                ref={(el) => (dropdownRefs.current[referrer.referrerId] = el)}
+                                className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                                style={{
+                                  right: '50px',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)'
+                                }}
+                              >
+                                <div className="py-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Stop event propagation
+                                      setActiveMenu(null);
+                                      openEditModal(referrer);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
+                                  >
+                                    <Edit size={16} className="mr-2" />
+                                    Edit Referrer
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  {!isLoading && currentReferrers.length > 0 && currentReferrers.length < itemsPerPage && (
+                    [...Array(itemsPerPage - currentReferrers.length)].map((_, index) => (
+                      <tr key={`empty-row-${index}`} className="border-b border-green-200">
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        <td className="p-1 border-r border-green-200">&nbsp;</td>
+                      </tr>
+                    ))
+                  )}</tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pagination */}
+            {filteredReferrers.length > itemsPerPage && (
+              <div className="flex justify-center mt-4">
+                <nav>
+                  <ul className="flex list-none">
+                    <li>
+                      <button 
+                        onClick={() => paginate(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-1 border border-gray-300 rounded-l ${
+                          currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                        }`}
+                      >
+                        Prev
+                      </button>
+                    </li>
+                    {(() => {
+                      let startPage = Math.max(1, currentPage - 1);
+                      let endPage = Math.min(totalPages, startPage + 2);
+                      
+                      if (endPage - startPage < 2 && startPage > 1) {
+                        startPage = Math.max(1, endPage - 2);
+                      }
+                      
+                      const pageNumbers = [];
+                      for (let i = startPage; i <= endPage; i++) {
+                        pageNumbers.push(i);
+                      }
+                      
+                      return pageNumbers.map(number => (
+                        <li key={number}>
+                          <button
+                            onClick={() => paginate(number)}
+                            className={`px-3 py-1 border-t border-b border-gray-300 ${
+                              currentPage === number 
+                                ? 'bg-green-800 text-white' 
+                                : 'bg-white text-green-800 hover:bg-green-50'
+                            }`}
+                          >
+                            {number}
+                          </button>
+                        </li>
+                      ));
+                    })()}
+                    <li>
+                      <button 
+                        onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-1 border border-gray-300 rounded-r ${
+                          currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            )}
+
+            <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
+              <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                  Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Add Referrer Modal - Updated positioning */}
+            {isAddModalOpen && (
+              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"> {/* Unchanged */}
+                <div className="bg-white w-full max-w-md rounded shadow-lg"> {/* Removed max-height and overflow */}
+                  <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10"> {/* Unchanged */}
+                    <h3 className="text-xl font-medium">New Referrer</h3>
+                    <button onClick={closeAddModal} className="text-white hover:text-gray-200">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* First Name */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">First Name</label>
+                        <input
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                          required
+                        />
+                      </div>
+
+                      {/* Birthday */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Birthday</label>
+                        <div className="relative" onClick={() => document.getElementById('add-referrer-date').showPicker()}>
+                          <input
+                            id="add-referrer-date"
+                            type="date"
+                            value={birthday}
+                            onChange={(e) => setBirthday(e.target.value)}
+                            className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Last Name */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Last Name</label>
+                        <input
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                          required
+                        />
+                      </div>
+
+                      {/* Sex */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Sex</label>
+                        <div className="relative">
+                          <select
+                            value={sex}
+                            onChange={(e) => setSex(e.target.value)}
+                            className="w-full border border-gray-300 rounded p-2 appearance-none"
+                          >
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                              <path d="M7 10l5 5 5-5H7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Clinic Name */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
+                        <input
+                          type="text"
+                          value={clinicName}
+                          onChange={(e) => setClinicName(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                        />
+                      </div>
+
+                      {/* Contact No. */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Contact No.</label>
+                        <input
+                          type="text"
+                          value={contactNo}
+                          onChange={(e) => setContactNo(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                        />
+                      </div>
+
+                      {/* Clinic Address - Full Width */}
+                      <div className="col-span-2">
+                        <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
+                        <input
+                          type="text"
+                          value={clinicAddress}
+                          onChange={(e) => setClinicAddress(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-300 my-4"></div>
+
+                    {/* Confirm Button */}
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handleAddReferrer}
+                        className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium"
+                      >
+                        CONFIRM
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Referrer Modal - Updated positioning */}
+            {isEditModalOpen && selectedReferrer && (
+              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"> {/* Unchanged */}
+                <div className="bg-white w-full max-w-md rounded shadow-lg"> {/* Removed max-height and overflow */}
+                  <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10"> {/* Unchanged */}
+                    <h3 className="text-xl font-medium">Edit Referrer</h3>
+                    <button onClick={closeEditModal} className="text-white hover:text-gray-200">
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* First Name */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">First Name</label>
+                        <input
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                          required
+                        />
+                      </div>
+
+                      {/* Birthday */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Birthday</label>
+                        <div className="relative" onClick={() => document.getElementById('edit-referrer-date').showPicker()}>
+                          <input
+                            id="edit-referrer-date"
+                            type="date"
+                            value={birthday}
+                            onChange={(e) => setBirthday(e.target.value)}
+                            className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Last Name */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Last Name</label>
+                        <input
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                          required
+                        />
+                      </div>
+
+                      {/* Sex */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Sex</label>
+                        <div className="relative">
+                          <select
+                            value={sex}
+                            onChange={(e) => setSex(e.target.value)}
+                            className="w-full border border-gray-300 rounded p-2 appearance-none"
+                          >
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Clinic Name */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
+                        <input
+                          type="text"
+                          value={clinicName}
+                          onChange={(e) => setClinicName(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                        />
+                      </div>
+
+                      {/* Contact No. */}
+                      <div>
+                        <label className="block text-green-800 font-medium mb-1">Contact No.</label>
+                        <input
+                          type="text"
+                          value={contactNo}
+                          onChange={(e) => setContactNo(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                        />
+                      </div>
+
+                      {/* Clinic Address - Full Width */}
+                      <div className="col-span-2">
+                        <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
+                        <input
+                          type="text"
+                          value={clinicAddress}
+                          onChange={(e) => setClinicAddress(e.target.value)}
+                          className="w-full border border-gray-300 rounded p-2"
+                        />
+                      </div>
+
+                      {/* Status Dropdown */}
+                      <div className="col-span-2">
+                        <label className="block text-green-800 font-medium mb-1">Status</label>
+                        <div className="relative">
+                          <select
+                            value={selectedReferrer.status?.toLowerCase() === 'active' ? 'active' : 'inactive'}
+                            onChange={handleStatusChange}
+                            className="w-full border border-gray-300 rounded p-2 appearance-none"
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Deactivated</option>
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-300 my-4"></div>
+
+                    {/* Save Changes Button */}
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handleUpdateReferrer}
+                        className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
