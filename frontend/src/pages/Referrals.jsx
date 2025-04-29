@@ -23,10 +23,19 @@ const Referrals = () => {
   // Extract the referrers array from the nested data structure
   const referrers = referrersData?.data?.data || []
 
-  // Now filter the properly extracted array
+  // Filter out deactivated referrers and apply search filter
   const filteredReferrers = referrers.filter(referrer => {
-    const fullName = `${referrer.firstName} ${referrer.lastName}`.toLowerCase()
-    return fullName.includes(searchTerm.toLowerCase())
+   
+    if (referrer.status?.toLowerCase() !== 'active') {
+      return false;
+    }
+    
+    if (searchTerm) {
+      const fullName = `${referrer.firstName} ${referrer.lastName}`.toLowerCase()
+      return fullName.includes(searchTerm.toLowerCase())
+    }
+    
+    return true;
   })
 
   const handleSearchChange = (e) => {
