@@ -638,7 +638,7 @@ const AddIncome = () => {
             <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-green-800 font-medium mb-1">First Name</label>
+                  <label className="block text-green-800 font-medium mb-1">First Name *</label>
                   <input
                     type="text"
                     value={formData.firstName}
@@ -648,7 +648,7 @@ const AddIncome = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-green-800 font-medium mb-1">Last Name</label>
+                  <label className="block text-green-800 font-medium mb-1">Last Name *</label>
                   <input
                     type="text"
                     value={formData.lastName}
@@ -888,12 +888,12 @@ const AddIncome = () => {
                   <table className="w-full min-w-full">
                     <thead className="sticky top-0 bg-white">
                       <tr className="bg-green-100 text-left border-b py-2 px-4 text-green-800">
-                        <th className="px-2 py-1 text-sm">Name</th>
-                        <th className="px-2 py-1 text-sm">Disc.</th>
+                        <th className="px-2 py-1 text-sm">Test Name</th>
+                        <th className="px-2 py-1 text-sm">Discount</th>
                         <th className="px-2 py-1 text-sm">Cash</th>
                         <th className="px-2 py-1 text-sm">GCash</th>
-                        <th className="px-2 py-1 text-sm">Bal.</th>
-                        <th className="px-2 py-1 text-sm">Opt.</th>
+                        <th className="px-2 py-1 text-sm">Balance</th>
+                        <th className="px-2 py-1 text-sm">Option</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -906,7 +906,7 @@ const AddIncome = () => {
                           <tr key={index} className="border-b text-sm">
                             <td className="px-2 py-1">{test.name}</td>
                             <td className="px-2 py-1">{test.disc}</td>
-                            <td className="px-2 py-1">{test.cash}</td>
+                            <td className="px-2 py-1">{parseFloat(test.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td className="px-2 py-1">{test.gCash}</td>
                             <td className="px-2 py-1">{test.bal}</td>
                             <td className="px-2 py-1">
@@ -1392,7 +1392,7 @@ const AddIncome = () => {
                       <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         <td className="p-2 border-b border-gray-200">{test.name}</td>
                         <td className="p-2 border-b border-gray-200">{test.disc}</td>
-                        <td className="p-2 border-b border-gray-200">{test.cash}</td>
+                        <td className="p-2 border-b border-gray-200">{parseFloat(test.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         <td className="p-2 border-b border-gray-200">{test.gCash}</td>
                         <td className="p-2 border-b border-gray-200">{test.bal}</td>
                       </tr>
