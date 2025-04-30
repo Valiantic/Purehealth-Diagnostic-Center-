@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI } from '../services/api'
 import { ToastContainer, toast } from 'react-toastify'
-import { X } from 'lucide-react';
+import { X, Plus} from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
@@ -27,6 +27,72 @@ const AddIncome = () => {
   
   const [discountedPrice, setDiscountedPrice] = useState(0); 
   const [balance, setBalance] = useState(0);
+  const [testName, setTestName] = useState('');
+
+  // New Test States
+  const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
+  const [testDepartment, setTestDepartment] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [testForm, setTestForm] = useState({
+    testName: '',
+    department: '',
+    price: '',
+    dateCreated: formatDate(new Date())
+  });
+  const [queue, setQueue] = useState([]);
+
+  function formatDate(date) {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleString('default', { month: 'short' });
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  function handleAddToQueue() {
+    // Validate required fields
+    if (!testForm.testName || !testDepartment || !price) {
+      toast.error("Please fill all required test details");
+      return;
+    }
+    
+    const newItem = {
+      testName: testForm.testName,
+      department: testDepartment,  // Use the selected department from the dropdown
+      price: typeof price === 'string' ? price : price.toFixed(2), // Format price correctly
+      created: formatDate(new Date(testDate)) // Format the selected date
+    };
+    
+    setQueue([...queue, newItem]);
+    
+    // Reset form after adding to queue
+    setTestForm({
+      testName: '',
+      department: '',
+      price: '',
+      dateCreated: formatDate(new Date())
+    });
+    setPrice('');
+    
+    toast.success("Test added to queue successfully");
+  }
+
+  const queryClient = useQueryClient(); // Add this line to get QueryClient instance
+
+  // Add test mutation for batch saving queue
+  const createBatchTestsMutation = useMutation({
+    mutationFn: ({ testData, userId }) => testAPI.createTest(testData, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tests'] });
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+    },
+    onError: (error) => {
+      console.error('Error creating test:', error);
+      toast.error(error.response?.data?.message || 'Failed to create test');
+    }
+  });
+
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -100,7 +166,7 @@ const AddIncome = () => {
   
   const departments = Array.isArray(departmentsData) ? departmentsData : 
                      Array.isArray(departmentsData.data) ? departmentsData.data : [];
-   
+     
   // Get referrers and filter to only show active ones
   const allReferrers = referrersData?.data?.data || [];
   const referrers = allReferrers.filter(referrer => referrer.status === 'active');
@@ -338,7 +404,6 @@ const AddIncome = () => {
     closeModal();
   };
 
-
   // Handle date input change
   const handleDateChange = (e) => {
     const newDate = e.target.value;
@@ -354,6 +419,97 @@ const AddIncome = () => {
     }
     setFormData({...formData, referrer: value});
   };
+
+  // Department Change
+  const handleDepartmentChange = (e) => {
+    const value = e.target.value;
+    if (value === 'add-department') {
+      navigate('/department-management');
+      return;
+    }
+    setTestDepartment(value);
+    const selected = departments.find(dep => dep.departmentName === value);
+    if (selected) {
+      setDepartmentId(selected.departmentId);
+      setUserSelectedDepartment(true); 
+    }
+  };
+
+  function handleConfirm() {
+    // Validate if we have any queue items
+    if (queue.length === 0) {
+      toast.error("No tests in queue to save");
+      return;
+    }
+
+    // Get current user ID
+    const userId = user?.userId || user?.id;
+    if (!userId) {
+      toast.error('Authentication error. Please log in again.');
+      return;
+    }
+
+    // Track progress
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Use Promise.all to process all queue items in parallel
+    Promise.all(
+      queue.map(async (item) => {
+        try {
+          // Find departmentId from departmentName
+          const department = departments.find(
+            d => d.departmentName.toLowerCase() === item.department.toLowerCase()
+          );
+          
+          if (!department) {
+            throw new Error(`Department not found for: ${item.department}`);
+          }
+
+          // Create test data object
+          const testData = {
+            testName: item.testName,
+            departmentId: department.departmentId,
+            price: parseFloat(item.price),
+            dateCreated: new Date().toISOString(),
+            currentUserId: userId
+          };
+
+          // Save test to database
+          await testAPI.createTest(testData, userId);
+          successCount++;
+
+        } catch (error) {
+          console.error(`Error saving test "${item.testName}":`, error);
+          errorCount++;
+          return error; // Return error to maintain position in results
+        }
+      })
+    )
+    .then(() => {
+      // Display results
+      if (successCount > 0) {
+        toast.success(`Successfully added ${successCount} tests to the database`);
+      }
+
+      if (errorCount > 0) {
+        toast.error(`Failed to add ${errorCount} tests`);
+      }
+
+      // Clear queue after saving
+      setQueue([]);
+      
+      // Close modal
+      setIsOpen(false);
+      
+      // Refresh tests data
+      queryClient.invalidateQueries({ queryKey: ['tests'] });
+    })
+    .catch(error => {
+      console.error('Error in batch processing:', error);
+      toast.error('An error occurred while saving tests');
+    });
+  }
 
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
@@ -492,13 +648,21 @@ const AddIncome = () => {
                     className="w-full border rounded p-2 pl-3 pr-10"
                   />
 
-                  <span className="absolute right-10 top-2.5">
+                  <span className="absolute right-14 top-2.5">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </span>
+                  
                   <span 
-                    className="absolute right-3 top-2.5 cursor-pointer" 
+                    className="absolute right-8 top-2.5 cursor-pointer"
+                    onClick={() => setIsOpen(true)}
+                  >
+                    <Plus size={20} className="text-gray-500 hover:text-green-800" />
+                  </span>
+                  
+                  <span 
+                    className="absolute right-2 top-2.5 cursor-pointer" 
                     onClick={toggleDeptFilter}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -764,6 +928,135 @@ const AddIncome = () => {
                   onClick={handleConfirmPayment}
                 >
                   Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Separate New Test Modal */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          {/* Modal Container */}
+          <div className="bg-white rounded-md w-full max-w-md relative">
+            {/* Modal Header */}
+            <div className="bg-green-800 text-white p-3 rounded-t-md flex justify-between items-center">
+              <h2 className="text-xl font-bold">New Test</h2>
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:text-gray-200"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4">
+              {/* Form */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Test Name</label>
+                  <input
+                    type="text"
+                    value={testName}
+                    onChange={(e) => {
+                      setTestName(e.target.value);
+                      setTestForm({...testForm, testName: e.target.value});
+                    }}
+                    className="w-full border border-gray-300 rounded p-2"
+                    placeholder="Electrocardiogram"
+                  />
+                </div>
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Date Created</label>
+                  <div className="relative">
+                  <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
+                              <input
+                                id="new-test-date"
+                                type="date"
+                                value={testDate}
+                                onChange={(e) => setTestDate(e.target.value)}
+                                className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                              />
+                             
+                            </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Test Department</label>
+                  <select
+                  value={testDepartment}
+                  onChange={handleDepartmentChange}
+                  className="w-full border border-gray-300 rounded p-2 appearance-none"
+                  required
+                  >
+                  {Array.isArray(departments) ? departments.map(dept => (
+                  <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
+                  )) : <option value="">No departments available</option>}
+                  <option value="add-department">+ Add Department</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-green-800 font-medium mb-1">Price</label>
+                  <input
+                     type="text"
+                     value={price}
+                     onChange={(e) => {
+                       const value = e.target.value;
+                       if (/^\d*\.?\d*$/.test(value) || value === '') {
+                         setPrice(value);
+                       }
+                     }}
+                     className="w-full border border-gray-300 rounded p-2 text-right"
+                     placeholder="0.00"
+                     required
+                  />
+                </div>
+              </div>
+
+              {/* Add to Queue Button */}
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={handleAddToQueue}
+                  className="bg-green-700 text-white py-2 px-4 rounded"
+                >
+                  Add to Queue
+                </button>
+              </div>
+
+              {/* Queue Table */}
+              <div className="overflow-x-auto mb-4">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-2 text-green-800">Test Name</th>
+                      <th className="text-left py-2 px-2 text-green-800">Department</th>
+                      <th className="text-left py-2 px-2 text-green-800">Price</th>
+                      <th className="text-left py-2 px-2 text-green-800">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queue.map((item, index) => (
+                      <tr key={index} className="border-b bg-gray-50">
+                        <td className="py-2 px-2">{item.testName}</td>
+                        <td className="py-2 px-2">{item.department}</td>
+                        <td className="py-2 px-2">{item.price}</td>
+                        <td className="py-2 px-2">{item.created}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Confirm Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={handleConfirm}
+                  disabled={createBatchTestsMutation.isPending}
+                  className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
+                >
+                  {createBatchTestsMutation.isPending ? 'Processing...' : 'Confirm'}
                 </button>
               </div>
             </div>
