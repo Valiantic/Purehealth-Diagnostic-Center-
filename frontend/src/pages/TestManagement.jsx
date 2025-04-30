@@ -481,7 +481,7 @@ const Test = () => {
                             <tr key={`test-row-${test.testId}`} className="border-b border-green-200">
                               <td className="p-1 pl-5 border-r border-green-200 text-left">{test.testName}</td>
                               <td className="p-1 border-r border-green-200 text-center">{test.Department?.departmentName}</td>
-                              <td className="p-1 border-r border-green-200 text-center">₱{parseFloat(test.price).toFixed(2)}</td>
+                              <td className="p-1 border-r border-green-200 text-center">₱{parseFloat(test.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 {test.dateCreated ? new Date(test.dateCreated).toLocaleDateString() : 'N/A'}
                               </td>
