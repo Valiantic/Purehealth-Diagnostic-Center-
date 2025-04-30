@@ -909,7 +909,7 @@ const AddIncome = () => {
                             <td className="px-2 py-1">{parseFloat(test.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td className="px-2 py-1">{test.gCash}</td>
                             <td className="px-2 py-1">{test.bal}</td>
-                            <td className="px-2 py-1">
+                            <td className="px-2 py-1 text-center">
                               <button 
                                 className="text-green-800"
                                 onClick={() => handleRemoveTest(index)}
