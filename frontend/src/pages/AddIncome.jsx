@@ -98,7 +98,7 @@ const AddIncome = () => {
     firstName: '',
     lastName: '',
     birthDate: '',  // Keep as empty string initially
-    id: 'Person with Disability',
+    id: 'Regular',
     referrer: '',
     sex: 'Male'
   });
@@ -340,7 +340,7 @@ const AddIncome = () => {
       setGCashPaid(gCashValue);
       
       // Update the displayed price with proper rounding
-      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashValue));
+      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashPaid));
       setBalance(newBalance);
       setPrice(newBalance);
     }
@@ -410,7 +410,6 @@ const AddIncome = () => {
     setFormData({...formData, birthDate: newDate});
   };
 
-  // Handle referrer selection - modified to open modal
   const handleReferrerChange = (e) => {
     const value = e.target.value;
     if (value === 'add-referrer') {
@@ -574,6 +573,47 @@ const AddIncome = () => {
     addReferrerMutation.mutate(newReferrerData);
   };
 
+  // Transaction Summary Modals States
+  const [isTransactionSummaryOpen, setIsTransactionSummaryOpen] = useState(false);
+
+  // Update handler for opening transaction summary to include validation
+  const openTransactionSummary = () => {
+    // First check if there are any tests in the registration summary
+    if (testsTable.length === 0) {
+      toast.error("Please select at least one test before processing the transaction");
+      return;
+    }
+    
+    // Validate patient information fields
+    const missingFields = [];
+    
+    if (!formData.firstName.trim()) missingFields.push("First Name");
+    if (!formData.lastName.trim()) missingFields.push("Last Name");
+    if (!formData.id) missingFields.push("ID Type");
+    if (!formData.referrer) missingFields.push("Referrer");
+    if (!formData.birthDate) missingFields.push("Birth Date");
+    if (!formData.sex) missingFields.push("Sex");
+    
+    // If any fields are missing, show an error and return
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in the following fields: ${missingFields.join(", ")}`);
+      return;
+    }
+    
+    // Make sure we close any other open modals first
+    setIsModalOpen(false);
+    setIsOpen(false);
+    setIsReferrerModalOpen(false);
+    
+    // Now open the transaction summary modal
+    setIsTransactionSummaryOpen(true);
+  };
+
+  // New handler for closing transaction summary
+  const closeTransactionSummary = () => {
+    setIsTransactionSummaryOpen(false);
+  };
+
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
       <Sidebar/>
@@ -624,9 +664,9 @@ const AddIncome = () => {
                     onChange={(e) => setFormData({...formData, id: e.target.value})}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
-                    <option>Person with Disability</option>
-                    <option>Senior Citizen</option>
                     <option>Regular</option>
+                    <option>Senior Citizen</option>
+                    <option>Person with Disability</option>
                   </select>
                 </div>
                 
@@ -892,7 +932,9 @@ const AddIncome = () => {
                           <td className="px-2 py-1 text-left text-green-800">
                             {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                           </td>
-                          <td className="px-2 py-1 text-left text-green-800">--</td>
+                          <td className="px-2 py-1 text-left text-green-800">
+                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </td>
                           <td className="px-2 py-1 text-left text-green-800"></td>
                         </tr>
                       )}
@@ -910,7 +952,10 @@ const AddIncome = () => {
                   </button>
                   <button 
                     className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-4 rounded"
-                    disabled={testsTable.length === 0}
+                    onClick={(e) => {
+                      e.preventDefault(); 
+                      openTransactionSummary();
+                    }}
                   >
                     Process Transaction
                   </button>
@@ -1252,6 +1297,140 @@ const AddIncome = () => {
                   {addReferrerMutation.isPending ? 'SAVING...' : 'CONFIRM'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Summary Modal */}
+      {isTransactionSummaryOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          {/* Modal Content - Adjusted max height and added custom scrollbar styling */}
+          <div className="bg-white rounded-md w-full max-w-3xl max-h-[85vh] flex flex-col">
+            {/* Modal Header - Make sticky */}
+            <div className="bg-green-800 text-white p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
+              <h2 className="text-xl font-bold">Transaction Summary</h2>
+              <button 
+                onClick={closeTransactionSummary} 
+                className="text-white hover:text-gray-200 focus:outline-none"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            {/* Scrollable Content Area */}
+            <div className="overflow-y-auto flex-1 scrollbar-hide" 
+                 style={{ 
+                   scrollbarWidth: 'none', /* Firefox */
+                   msOverflowStyle: 'none',  /* IE and Edge */
+                   WebkitOverflowScrolling: 'touch'
+                 }}>
+              {/* Patient Info Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
+                <div className="p-3 md:border-r border-gray-200">
+                  <div className="grid grid-cols-3 gap-1">
+                    <div className="font-bold text-green-800">First Name:</div>
+                    <div className="col-span-2 text-green-700">{formData.firstName || 'N/A'}</div>
+                    
+                    <div className="font-bold text-green-800">Last Name:</div>
+                    <div className="col-span-2 text-green-700">{formData.lastName || 'N/A'}</div>
+                    
+                    <div className="font-bold text-green-800">Referrer:</div>
+                    <div className="col-span-2 text-green-700">
+                      {(() => {
+                        // Get the selected referrer ID
+                        const selectedReferrerId = formData.referrer;
+                        
+                        if (!selectedReferrerId) return 'N/A';
+                        
+                        // Use loose equality (==) instead of strict equality (===) to handle type mismatches
+                        // This helps when IDs might be stored as strings in some places and numbers in others
+                        const selectedReferrer = referrers.find(r => String(r.referrerId) === String(selectedReferrerId));
+                        
+                        if (selectedReferrer) {
+                          // Format doctor name, ensuring both first and last name are included when available
+                          return `Dr. ${selectedReferrer.lastName || ''} ${selectedReferrer.firstName || ''}`.trim();
+                        } else {
+                          console.log('Referrer not found:', selectedReferrerId, 'Available referrers:', referrers);
+                          return 'N/A';
+                        }
+                      })()}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3">
+                  <div className="grid grid-cols-3 gap-1">
+                    <div className="font-bold text-green-800">Birth Date:</div>
+                    <div className="col-span-2 text-green-700">
+                      {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : 'N/A'}
+                    </div>
+                    
+                    <div className="font-bold text-green-800">Sex:</div>
+                    <div className="col-span-2 text-green-700">{formData.sex}</div>
+                    
+                    <div className="font-bold text-green-800">ID:</div>
+                    <div className="col-span-2 text-green-700">{formData.id}</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Transactions Table - With sticky header */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse">
+                  <thead className="bg-gray-100 sticky top-0 z-10">
+                    <tr>
+                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
+                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc.</th>
+                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
+                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
+                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Bal.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {testsTable.map((test, index) => (
+                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        <td className="p-2 border-b border-gray-200">{test.name}</td>
+                        <td className="p-2 border-b border-gray-200">{test.disc}</td>
+                        <td className="p-2 border-b border-gray-200">{test.cash}</td>
+                        <td className="p-2 border-b border-gray-200">{test.gCash}</td>
+                        <td className="p-2 border-b border-gray-200">{test.bal}</td>
+                      </tr>
+                    ))}
+                    
+                    {/* Add totals row */}
+                    {testsTable.length > 0 && (
+                      <tr className="bg-green-100 font-bold">
+                        <td className="p-2 border-b border-gray-200 text-green-800">TOTAL</td>
+                        <td className="p-2 border-b border-gray-200"></td>
+                        <td className="p-2 border-b border-gray-200 text-green-800">
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800">
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800">
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            {/* Footer Actions - Make sticky at bottom */}
+            <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
+              <button 
+                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+              >
+                Export
+              </button>
+              <button 
+                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>
