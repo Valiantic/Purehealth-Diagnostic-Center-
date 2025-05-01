@@ -156,3 +156,47 @@ export const referrerAPI = {
     }
   }
 };
+
+// Transaction API
+export const transactionAPI = {
+  getAllTransactions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/transactions?${queryString}`);
+  },
+  getTransactionById: (id) => {
+    return apiClient.get(`/transactions/${id}`);
+  },
+  createTransaction: (transactionData, userId) => {
+    console.log('Creating transaction with:', { ...transactionData, userId });
+    return apiClient.post('/transactions', {
+      ...transactionData,
+      userId
+    }).catch(error => {
+      console.error('Transaction API error:', error.response?.data || error.message);
+      throw error;
+    });
+  },
+  updateTransactionStatus: (id, status, userId) => {
+    return apiClient.patch(`/transactions/${id}`, {
+      status,
+      currentUserId: userId
+    });
+  },
+  searchTransactions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/transactions/search?${queryString}`);
+  }
+};
+
+// Department Revenue API
+export const revenueAPI = {
+  getRevenueByDepartment: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/department-revenue/by-department?${queryString}`);
+  },
+  getRevenueTrend: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/department-revenue/trend?${queryString}`);
+  }
+};
+

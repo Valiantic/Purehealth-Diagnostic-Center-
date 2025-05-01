@@ -5,6 +5,9 @@ const Department = require('./Department')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
 const Test = require('./Test')(sequelize);
 const Referrer = require('./Referrer')(sequelize);
+const Transaction = require('./Transaction')(sequelize);
+const TestDetails = require('./TestDetails')(sequelize);
+const DepartmentRevenue = require('./DepartmentRevenue')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
@@ -13,16 +16,98 @@ Authenticator.belongsTo(User, { foreignKey: 'userId' });
 // User has many activity logs, but logs remain when users are deleted
 User.hasMany(ActivityLog, { 
   foreignKey: 'userId',
-  onDelete: 'SET NULL' // Changed from CASCADE to SET NULL
+  onDelete: 'SET NULL'
 });
 ActivityLog.belongsTo(User, { 
   foreignKey: 'userId', 
-  onDelete: 'SET NULL' // Changed from CASCADE to SET NULL
+  onDelete: 'SET NULL'
 });
 
 // Department has many tests
 Department.hasMany(Test, { foreignKey: 'departmentId' });
 Test.belongsTo(Department, { foreignKey: 'departmentId' });
+
+User.hasMany(Transaction, { 
+  foreignKey: 'userId',
+  onDelete: 'RESTRICT',
+  constraints: false
+});
+Transaction.belongsTo(User, { 
+  foreignKey: 'userId',
+  onDelete: 'RESTRICT',
+  constraints: false
+});
+
+Referrer.hasMany(Transaction, { 
+  foreignKey: 'referrerId',
+  onDelete: 'SET NULL',
+  constraints: false
+});
+Transaction.belongsTo(Referrer, { 
+  foreignKey: 'referrerId',
+  onDelete: 'SET NULL',
+  constraints: false
+});
+
+// TestDetails relationships
+Transaction.hasMany(TestDetails, { 
+  foreignKey: 'transactionId',
+  constraints: false
+});
+TestDetails.belongsTo(Transaction, { 
+  foreignKey: 'transactionId',
+  constraints: false
+});
+
+Test.hasMany(TestDetails, { 
+  foreignKey: 'testId',
+  constraints: false
+});
+TestDetails.belongsTo(Test, { 
+  foreignKey: 'testId',
+  constraints: false
+});
+
+Department.hasMany(TestDetails, { 
+  foreignKey: 'departmentId',
+  constraints: false
+});
+TestDetails.belongsTo(Department, { 
+  foreignKey: 'departmentId',
+  constraints: false
+});
+
+// Department Revenue relationships
+Department.hasMany(DepartmentRevenue, {
+  foreignKey: 'departmentId',
+  constraints: false
+});
+DepartmentRevenue.belongsTo(Department, {
+  foreignKey: 'departmentId',
+  constraints: false
+});
+
+Transaction.hasMany(DepartmentRevenue, {
+  foreignKey: 'transactionId',
+  sourceKey: 'transactionId',
+  constraints: false
+});
+DepartmentRevenue.belongsTo(Transaction, {
+  foreignKey: 'transactionId',
+  targetKey: 'transactionId',
+  constraints: false
+});
+
+TestDetails.hasOne(DepartmentRevenue, {
+  foreignKey: 'testDetailId',
+  sourceKey: 'testDetailId',
+  constraints: false
+});
+DepartmentRevenue.belongsTo(TestDetails, {
+  foreignKey: 'testDetailId',
+  targetKey: 'testDetailId',
+  constraints: false
+});
 
 module.exports = {
   sequelize,
@@ -31,5 +116,8 @@ module.exports = {
   Department,
   ActivityLog,
   Test,
-  Referrer
+  Referrer,
+  Transaction,
+  TestDetails,
+  DepartmentRevenue
 };
