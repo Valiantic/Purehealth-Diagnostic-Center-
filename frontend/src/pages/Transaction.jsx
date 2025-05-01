@@ -5,34 +5,47 @@ import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Calendar, Download, Edit, X, Check, MoreVertical, ReceiptText } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { transactionAPI, departmentAPI, referrerAPI } from '../services/api';
+
+// Helper function to format date as DD-MMM-YYYY
+const formatDate = (date) => {
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
 
 const Transaction = () => {
   // Use the custom auth hook - with isAuthenticating check
   const { user, isAuthenticating } = useAuth();
-  const [date, setDate] = useState('16-MAR-2025');
+  const [date, setDate] = useState(formatDate(new Date()));
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const navigate = useNavigate();
 
   const handleNewExpenses = () => {
     navigate('/add-expenses');
-  }
+  };
 
   const handleNewIncome = () => {
     navigate('/add-income');
-  }
+  };
 
   // Toggle dropdown menu for income rows
   const toggleIncomeMenu = (id) => {
-    setOpenMenuId(prevId => prevId === id ? null : id);
+    setOpenMenuId((prevId) => (prevId === id ? null : id));
     // Close expense menu if open
     if (openExpenseMenuId) setOpenExpenseMenuId(null);
   };
 
   // Toggle dropdown menu for expense rows
   const toggleExpenseMenu = (id) => {
-    setOpenExpenseMenuId(prevId => prevId === id ? null : id);
+    setOpenExpenseMenuId((prevId) => (prevId === id ? null : id));
     // Close income menu if open
     if (openMenuId) setOpenMenuId(null);
   };
@@ -55,94 +68,147 @@ const Transaction = () => {
     e.stopPropagation();
   };
 
-  const incomeData = [
-    {
-      id: '20001',
-      name: 'John Williams',
-      utz: 200,
-      lab: 150,
-      xray: 700,
-      ecg: 500,
-      pe: null,
-      dt: 210,
-      referrer: 'Dr. Robotnik',
-      grossDeposit: 1860,
-      status: 'active'
+  // Fetch transactions data
+  const {
+    data: transactionsData = { data: { transactions: [], count: 0 } },
+    isLoading: isLoadingTransactions,
+    isError: isTransactionsError,
+    error: transactionsError,
+  } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: async () => {
+      const response = await transactionAPI.getAllTransactions({
+        page: 1,
+        limit: 50,
+        status: 'active',
+      });
+      return response.data;
     },
-    {
-      id: '20002',
-      name: 'Will Smith',
-      utz: 300,
-      lab: null,
-      xray: null,
-      ecg: null,
-      pe: null,
-      dt: null,
-      referrer: null,
-      grossDeposit: 550,
-      status: 'canceled'
-    }
-  ];
+    staleTime: 30000,
+  });
 
-   // Calculate totals
-   const totals = incomeData.reduce((acc, row) => {
-    if (row.status !== 'canceled') {
-      acc.utz += row.utz || 0;
-      acc.lab += row.lab || 0;
-      acc.xray += row.xray || 0;
-      acc.ecg += row.ecg || 0;
-      acc.pe += row.pe || 0;
-      acc.dt += row.dt || 0;
-      acc.grossDeposit += row.grossDeposit || 0;
-    }
-    return acc;
-  }, { utz: 0, lab: 0, xray: 0, ecg: 0, pe: 0, dt: 0, grossDeposit: 0 });
-
-    // Summary data
-    const summary = {
-      gcash: 210,
-      refund: 310,
-      total: 1650
-    };
-
-  // Sample expense data
-  const expenseData = [
-    {
-      payee: 'Salmon Hermida',
-      purpose: 'Office Supplies',
-      department: 'Lab',
-      amount: 3000,
+  // Fetch departments data
+  const {
+    data: departmentsData = { data: [] },
+    isLoading: isLoadingDepartments,
+  } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const response = await departmentAPI.getAllDepartments(true);
+      return response;
     },
-    {
-      payee: 'Grey Williams',
-      purpose: 'Utilities',
-      department: 'X-ray',
-      amount: 7000,
-    },
-    {
-      payee: 'Elmira Joe',
-      purpose: 'Medical Equipment',
-      department: 'ECG',
-      amount: 4000,
-    }
-  ];
+    staleTime: 60000,
+  });
 
-  // Calculate expense totals
-  const expenseTotals = expenseData.reduce((acc, expense) => {
-    if (expense.status === 'paid') {
-      acc.total += expense.amount;
+  // Fetch referrers data
+  const {
+    data: referrersData = { data: { data: [] } },
+    isLoading: isLoadingReferrers,
+  } = useQuery({
+    queryKey: ['referrers'],
+    queryFn: async () => {
+      const response = await referrerAPI.getAllReferrers(true);
+      return response;
+    },
+    staleTime: 60000,
+  });
+
+  // Extract data from query results
+  const transactions = transactionsData?.data?.transactions || [];
+  const departments = Array.isArray(departmentsData)
+    ? departmentsData
+    : Array.isArray(departmentsData.data)
+    ? departmentsData.data
+    : [];
+  const referrers = referrersData?.data?.data || [];
+
+  // Process transactions to organize by departments
+  const processedTransactions = transactions.map((transaction) => {
+    // Group test details by department
+    const departmentRevenues = {};
+
+    // Initialize department revenues to 0
+    departments.forEach((dept) => {
+      departmentRevenues[dept.departmentId] = {
+        name: dept.departmentName,
+        amount: 0,
+        isActive: dept.status === 'active',
+      };
+    });
+
+    // Sum up revenue for each department
+    if (transaction.TestDetails && transaction.TestDetails.length > 0) {
+      transaction.TestDetails.forEach((test) => {
+        if (departmentRevenues[test.departmentId]) {
+          departmentRevenues[test.departmentId].amount += parseFloat(test.discountedPrice) || 0;
+        }
+      });
+    }
+
+    // Find the referrer - improved matching logic
+    let referrerName = 'N/A';
+    
+    if (transaction.referrerId) {
+      // Normalize IDs for comparison by converting both to strings
+      const transactionReferrerId = String(transaction.referrerId);
       
-      // Track payment methods
-      if (expense.paymentMethod === 'Cash') {
-        acc.cash += expense.amount;
-      } else if (expense.paymentMethod === 'GCash') {
-        acc.gcash += expense.amount;
+      // Find referrer by ID with string comparison
+      const referrer = referrers.find(ref => String(ref.referrerId) === transactionReferrerId);
+      
+      // Debug referrer match
+      console.log(`Matching referrer for transaction ${transaction.transactionId}:`, {
+        transactionReferrerId,
+        availableReferrerIds: referrers.map(r => String(r.referrerId)),
+        referrerFound: !!referrer,
+        matchedReferrer: referrer
+      });
+      
+      if (referrer) {
+        referrerName = `Dr. ${referrer.lastName || ''} ${referrer.firstName || ''}`.trim();
       } else {
-        acc.other += expense.amount;
+        // Handle missing referrer case
+        referrerName = `ID: ${transactionReferrerId.substring(0, 8)}...`;
       }
     }
-    return acc;
-  }, { total: 0, cash: 0, gcash: 0, other: 0 });
+
+    return {
+      id: transaction.mcNo,
+      name: `${transaction.firstName} ${transaction.lastName}`,
+      departmentRevenues,
+      referrer: referrerName,
+      grossDeposit: parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount),
+      status: transaction.status,
+      // Store original transaction for debugging
+      originalTransaction: transaction
+    };
+  });
+
+  // Filter transactions based on search term
+  const filteredTransactions = processedTransactions.filter((transaction) => {
+    return (
+      transaction.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  // Calculate department totals
+  const departmentTotals = {};
+  departments.forEach((dept) => {
+    departmentTotals[dept.departmentId] = 0;
+  });
+
+  filteredTransactions.forEach((transaction) => {
+    if (transaction.status !== 'cancelled') {
+      Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
+        departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
+      });
+    }
+  });
+
+  // Calculate total gross
+  const totalGross = filteredTransactions.reduce((sum, transaction) => {
+    return sum + (transaction.status !== 'cancelled' ? transaction.grossDeposit : 0);
+  }, 0);
 
   // Page Rendering Security
   if (isAuthenticating) {
@@ -153,9 +219,39 @@ const Transaction = () => {
     return null;
   }
 
+  // Loading state
+  if (isLoadingTransactions || isLoadingDepartments || isLoadingReferrers) {
+    return (
+      <div className='flex flex-col md:flex-row min-h-screen bg-gray-100'>
+        <div className="md:block md:w-64 flex-shrink-0">
+          <Sidebar />
+        </div>
+        <div className="flex-grow p-4 flex items-center justify-center">
+          <div className="text-green-800 font-semibold text-lg">Loading data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (isTransactionsError) {
+    return (
+      <div className='flex flex-col md:flex-row min-h-screen bg-gray-100'>
+        <div className="md:block md:w-64 flex-shrink-0">
+          <Sidebar />
+        </div>
+        <div className="flex-grow p-4 flex items-center justify-center">
+          <div className="text-red-500 font-semibold text-lg">
+            Error loading transactions: {transactionsError?.message || 'Unknown error'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='flex flex-col md:flex-row min-h-screen bg-gray-100'>
-       <div className="md:block md:w-64 flex-shrink-0">
+      <div className="md:block md:w-64 flex-shrink-0">
         <Sidebar />
       </div>
          
@@ -179,6 +275,8 @@ const Transaction = () => {
                 <input
                   type="text"
                   placeholder="Search Patient..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
                 />
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -206,7 +304,6 @@ const Transaction = () => {
           
           {/* Table  */}
           <div className="relative">
-        
             <div className="md:hidden text-sm text-gray-500 italic mb-2 flex items-center">
               <span>Swipe horizontally to view more</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -219,59 +316,87 @@ const Transaction = () => {
                 <thead>
                   <tr className="bg-green-800 text-white">
                     <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-10">MC#</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Name</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">UTZ</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Lab</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">XRAY</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">ECG</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">PE</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">DT</th>
+                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Patient Name</th>
+                    
+                    {/* Department columns - only show active departments */}
+                    {departments
+                      .filter(dept => dept.status === 'active')
+                      .map(dept => (
+                        <th 
+                          key={dept.departmentId} 
+                          className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200"
+                        >
+                          {dept.departmentName}
+                        </th>
+                      ))
+                    }
+                    
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
                     <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Referrer</th>
                     <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {incomeData.map((row) => (
-                    <tr key={row.id} className={row.id === '20002' ? 'bg-gray-100' : 'bg-white'}>
-                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">{row.id}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">{row.name}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.utz}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {row.status === 'canceled' ? '' : row.lab}
+                  {filteredTransactions.map((transaction) => (
+                    <tr 
+                      key={transaction.id} 
+                      className={transaction.status === 'cancelled' ? 'bg-gray-100' : 'bg-white'}
+                    >
+                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">
+                        {transaction.id}
                       </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {row.status === 'canceled' ? (
-                          <span className="text-green-700 font-medium text-xs md:text-sm">Canceled</span>
-                        ) : row.xray}
+                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">
+                        {transaction.name}
                       </td>
+                      
+                      {/* Department amounts */}
+                      {departments
+                        .filter(dept => dept.status === 'active')
+                        .map(dept => {
+                          const deptData = transaction.departmentRevenues[dept.departmentId];
+                          return (
+                            <td 
+                              key={dept.departmentId} 
+                              className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200"
+                            >
+                              {transaction.status === 'cancelled' ? (
+                                <span className="text-green-700 font-medium text-xs md:text-sm">
+                                  {dept.departmentName === 'XRAY' ? 'Canceled' : ''}
+                                </span>
+                              ) : (
+                                deptData && deptData.amount > 0 ? deptData.amount.toFixed(2) : ''
+                              )}
+                            </td>
+                          );
+                        })
+                      }
+                      
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {row.status === 'canceled' ? '' : row.ecg}
+                        {transaction.grossDeposit.toFixed(2)}
                       </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {row.status === 'canceled' ? '' : row.pe}
-                      </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {row.status === 'canceled' ? '' : row.dt}
-                      </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.grossDeposit}</td>
                       <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 max-w-[100px] truncate">
-                        {row.status === 'canceled' ? '' : row.referrer}
+                        {/* Show debug info on hover for referrer field */}
+                        <div 
+                          title={`Referrer ID: ${transaction.originalTransaction?.referrerId || 'None'}`} 
+                          className="truncate"
+                        >
+                          {transaction.status === 'cancelled' ? '' : transaction.referrer}
+                        </div>
                       </td>
                       <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {row.status !== 'canceled' && (
+                        {transaction.status !== 'cancelled' && (
                           <div className="relative flex justify-center">
                             <button 
                               className="text-gray-600 hover:text-green-600 focus:outline-none"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleIncomeMenu(row.id);
+                                toggleIncomeMenu(transaction.id);
                               }}
                             >
                               <MoreVertical size={16} className="md:w-5 md:h-5" />
                             </button>
                             
-                            {openMenuId === row.id && (
+                            {openMenuId === transaction.id && (
                               <div 
                                 className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
                                 onClick={handleDropdownClick}
@@ -296,15 +421,27 @@ const Transaction = () => {
                     </tr>
                   ))}
                   
+                  {/* Totals row */}
                   <tr className="bg-green-100">
                     <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.utz}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.lab}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.xray}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.ecg}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.pe}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.dt}</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{totals.grossDeposit}</td>
+                    
+                    {/* Department totals */}
+                    {departments
+                      .filter(dept => dept.status === 'active')
+                      .map(dept => (
+                        <td 
+                          key={dept.departmentId} 
+                          className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200"
+                        >
+                          {departmentTotals[dept.departmentId] > 0 ? 
+                            departmentTotals[dept.departmentId].toFixed(2) : ''}
+                        </td>
+                      ))
+                    }
+                    
+                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                      {totalGross.toFixed(2)}
+                    </td>
                     <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                     <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   </tr>
@@ -313,7 +450,7 @@ const Transaction = () => {
             </div>
           </div>
           
-          {/* Legend  */}
+          {/* Legend */}
           <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
             <div className="flex flex-wrap items-center mb-4 md:mb-0">
               <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
@@ -348,7 +485,8 @@ const Transaction = () => {
                       GCASH
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {summary.gcash}
+                      {/* Replace with actual GCASH total */}
+                      0.00
                     </td>
                   </tr>
                   <tr>
@@ -356,7 +494,8 @@ const Transaction = () => {
                       REFUND
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {summary.refund}
+                      {/* Replace with actual REFUND total */}
+                      0.00
                     </td>
                   </tr>
                   <tr>
@@ -364,7 +503,7 @@ const Transaction = () => {
                       TOTAL
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {summary.total.toLocaleString()}
+                      {totalGross.toLocaleString()}
                     </td>
                   </tr>
                 </tbody>
@@ -436,69 +575,16 @@ const Transaction = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {expenseData.map((row, index) => (
-                    <tr key={index} className={row.status === 'pending' ? 'bg-green-50' : 'bg-white'}>
-                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">{row.payee}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.purpose}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.department}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">{row.amount}</td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        <div className="relative flex justify-center">
-                          <button 
-                            className="text-gray-600 hover:text-green-600 focus:outline-none"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpenseMenu(index);
-                            }}
-                          >
-                            <MoreVertical size={16} className="md:w-5 md:h-5" />
-                          </button>
-                          
-                          {openExpenseMenuId === index && (
-                            <div 
-                              className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
-                              onClick={handleDropdownClick}
-                            >
-                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-gray-600">
-                                  <ReceiptText size={14} className="mr-2" />
-                                 Details
-                                </button>
-                              <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600">
-                                <Edit size={14} className="mr-2" />
-                                Edit
-                              </button>
-                              <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-green-600">
-                                <Check size={14} className="mr-2" />
-                                Mark Paid
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  
+                  {/* Replace with actual expense data */}
                   <tr className="bg-green-100">
                     <td colSpan={3} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800">TOTAL:</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold">{expenseTotals.total}</td>
+                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold">0.00</td>
                     <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-          
-          {/* Expenses summary */}
-          <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
-            <div className="flex flex-wrap items-center mb-4 md:mb-0">
-              <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-              </button>
-              
-            </div>
-          </div>
-
-          
         </div>
       </div>
     </div>

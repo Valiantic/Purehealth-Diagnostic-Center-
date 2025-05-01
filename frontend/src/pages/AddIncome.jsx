@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { testAPI, departmentAPI, referrerAPI } from '../services/api'
+import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
 import { ToastContainer, toast } from 'react-toastify'
-import { X, Plus} from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
@@ -17,19 +17,17 @@ const AddIncome = () => {
   const dropdownRef = useRef(null);
   const [activeDropdownId, setActiveDropdownId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Add state to track currently selected test for modal
   const [selectedModalTest, setSelectedModalTest] = useState(null);
-  const [basePrice, setBasePrice] = useState(0); 
-  const [price, setPrice] = useState(0); 
-  const [discount, setDiscount] = useState(20); 
-  const [cashPaid, setCashPaid] = useState(0); 
-  const [gCashPaid, setGCashPaid] = useState(0); 
-  
-  const [discountedPrice, setDiscountedPrice] = useState(0); 
+  const [basePrice, setBasePrice] = useState(0);
+  const [price, setPrice] = useState(0);
+  const [discount, setDiscount] = useState(20);
+  const [cashPaid, setCashPaid] = useState(0);
+  const [gCashPaid, setGCashPaid] = useState(0);
+
+  const [discountedPrice, setDiscountedPrice] = useState(0);
   const [balance, setBalance] = useState(0);
   const [testName, setTestName] = useState('');
 
-  // New Test States
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
   const [testDepartment, setTestDepartment] = useState('');
   const [departmentId, setDepartmentId] = useState('');
@@ -51,22 +49,20 @@ const AddIncome = () => {
   }
 
   function handleAddToQueue() {
-    // Validate required fields
     if (!testForm.testName || !testDepartment || !price) {
       toast.error("Please fill all required test details");
       return;
     }
-    
+
     const newItem = {
       testName: testForm.testName,
-      department: testDepartment,  // Use the selected department from the dropdown
-      price: typeof price === 'string' ? price : price.toFixed(2), // Format price correctly
-      created: formatDate(new Date(testDate)) // Format the selected date
+      department: testDepartment,
+      price: typeof price === 'string' ? price : price.toFixed(2),
+      created: formatDate(new Date(testDate))
     };
-    
+
     setQueue([...queue, newItem]);
-    
-    // Reset form after adding to queue
+
     setTestForm({
       testName: '',
       department: '',
@@ -74,13 +70,12 @@ const AddIncome = () => {
       dateCreated: formatDate(new Date())
     });
     setPrice('');
-    
+
     toast.success("Test added to queue successfully");
   }
 
-  const queryClient = useQueryClient(); // Add this line to get QueryClient instance
+  const queryClient = useQueryClient();
 
-  // Add test mutation for batch saving queue
   const createBatchTestsMutation = useMutation({
     mutationFn: ({ testData, userId }) => testAPI.createTest(testData, userId),
     onSuccess: () => {
@@ -93,11 +88,10 @@ const AddIncome = () => {
     }
   });
 
-
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    birthDate: '',  // Keep as empty string initially
+    birthDate: '',
     id: 'Regular',
     referrer: '',
     sex: 'Male'
@@ -107,7 +101,6 @@ const AddIncome = () => {
   const [selectedTests, setSelectedTests] = useState([]);
   const [testsTable, setTestsTable] = useState([]);
 
-  // Fetch tests data
   const {
     data: testsData = { data: [] },
     isLoading,
@@ -126,7 +119,6 @@ const AddIncome = () => {
     retry: 2
   });
 
-  // Fetch departments data
   const {
     data: departmentsData = { data: [] },
     isLoadingDepts,
@@ -140,7 +132,6 @@ const AddIncome = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Fetch referrers data with direct approach
   const {
     data: referrersData,
     isLoadingReferrers,
@@ -160,67 +151,58 @@ const AddIncome = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Filter data to only show active items
-  const tests = Array.isArray(testsData) ? testsData : 
-                Array.isArray(testsData.data) ? testsData.data : [];
-  
-  const departments = Array.isArray(departmentsData) ? departmentsData : 
-                     Array.isArray(departmentsData.data) ? departmentsData.data : [];
-     
-  // Get referrers and filter to only show active ones
+  const tests = Array.isArray(testsData) ? testsData :
+    Array.isArray(testsData.data) ? testsData.data : [];
+
+  const departments = Array.isArray(departmentsData) ? departmentsData :
+    Array.isArray(departmentsData.data) ? departmentsData.data : [];
+
   const allReferrers = referrersData?.data?.data || [];
   const referrers = allReferrers.filter(referrer => referrer.status === 'active');
 
-  // Filter tests based on search terms and selected department
   const filteredTests = tests.filter(test => {
     const matchesSearch = test?.testName?.toLowerCase?.().includes(searchTest.toLowerCase()) || false;
-    const matchesDepartment = selectedDepartment ? 
-                            test?.departmentId === selectedDepartment : true;
-    // Only include active tests
+    const matchesDepartment = selectedDepartment ?
+      test?.departmentId === selectedDepartment : true;
     const isActive = test.status === 'active';
     return matchesSearch && matchesDepartment && isActive;
   });
 
   const handleSelectTest = (test) => {
-    // Check if this test is already selected
     const isAlreadySelected = selectedTests.some(t => t.testId === test.testId);
-    
+
     if (isAlreadySelected) {
-      // Remove the test if it's already selected
       const testIndex = selectedTests.findIndex(t => t.testId === test.testId);
-      
+
       const newSelectedTests = [...selectedTests];
       newSelectedTests.splice(testIndex, 1);
       setSelectedTests(newSelectedTests);
-      
+
       const newTestsTable = [...testsTable];
       newTestsTable.splice(testIndex, 1);
       setTestsTable(newTestsTable);
     } else {
-      
       const testPrice = parseFloat(test.price) || 0;
       const roundedPrice = roundToTwoDecimals(testPrice);
       const newTest = {
         testId: test.testId,
         name: test.testName,
         disc: '0%',
-        cash: roundedPrice.toFixed(2), 
-        gCash: '0.00', 
-        bal: '0.00' 
+        cash: roundedPrice.toFixed(2),
+        gCash: '0.00',
+        bal: '0.00'
       };
-      
+
       setSelectedTests([...selectedTests, test]);
       setTestsTable([...testsTable, newTest]);
     }
   };
 
-  // Clear all tests
   const handleClearAll = () => {
     setSelectedTests([]);
     setTestsTable([]);
   };
-  
-  // Remove a specific test by index
+
   const handleRemoveTest = (index) => {
     const newSelectedTests = [...selectedTests];
     const newTestsTable = [...testsTable];
@@ -230,44 +212,38 @@ const AddIncome = () => {
     setTestsTable(newTestsTable);
   };
 
-  // Handle department selection
   const handleDepartmentSelect = (deptId) => {
     setSelectedDepartment(deptId === selectedDepartment ? null : deptId);
     setShowDeptFilter(false);
   };
 
-  // Toggle department filter
   const toggleDeptFilter = () => {
     setShowDeptFilter(!showDeptFilter);
   };
 
-  // Modified toggle dropdown function to work with specific test ID
   const toggleDropdown = (testId, e) => {
     e.stopPropagation();
     setActiveDropdownId(prevId => prevId === testId ? null : testId);
   };
 
-  // Fix precision issues with calculations
   const roundToTwoDecimals = (value) => {
     return Math.round((value + Number.EPSILON) * 100) / 100;
   };
 
-  // Update openModal to set up a simpler state with proper rounding
   const openModal = (test) => {
     setSelectedModalTest(test);
     const testPrice = parseFloat(test.price) || 0;
     const roundedPrice = roundToTwoDecimals(testPrice);
-    
-    setBasePrice(roundedPrice); 
-    setPrice(roundedPrice); 
-    
-    // Reset all other values
+
+    setBasePrice(roundedPrice);
+    setPrice(roundedPrice);
+
     setDiscount(0);
-    setDiscountedPrice(roundedPrice); 
+    setDiscountedPrice(roundedPrice);
     setBalance(roundedPrice);
     setCashPaid(0);
     setGCashPaid(0);
-    
+
     setIsModalOpen(true);
     setActiveDropdownId(null);
   };
@@ -277,42 +253,32 @@ const AddIncome = () => {
     setSelectedModalTest(null);
   };
 
-  // Modified handlers to update the price dynamically with proper rounding
   const handleDiscountChange = (value) => {
     const discountValue = parseInt(value) || 0;
     setDiscount(discountValue);
-    
-    // Calculate new discounted price with proper rounding
-    const discounted = roundToTwoDecimals(basePrice * (1 - discountValue/100));
+
+    const discounted = roundToTwoDecimals(basePrice * (1 - discountValue / 100));
     setDiscountedPrice(discounted);
-    
-    // Update displayed price and balance to reflect discount
+
     const newBalance = roundToTwoDecimals(Math.max(0, discounted - cashPaid - gCashPaid));
     setBalance(newBalance);
     setPrice(newBalance);
   };
 
   const handleCashPaidChange = (value) => {
-    // Parse the entered value
     const cashValue = parseFloat(value) || 0;
-    
-    // Check if the total payment would exceed the discounted price
+
     if (cashValue + gCashPaid > discountedPrice) {
-      // Limit cash payment to the remaining amount (with proper rounding)
       const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - gCashPaid));
       setCashPaid(maxAllowed);
-      
-      // Update the displayed price - should be 0 at this point
+
       setBalance(0);
       setPrice(0);
-      
-      // Optionally show a toast notification
+
       toast.info("Payment amount cannot exceed the price");
     } else {
-      // If within limits, set the value normally
       setCashPaid(cashValue);
-      
-      // Update the displayed price with proper rounding
+
       const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashPaid));
       setBalance(newBalance);
       setPrice(newBalance);
@@ -320,61 +286,47 @@ const AddIncome = () => {
   };
 
   const handleGCashPaidChange = (value) => {
-    // Parse the entered value
     const gCashValue = parseFloat(value) || 0;
-    
-    // Check if the total payment would exceed the discounted price
+
     if (cashPaid + gCashValue > discountedPrice) {
-      // Limit GCash payment to the remaining amount (with proper rounding)
       const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid));
       setGCashPaid(maxAllowed);
-      
-      // Update the displayed price - should be 0 at this point
+
       setBalance(0);
       setPrice(0);
-      
-      // Optionally show a toast notification
+
       toast.info("Payment amount cannot exceed the price");
     } else {
-      // If within limits, set the value normally
       setGCashPaid(gCashValue);
-      
-      // Update the displayed price with proper rounding
+
       const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashPaid));
       setBalance(newBalance);
       setPrice(newBalance);
     }
   };
 
-  // Add confirmation handler with validation and handling for empty payment
   const handleConfirmPayment = () => {
     if (!selectedModalTest) return;
-    
-    // Check if payment exceeds the discounted price
+
     if (cashPaid + gCashPaid > discountedPrice) {
       toast.error("Total payment cannot exceed the price");
       return;
     }
-    
-    // Calculate final values with proper rounding
+
     const finalDiscount = discount;
     const finalDiscountedPrice = roundToTwoDecimals(discountedPrice);
-    
-    // Handle case where user only provided discount (no payment details)
+
     let finalCash = roundToTwoDecimals(cashPaid);
     let finalGCash = roundToTwoDecimals(gCashPaid);
     let finalBalance = roundToTwoDecimals(balance);
-    
-    // If user only set discount but didn't enter payments, put the full amount in cash
+
     if (finalCash === 0 && finalGCash === 0 && discount > 0) {
       finalCash = finalDiscountedPrice;
       finalBalance = 0;
     }
-    
-    // Check if test is already in the selected tests
+
     const testIndex = selectedTests.findIndex(t => t.testId === selectedModalTest.testId);
-    
-    // Create the updated test object with payment details
+
     const updatedTest = {
       testId: selectedModalTest.testId,
       name: selectedModalTest.testName,
@@ -383,31 +335,28 @@ const AddIncome = () => {
       gCash: finalGCash.toFixed(2),
       bal: finalBalance.toFixed(2)
     };
-    
+
     if (testIndex >= 0) {
-      // Update existing test
       const newSelectedTests = [...selectedTests];
       const newTestsTable = [...testsTable];
-      
+
       newSelectedTests[testIndex] = selectedModalTest;
       newTestsTable[testIndex] = updatedTest;
-      
+
       setSelectedTests(newSelectedTests);
       setTestsTable(newTestsTable);
     } else {
-      // Add as new test
       setSelectedTests([...selectedTests, selectedModalTest]);
       setTestsTable([...testsTable, updatedTest]);
     }
-    
+
     toast.success(`${selectedModalTest.testName} added with payment details`);
     closeModal();
   };
 
-  // Handle date input change
   const handleDateChange = (e) => {
     const newDate = e.target.value;
-    setFormData({...formData, birthDate: newDate});
+    setFormData({ ...formData, birthDate: newDate });
   };
 
   const handleReferrerChange = (e) => {
@@ -416,10 +365,9 @@ const AddIncome = () => {
       setIsReferrerModalOpen(true);
       return;
     }
-    setFormData({...formData, referrer: value});
+    setFormData({ ...formData, referrer: value });
   };
 
-  // Department Change
   const handleDepartmentChange = (e) => {
     const value = e.target.value;
     if (value === 'add-department') {
@@ -430,42 +378,36 @@ const AddIncome = () => {
     const selected = departments.find(dep => dep.departmentName === value);
     if (selected) {
       setDepartmentId(selected.departmentId);
-      setUserSelectedDepartment(true); 
+      setUserSelectedDepartment(true);
     }
   };
 
   function handleConfirm() {
-    // Validate if we have any queue items
     if (queue.length === 0) {
       toast.error("No tests in queue to save");
       return;
     }
 
-    // Get current user ID
     const userId = user?.userId || user?.id;
     if (!userId) {
       toast.error('Authentication error. Please log in again.');
       return;
     }
 
-    // Track progress
     let successCount = 0;
     let errorCount = 0;
-    
-    // Use Promise.all to process all queue items in parallel
+
     Promise.all(
       queue.map(async (item) => {
         try {
-          // Find departmentId from departmentName
           const department = departments.find(
             d => d.departmentName.toLowerCase() === item.department.toLowerCase()
           );
-          
+
           if (!department) {
             throw new Error(`Department not found for: ${item.department}`);
           }
 
-          // Create test data object
           const testData = {
             testName: item.testName,
             departmentId: department.departmentId,
@@ -474,43 +416,37 @@ const AddIncome = () => {
             currentUserId: userId
           };
 
-          // Save test to database
           await testAPI.createTest(testData, userId);
           successCount++;
 
         } catch (error) {
           console.error(`Error saving test "${item.testName}":`, error);
           errorCount++;
-          return error; // Return error to maintain position in results
+          return error;
         }
       })
     )
-    .then(() => {
-      // Display results
-      if (successCount > 0) {
-        toast.success(`Successfully added ${successCount} tests to the database`);
-      }
+      .then(() => {
+        if (successCount > 0) {
+          toast.success(`Successfully added ${successCount} tests to the database`);
+        }
 
-      if (errorCount > 0) {
-        toast.error(`Failed to add ${errorCount} tests`);
-      }
+        if (errorCount > 0) {
+          toast.error(`Failed to add ${errorCount} tests`);
+        }
 
-      // Clear queue after saving
-      setQueue([]);
-      
-      // Close modal
-      setIsOpen(false);
-      
-      // Refresh tests data
-      queryClient.invalidateQueries({ queryKey: ['tests'] });
-    })
-    .catch(error => {
-      console.error('Error in batch processing:', error);
-      toast.error('An error occurred while saving tests');
-    });
+        setQueue([]);
+
+        setIsOpen(false);
+
+        queryClient.invalidateQueries({ queryKey: ['tests'] });
+      })
+      .catch(error => {
+        console.error('Error in batch processing:', error);
+        toast.error('An error occurred while saving tests');
+      });
   }
 
-  // Add Referrer Modal States
   const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
   const [newReferrerData, setNewReferrerData] = useState({
     firstName: '',
@@ -522,9 +458,8 @@ const AddIncome = () => {
     contactNo: ''
   });
 
-  // Add referrer mutation
   const addReferrerMutation = useMutation({
-    mutationFn: (referrerData) => 
+    mutationFn: (referrerData) =>
       referrerAPI.createReferrer(referrerData, user?.userId || user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referrers'] });
@@ -536,7 +471,6 @@ const AddIncome = () => {
     }
   });
 
-  // New Referrer Modal handlers
   const closeReferrerModal = () => {
     setIsReferrerModalOpen(false);
     setNewReferrerData({
@@ -559,82 +493,157 @@ const AddIncome = () => {
   };
 
   const handleAddNewReferrer = () => {
-    // Validate required fields
     if (!newReferrerData.firstName.trim()) {
       toast.error('First name is required');
       return;
     }
-    
+
     if (!newReferrerData.lastName.trim()) {
       toast.error('Last name is required');
       return;
     }
-    
+
     addReferrerMutation.mutate(newReferrerData);
   };
 
-  // Transaction Summary Modals States
   const [isTransactionSummaryOpen, setIsTransactionSummaryOpen] = useState(false);
 
-  // Update handler for opening transaction summary to include validation
   const openTransactionSummary = () => {
-    // First check if there are any tests in the registration summary
     if (testsTable.length === 0) {
       toast.error("Please select at least one test before processing the transaction");
       return;
     }
-    
-    // Validate patient information fields
+
     const missingFields = [];
-    
+
     if (!formData.firstName.trim()) missingFields.push("First Name");
     if (!formData.lastName.trim()) missingFields.push("Last Name");
     if (!formData.id) missingFields.push("ID Type");
     if (!formData.referrer) missingFields.push("Referrer");
     if (!formData.birthDate) missingFields.push("Birth Date");
     if (!formData.sex) missingFields.push("Sex");
-    
-    // If any fields are missing, show an error and return
+
     if (missingFields.length > 0) {
       toast.error(`Please fill in the following fields: ${missingFields.join(", ")}`);
       return;
     }
-    
-    // Make sure we close any other open modals first
+
     setIsModalOpen(false);
     setIsOpen(false);
     setIsReferrerModalOpen(false);
-    
-    // Now open the transaction summary modal
+
     setIsTransactionSummaryOpen(true);
   };
 
-  // New handler for closing transaction summary
   const closeTransactionSummary = () => {
     setIsTransactionSummaryOpen(false);
   };
 
+  const createTransactionMutation = useMutation({
+    mutationFn: (transactionData) =>
+      transactionAPI.createTransaction(transactionData, user?.userId || user?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success('Transaction saved successfully');
+      closeTransactionSummary();
+      handleClearAll();
+      setFormData({
+        firstName: '',
+        lastName: '',
+        birthDate: '',
+        id: 'Regular',
+        referrer: '',
+        sex: 'Male'
+      });
+    },
+    onError: (error) => {
+      console.error('Transaction error:', error);
+      toast.error(error?.response?.data?.message || 'Failed to save transaction');
+    }
+  });
+
+  const handleConfirmTransaction = () => {
+    if (testsTable.length === 0) {
+      toast.error("No tests selected for this transaction");
+      return;
+    }
+
+    const userId = user?.userId || user?.id;
+    if (!userId) {
+      toast.error('User ID is missing. Please log in again.');
+      return;
+    }
+
+    try {
+      const items = testsTable.map((test, index) => {
+        const originalTest = selectedTests[index];
+
+        if (!originalTest?.testId) {
+          throw new Error(`Test ID is missing for ${test.name}`);
+        }
+        if (!originalTest?.departmentId) {
+          throw new Error(`Department ID is missing for ${test.name}`);
+        }
+
+        const discStr = test.disc.replace('%', '');
+        const discountPercentage = parseInt(discStr) || 0;
+
+        const originalPrice = parseFloat(originalTest.price);
+        const cashAmount = parseFloat(test.cash) || 0;
+        const gCashAmount = parseFloat(test.gCash) || 0;
+        const balAmount = parseFloat(test.bal) || 0;
+
+        const discountedPrice = cashAmount + gCashAmount + balAmount;
+
+        return {
+          testId: originalTest.testId,
+          testName: test.name,
+          departmentId: originalTest.departmentId,
+          originalPrice: originalPrice,
+          discountPercentage: discountPercentage,
+          discountedPrice: discountedPrice,
+          cashAmount: cashAmount,
+          gCashAmount: gCashAmount,
+          balanceAmount: balAmount,
+        };
+      });
+
+      const transactionData = {
+        mcNo: Math.floor(10000 + Math.random() * 90000).toString(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        idType: formData.id,
+        referrerId: formData.referrer || null,
+        birthDate: formData.birthDate || null,
+        sex: formData.sex,
+        items: items,
+        userId: userId
+      };
+
+      console.log('Sending transaction data:', JSON.stringify(transactionData, null, 2));
+
+      createTransactionMutation.mutate(transactionData);
+    } catch (error) {
+      console.error('Error preparing transaction data:', error);
+      toast.error(`Failed to prepare transaction data: ${error.message}`);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
-      <Sidebar/>
+      <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-      
-      {/* Main content */}
+
       <div className="flex flex-col lg:flex-row gap-4">
-        
-        {/* Left side - already built sidebar placeholder */}
         <div className="hidden lg:block w-64">
-          {/* Sidebar is already built according to requirements */}
         </div>
-        
-        {/* Right side - transaction form */}
+
         <div className="flex-1">
-          {/* Patient Information Card */}
           <div className="bg-cream-50 border-2 border-green-800 rounded-lg overflow-hidden mb-4">
             <div className="bg-green-800 text-white p-3">
               <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">Add Transaction</h2>
             </div>
-            
+
             <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -642,26 +651,26 @@ const AddIncome = () => {
                   <input
                     type="text"
                     value={formData.firstName}
-                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Last Name *</label>
                   <input
                     type="text"
                     value={formData.lastName}
-                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-green-800 font-medium mb-1">ID</label>
                   <select
                     value={formData.id}
-                    onChange={(e) => setFormData({...formData, id: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
                     <option>Regular</option>
@@ -669,7 +678,7 @@ const AddIncome = () => {
                     <option>Person with Disability</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Referrer</label>
                   <div className="relative">
@@ -687,8 +696,8 @@ const AddIncome = () => {
                         <option value="">No active referrers available</option>
                       ) : (
                         referrers.map(referrer => (
-                          <option 
-                            key={referrer.referrerId} 
+                          <option
+                            key={referrer.referrerId}
                             value={referrer.referrerId}
                           >
                             Dr. {referrer.lastName || 'Unknown'}
@@ -699,7 +708,7 @@ const AddIncome = () => {
                     </select>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Birth Date</label>
                   <div className="relative" onClick={() => document.getElementById('birth-date-input').showPicker()}>
@@ -712,12 +721,12 @@ const AddIncome = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Sex</label>
                   <select
                     value={formData.sex}
-                    onChange={(e) => setFormData({...formData, sex: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
                     <option>Male</option>
@@ -727,21 +736,18 @@ const AddIncome = () => {
               </div>
             </div>
           </div>
-          
-          {/* Two column layout for Tests */}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Add Test Column */}
             <div className="bg-white border-2 border-green-800 rounded-lg overflow-hidden">
               <div className="bg-green-800 text-white p-3">
                 <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">
-                  Select Test {selectedDepartment ? 
-                    `- ${departments.find(d => d.departmentId === selectedDepartment)?.departmentName || ''}` : 
+                  Select Test {selectedDepartment ?
+                    `- ${departments.find(d => d.departmentId === selectedDepartment)?.departmentName || ''}` :
                     '(All Departments)'}
                 </h2>
               </div>
-              
+
               <div className="p-4">
-                {/* Inside the search box section */}
                 <div className="relative mb-4">
                   <input
                     type="text"
@@ -756,16 +762,16 @@ const AddIncome = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </span>
-                  
-                  <span 
+
+                  <span
                     className="absolute right-8 top-2.5 cursor-pointer"
                     onClick={() => setIsOpen(true)}
                   >
                     <Plus size={20} className="text-gray-500 hover:text-green-800" />
                   </span>
-                  
-                  <span 
-                    className="absolute right-2 top-2.5 cursor-pointer" 
+
+                  <span
+                    className="absolute right-2 top-2.5 cursor-pointer"
                     onClick={toggleDeptFilter}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -773,9 +779,8 @@ const AddIncome = () => {
                     </svg>
                   </span>
 
-                  {/* Department Filter Dropdown */}
                   {showDeptFilter && (
-                    <div 
+                    <div
                       ref={deptFilterRef}
                       className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded shadow-lg z-50 max-h-60 overflow-y-auto"
                     >
@@ -794,8 +799,8 @@ const AddIncome = () => {
                         <div className="p-3 text-center text-gray-500">Loading departments...</div>
                       ) : (
                         departments.map(dept => (
-                          <div 
-                            key={dept.departmentId} 
+                          <div
+                            key={dept.departmentId}
                             className="p-2 hover:bg-green-100 cursor-pointer"
                             onClick={() => handleDepartmentSelect(dept.departmentId)}
                           >
@@ -811,7 +816,7 @@ const AddIncome = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {isLoading ? (
                   <div className="text-center py-4">Loading tests...</div>
                 ) : isError ? (
@@ -825,11 +830,10 @@ const AddIncome = () => {
                         <p className="text-gray-500 col-span-2 text-center py-2">No tests match your search</p>
                       ) : (
                         filteredTests.map((test) => {
-                          // Check if this test is already selected
                           const isSelected = selectedTests.some(t => t.testId === test.testId);
                           return (
-                            <div 
-                              key={test.testId} 
+                            <div
+                              key={test.testId}
                               className={`flex items-center ${isSelected ? 'bg-green-200' : 'bg-green-100'} border border-green-300 rounded-lg p-2 cursor-pointer h-auto`}
                               onClick={() => handleSelectTest(test)}
                             >
@@ -840,27 +844,26 @@ const AddIncome = () => {
                               )}
                               <span className="flex-1 text-green-800">{test.testName}</span>
                               <div className="relative">
-                                <button 
-                                  className="text-green-800" 
+                                <button
+                                  className="text-green-800"
                                   onClick={(e) => toggleDropdown(test.testId, e)}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                   </svg>
                                 </button>
-                                
-                                {/* Only show dropdown if this test's ID matches activeDropdownId */}
+
                                 {activeDropdownId === test.testId && (
-                                  <div 
+                                  <div
                                     ref={dropdownRef}
                                     className="absolute right-0 mt-1 w-48 bg-white rounded shadow-lg z-10 border border-gray-200"
                                   >
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        openModal(test); // Pass the test to openModal
+                                        openModal(test);
                                       }}
-                                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-green-800" 
+                                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-green-800"
                                     >
                                       Payment Details
                                     </button>
@@ -876,13 +879,12 @@ const AddIncome = () => {
                 )}
               </div>
             </div>
-            
-            {/* Tests Conducted Column */}
+
             <div className="bg-white border-2 border-green-800 rounded-lg overflow-hidden">
               <div className="bg-green-800 text-white p-3">
-                <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">Test Registration Summary</h2>
+                <h2 className="text-lg font-semibold pl-12 sm:pl-4 md:pl-0">Test Conducted</h2>
               </div>
-              
+
               <div className="p-4">
                 <div className="overflow-x-auto h-72 overflow-y-auto">
                   <table className="w-full min-w-full">
@@ -906,11 +908,11 @@ const AddIncome = () => {
                           <tr key={index} className="border-b text-sm">
                             <td className="px-2 py-1">{test.name}</td>
                             <td className="px-2 py-1">{test.disc}</td>
-                            <td className="px-2 py-1">{parseFloat(test.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td className="px-2 py-1">{parseFloat(test.cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td className="px-2 py-1">{test.gCash}</td>
                             <td className="px-2 py-1">{test.bal}</td>
                             <td className="px-2 py-1 text-center">
-                              <button 
+                              <button
                                 className="text-green-800"
                                 onClick={() => handleRemoveTest(index)}
                               >
@@ -925,15 +927,15 @@ const AddIncome = () => {
                       {testsTable.length > 0 && (
                         <tr className="bg-green-100 font-bold">
                           <td className="px-2 py-1 text-left text-green-800">TOTAL:</td>
-                          <td className="px-2 py-1 text-left text-green-800"></td>                      
+                          <td className="px-2 py-1 text-left text-green-800"></td>
                           <td className="px-2 py-1 text-left text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-2 py-1 text-left text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-2 py-1 text-left text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-2 py-1 text-left text-green-800"></td>
                         </tr>
@@ -941,19 +943,19 @@ const AddIncome = () => {
                     </tbody>
                   </table>
                 </div>
-                
+
                 <div className="flex flex-wrap gap-2 justify-end mt-4">
-                  <button 
+                  <button
                     className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded"
                     onClick={handleClearAll}
                     disabled={testsTable.length === 0}
                   >
                     Clear
                   </button>
-                  <button 
+                  <button
                     className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-4 rounded"
                     onClick={(e) => {
-                      e.preventDefault(); 
+                      e.preventDefault();
                       openTransactionSummary();
                     }}
                   >
@@ -966,13 +968,12 @@ const AddIncome = () => {
         </div>
       </div>
 
-      {/* Modal - update fields to reflect new functionality */}
       {isModalOpen && selectedModalTest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
             <div className="bg-green-700 text-white p-3 flex justify-between items-center">
               <h2 className="font-medium">Payment Details - {selectedModalTest.testName}</h2>
-              <button 
+              <button
                 onClick={closeModal}
                 className="text-white hover:text-gray-200 focus:outline-none"
                 aria-label="Close"
@@ -1029,9 +1030,8 @@ const AddIncome = () => {
                 </div>
               </div>
 
-              {/* Confirm Button */}
               <div className="flex justify-center mt-4">
-                <button 
+                <button
                   className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800 focus:outline-none"
                   onClick={handleConfirmPayment}
                 >
@@ -1043,15 +1043,12 @@ const AddIncome = () => {
         </div>
       )}
 
-      {/* Separate New Test Modal */}
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          {/* Modal Container */}
           <div className="bg-white rounded-md w-full max-w-md relative">
-            {/* Modal Header */}
             <div className="bg-green-800 text-white p-3 rounded-t-md flex justify-between items-center">
               <h2 className="text-xl font-bold">New Test</h2>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="text-white hover:text-gray-200"
               >
@@ -1059,9 +1056,7 @@ const AddIncome = () => {
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="p-4">
-              {/* Form */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Test Name</label>
@@ -1070,7 +1065,7 @@ const AddIncome = () => {
                     value={testName}
                     onChange={(e) => {
                       setTestName(e.target.value);
-                      setTestForm({...testForm, testName: e.target.value});
+                      setTestForm({ ...testForm, testName: e.target.value });
                     }}
                     className="w-full border border-gray-300 rounded p-2"
                     placeholder="Electrocardiogram"
@@ -1079,51 +1074,49 @@ const AddIncome = () => {
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Date Created</label>
                   <div className="relative">
-                  <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
-                              <input
-                                id="new-test-date"
-                                type="date"
-                                value={testDate}
-                                onChange={(e) => setTestDate(e.target.value)}
-                                className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                              />
-                             
-                            </div>
+                    <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
+                      <input
+                        id="new-test-date"
+                        type="date"
+                        value={testDate}
+                        onChange={(e) => setTestDate(e.target.value)}
+                        className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Test Department</label>
                   <select
-                  value={testDepartment}
-                  onChange={handleDepartmentChange}
-                  className="w-full border border-gray-300 rounded p-2 appearance-none"
-                  required
+                    value={testDepartment}
+                    onChange={handleDepartmentChange}
+                    className="w-full border border-gray-300 rounded p-2 appearance-none"
+                    required
                   >
-                  {Array.isArray(departments) ? departments.map(dept => (
-                  <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                  )) : <option value="">No departments available</option>}
-                  <option value="add-department">+ Add Department</option>
+                    {Array.isArray(departments) ? departments.map(dept => (
+                      <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
+                    )) : <option value="">No departments available</option>}
+                    <option value="add-department">+ Add Department</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Price</label>
                   <input
-                     type="text"
-                     value={price}
-                     onChange={(e) => {
-                       const value = e.target.value;
-                       if (/^\d*\.?\d*$/.test(value) || value === '') {
-                         setPrice(value);
-                       }
-                     }}
-                     className="w-full border border-gray-300 rounded p-2 text-right"
-                     placeholder="0.00"
-                     required
+                    type="text"
+                    value={price}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (/^\d*\.?\d*$/.test(value) || value === '') {
+                        setPrice(value);
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded p-2 text-right"
+                    placeholder="0.00"
+                    required
                   />
                 </div>
               </div>
 
-              {/* Add to Queue Button */}
               <div className="flex justify-end mb-4">
                 <button
                   onClick={handleAddToQueue}
@@ -1133,7 +1126,6 @@ const AddIncome = () => {
                 </button>
               </div>
 
-              {/* Queue Table */}
               <div className="overflow-x-auto mb-4">
                 <table className="w-full border-collapse">
                   <thead>
@@ -1157,7 +1149,6 @@ const AddIncome = () => {
                 </table>
               </div>
 
-              {/* Confirm Button */}
               <div className="flex justify-center">
                 <button
                   onClick={handleConfirm}
@@ -1172,7 +1163,6 @@ const AddIncome = () => {
         </div>
       )}
 
-      {/* Add Referrer Modal */}
       {isReferrerModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
           <div className="bg-white w-full max-w-md rounded shadow-lg">
@@ -1185,7 +1175,6 @@ const AddIncome = () => {
 
             <div className="p-4">
               <div className="grid grid-cols-2 gap-4">
-                {/* First Name */}
                 <div>
                   <label className="block text-green-800 font-medium mb-1">First Name</label>
                   <input
@@ -1198,7 +1187,6 @@ const AddIncome = () => {
                   />
                 </div>
 
-                {/* Birthday */}
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Birthday</label>
                   <div className="relative" onClick={() => document.getElementById('add-new-referrer-date').showPicker()}>
@@ -1213,7 +1201,6 @@ const AddIncome = () => {
                   </div>
                 </div>
 
-                {/* Last Name */}
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Last Name</label>
                   <input
@@ -1226,7 +1213,6 @@ const AddIncome = () => {
                   />
                 </div>
 
-                {/* Sex */}
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Sex</label>
                   <div className="relative">
@@ -1247,7 +1233,6 @@ const AddIncome = () => {
                   </div>
                 </div>
 
-                {/* Clinic Name */}
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
                   <input
@@ -1259,7 +1244,6 @@ const AddIncome = () => {
                   />
                 </div>
 
-                {/* Contact No. */}
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Contact No.</label>
                   <input
@@ -1271,7 +1255,6 @@ const AddIncome = () => {
                   />
                 </div>
 
-                {/* Clinic Address - Full Width */}
                 <div className="col-span-2">
                   <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
                   <input
@@ -1284,10 +1267,8 @@ const AddIncome = () => {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="border-t border-gray-300 my-4"></div>
 
-              {/* Confirm Button */}
               <div className="flex justify-center">
                 <button
                   onClick={handleAddNewReferrer}
@@ -1302,53 +1283,44 @@ const AddIncome = () => {
         </div>
       )}
 
-      {/* Transaction Summary Modal */}
       {isTransactionSummaryOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          {/* Modal Content - Adjusted max height and added custom scrollbar styling */}
           <div className="bg-white rounded-md w-full max-w-3xl max-h-[85vh] flex flex-col">
-            {/* Modal Header - Make sticky */}
             <div className="bg-green-800 text-white p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
               <h2 className="text-xl font-bold">Transaction Summary</h2>
-              <button 
-                onClick={closeTransactionSummary} 
+              <button
+                onClick={closeTransactionSummary}
                 className="text-white hover:text-gray-200 focus:outline-none"
               >
                 <X size={24} />
               </button>
             </div>
-            
-            {/* Scrollable Content Area */}
-            <div className="overflow-y-auto flex-1 scrollbar-hide" 
-                 style={{ 
-                   scrollbarWidth: 'none', /* Firefox */
-                   msOverflowStyle: 'none',  /* IE and Edge */
-                   WebkitOverflowScrolling: 'touch'
-                 }}>
-              {/* Patient Info Section */}
+
+            <div className="overflow-y-auto flex-1 scrollbar-hide"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}>
               <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
                 <div className="p-3 md:border-r border-gray-200">
                   <div className="grid grid-cols-3 gap-1">
                     <div className="font-bold text-green-800">First Name:</div>
                     <div className="col-span-2 text-green-700">{formData.firstName || 'N/A'}</div>
-                    
+
                     <div className="font-bold text-green-800">Last Name:</div>
                     <div className="col-span-2 text-green-700">{formData.lastName || 'N/A'}</div>
-                    
+
                     <div className="font-bold text-green-800">Referrer:</div>
                     <div className="col-span-2 text-green-700">
                       {(() => {
-                        // Get the selected referrer ID
                         const selectedReferrerId = formData.referrer;
-                        
+
                         if (!selectedReferrerId) return 'N/A';
-                        
-                        // Use loose equality (==) instead of strict equality (===) to handle type mismatches
-                        // This helps when IDs might be stored as strings in some places and numbers in others
+
                         const selectedReferrer = referrers.find(r => String(r.referrerId) === String(selectedReferrerId));
-                        
+
                         if (selectedReferrer) {
-                          // Format doctor name, ensuring both first and last name are included when available
                           return `Dr. ${selectedReferrer.lastName || ''} ${selectedReferrer.firstName || ''}`.trim();
                         } else {
                           console.log('Referrer not found:', selectedReferrerId, 'Available referrers:', referrers);
@@ -1358,24 +1330,23 @@ const AddIncome = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="p-3">
                   <div className="grid grid-cols-3 gap-1">
                     <div className="font-bold text-green-800">Birth Date:</div>
                     <div className="col-span-2 text-green-700">
                       {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : 'N/A'}
                     </div>
-                    
+
                     <div className="font-bold text-green-800">Sex:</div>
                     <div className="col-span-2 text-green-700">{formData.sex}</div>
-                    
+
                     <div className="font-bold text-green-800">ID:</div>
                     <div className="col-span-2 text-green-700">{formData.id}</div>
                   </div>
                 </div>
               </div>
-              
-              {/* Transactions Table - With sticky header */}
+
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse">
                   <thead className="bg-gray-100 sticky top-0 z-10">
@@ -1392,25 +1363,24 @@ const AddIncome = () => {
                       <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         <td className="p-2 border-b border-gray-200">{test.name}</td>
                         <td className="p-2 border-b border-gray-200">{test.disc}</td>
-                        <td className="p-2 border-b border-gray-200">{parseFloat(test.cash).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td className="p-2 border-b border-gray-200">{parseFloat(test.cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td className="p-2 border-b border-gray-200">{test.gCash}</td>
                         <td className="p-2 border-b border-gray-200">{test.bal}</td>
                       </tr>
                     ))}
-                    
-                    {/* Add totals row */}
+
                     {testsTable.length > 0 && (
                       <tr className="bg-green-100 font-bold">
                         <td className="p-2 border-b border-gray-200 text-green-800">TOTAL</td>
                         <td className="p-2 border-b border-gray-200"></td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     )}
@@ -1418,18 +1388,19 @@ const AddIncome = () => {
                 </table>
               </div>
             </div>
-            
-            {/* Footer Actions - Make sticky at bottom */}
+
             <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              <button 
+              <button
                 className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
               >
                 Export
               </button>
-              <button 
+              <button
                 className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+                onClick={handleConfirmTransaction}
+                disabled={createTransactionMutation.isPending}
               >
-                Confirm
+                {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
               </button>
             </div>
           </div>

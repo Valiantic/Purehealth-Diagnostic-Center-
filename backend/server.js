@@ -10,6 +10,8 @@ const departmentRoutes = require('./routes/departmentRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const testRoutes = require('./routes/testRoutes');
 const referrerRoutes = require('./routes/referrerRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+const departmentRevenueRoutes = require('./routes/departmentRevenueRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +33,8 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/referrers', referrerRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/department-revenue', departmentRevenueRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
