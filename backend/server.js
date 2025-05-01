@@ -10,6 +10,7 @@ const departmentRoutes = require('./routes/departmentRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const testRoutes = require('./routes/testRoutes');
 const referrerRoutes = require('./routes/referrerRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +32,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/referrers', referrerRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -47,13 +49,44 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Sync database and start server
-sequelize.sync({ alter: process.env.NODE_ENV === 'development' })
-  .then(() => {
+// Improved database initialization function
+async function initializeDatabase() {
+  try {
+    // First disable foreign key checks
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    console.log('Foreign key checks disabled');
+    
+    // Sync with force:false and alter:true for development
+    const syncOptions = { 
+      alter: process.env.NODE_ENV === 'development',
+      force: false
+    };
+    
+    // Sync all models at once
+    await sequelize.sync(syncOptions);
+    
+    // Re-enable foreign key checks
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    console.log('Foreign key checks re-enabled');
+    
+    return true;
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    throw error;
+  }
+}
+
+// Start the server with proper error handling
+async function startServer() {
+  try {
+    await initializeDatabase();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-  })
-  .catch(err => {
-    console.error('Unable to connect to the database:', err);
-  });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+startServer();

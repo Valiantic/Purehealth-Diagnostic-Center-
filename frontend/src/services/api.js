@@ -156,3 +156,38 @@ export const referrerAPI = {
     }
   }
 };
+
+// Transaction API
+export const transactionAPI = {
+  getAllTransactions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/transactions?${queryString}`);
+  },
+  getTransactionById: (id) => {
+    return apiClient.get(`/transactions/${id}`);
+  },
+  createTransaction: (transactionData, userId) => {
+    // Add request tracking for debugging
+    console.log('API creating transaction with:', { ...transactionData, userId });
+    
+    // Make sure userId is included in both places needed
+    return apiClient.post('/transactions', {
+      ...transactionData,
+      userId
+    }).catch(error => {
+      // Enhanced error logging
+      console.error('Transaction API error:', error.response?.data || error.message);
+      throw error;
+    });
+  },
+  updateTransactionStatus: (id, status, userId) => {
+    return apiClient.patch(`/transactions/${id}`, {
+      status,
+      currentUserId: userId
+    });
+  },
+  searchTransactions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/transactions/search?${queryString}`);
+  }
+};

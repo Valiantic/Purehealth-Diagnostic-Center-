@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { testAPI, departmentAPI, referrerAPI } from '../services/api'
+import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
 import { ToastContainer, toast } from 'react-toastify'
 import { X, Plus} from 'lucide-react';
 import 'react-toastify/dist/ReactToastify.css'
@@ -158,6 +158,26 @@ const AddIncome = () => {
     },
     staleTime: 10000,
     refetchOnWindowFocus: true,
+  });
+
+  // Get all transactions with pagination
+  const {
+    data: transactionsData = { data: { count: 0, transactions: [] } },
+    isLoading: isLoadingTransactions,
+  } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: async () => {
+      try {
+        const response = await transactionAPI.getAllTransactions();
+        return response || { data: { count: 0, transactions: [] } };
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        toast.error('Failed to load transactions');
+        return { data: { count: 0, transactions: [] } };
+      }
+    },
+    retry: 1,
+    enabled: !!user
   });
 
   // Filter data to only show active items
@@ -612,6 +632,108 @@ const AddIncome = () => {
   // New handler for closing transaction summary
   const closeTransactionSummary = () => {
     setIsTransactionSummaryOpen(false);
+  };
+
+  // Add a new mutation for creating transactions
+  const createTransactionMutation = useMutation({
+    mutationFn: (transactionData) => 
+      transactionAPI.createTransaction(transactionData, user?.userId || user?.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success('Transaction saved successfully');
+      closeTransactionSummary();
+      // Reset form and selected tests after successful transaction
+      handleClearAll();
+      setFormData({
+        firstName: '',
+        lastName: '',
+        birthDate: '',
+        id: 'Regular',
+        referrer: '',
+        sex: 'Male'
+      });
+    },
+    onError: (error) => {
+      console.error('Transaction error:', error);
+      toast.error(error?.response?.data?.message || 'Failed to save transaction');
+    }
+  });
+
+  // Handle transaction confirmation
+  const handleConfirmTransaction = () => {
+    // Validate if there are any tests
+    if (testsTable.length === 0) {
+      toast.error("No tests selected for this transaction");
+      return;
+    }
+    
+    // Get the current user ID
+    const userId = user?.userId || user?.id;
+    if (!userId) {
+      toast.error('User ID is missing. Please log in again.');
+      return;
+    }
+
+    try {
+      // Create transaction items from the test table
+      const items = testsTable.map((test, index) => {
+        const originalTest = selectedTests[index];
+        
+        // Validate required fields
+        if (!originalTest?.testId) {
+          throw new Error(`Test ID is missing for ${test.name}`);
+        }
+        if (!originalTest?.departmentId) {
+          throw new Error(`Department ID is missing for ${test.name}`);
+        }
+        
+        // Extract discount percentage
+        const discStr = test.disc.replace('%', '');
+        const discountPercentage = parseInt(discStr) || 0;
+        
+        // Format values as numbers
+        const originalPrice = parseFloat(originalTest.price);
+        const cashAmount = parseFloat(test.cash) || 0;
+        const gCashAmount = parseFloat(test.gCash) || 0;
+        const balAmount = parseFloat(test.bal) || 0;
+        
+        // Calculate discounted price as sum of all payment methods
+        const discountedPrice = cashAmount + gCashAmount + balAmount;
+        
+        return {
+          testId: originalTest.testId,
+          testName: test.name,
+          departmentId: originalTest.departmentId,
+          originalPrice: originalPrice,
+          discountPercentage: discountPercentage,
+          discountedPrice: discountedPrice,
+          cashAmount: cashAmount,
+          gCashAmount: gCashAmount,
+          balanceAmount: balAmount,
+        };
+      });
+      
+      // Create transaction data
+      const transactionData = {
+        mcNo: `MC-${Date.now()}`, // Generate a simple unique MC number
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        idType: formData.id,
+        referrerId: formData.referrer || null, // Ensure null if empty
+        birthDate: formData.birthDate || null, // Ensure null if empty
+        sex: formData.sex,
+        items: items,
+        userId: userId
+      };
+      
+      console.log('Sending transaction data:', JSON.stringify(transactionData, null, 2));
+      
+      // Execute the mutation
+      createTransactionMutation.mutate(transactionData);
+    } catch (error) {
+      console.error('Error preparing transaction data:', error);
+      toast.error(`Failed to prepare transaction data: ${error.message}`);
+    }
   };
 
   return (
@@ -1320,11 +1442,11 @@ const AddIncome = () => {
             
             {/* Scrollable Content Area */}
             <div className="overflow-y-auto flex-1 scrollbar-hide" 
-                 style={{ 
-                   scrollbarWidth: 'none', /* Firefox */
-                   msOverflowStyle: 'none',  /* IE and Edge */
-                   WebkitOverflowScrolling: 'touch'
-                 }}>
+                   style={{ 
+                     scrollbarWidth: 'none', /* Firefox */
+                     msOverflowStyle: 'none',  /* IE and Edge */
+                     WebkitOverflowScrolling: 'touch'
+                   }}>
               {/* Patient Info Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
                 <div className="p-3 md:border-r border-gray-200">
@@ -1423,13 +1545,16 @@ const AddIncome = () => {
             <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
               <button 
                 className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+                onClick={() => {/* Export functionality can be added here */}}
               >
                 Export
               </button>
               <button 
                 className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+                onClick={handleConfirmTransaction}
+                disabled={createTransactionMutation.isPending}
               >
-                Confirm
+                {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
               </button>
             </div>
           </div>
