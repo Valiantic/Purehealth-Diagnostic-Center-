@@ -120,15 +120,41 @@ exports.updateTest = async (req, res) => {
       dateCreated: test.dateCreated
     };
     
-    const changingDetails = 
-      test.testName !== testName || 
-      test.departmentId !== departmentId || 
-      parseFloat(test.price) !== parseFloat(price) ||
-      (dateCreated && new Date(test.dateCreated).toISOString() !== new Date(dateCreated).toISOString());
-      
-    const changingStatus = status && test.status !== status;
+    // Get new department info if department is changing
+    let newDepartment = null;
+    let newStatus = status;
+    let statusChangedByDepartment = false;
+    let oldDepartmentName = test.Department?.departmentName || 'Unknown Department';
+    let newDepartmentName = '';
     
-    if (test.departmentId !== departmentId) {
+    const changingDepartment = test.departmentId !== departmentId;
+    
+    if (changingDepartment) {
+      newDepartment = await Department.findByPk(departmentId);
+      
+      if (!newDepartment) {
+        return res.status(404).json({ message: 'New department not found' });
+      }
+      
+      newDepartmentName = newDepartment.departmentName;
+      
+      // Override status to match department status
+      if (newDepartment.status !== test.status) {
+        newStatus = newDepartment.status;
+        statusChangedByDepartment = true;
+      }
+    }
+    
+    const changingNameOrPrice = 
+      test.testName !== testName || 
+      parseFloat(test.price) !== parseFloat(price);
+      
+    const changingDate = dateCreated && 
+      new Date(test.dateCreated).toISOString() !== new Date(dateCreated).toISOString();
+    
+    const changingStatus = (status && test.status !== status) || statusChangedByDepartment;
+    
+    if (changingDepartment) {
       if (test.status === 'active') {
         const oldDepartment = await Department.findByPk(test.departmentId);
         if (oldDepartment) {
@@ -136,18 +162,16 @@ exports.updateTest = async (req, res) => {
         }
       }
       
-      if (status === 'active' || (!status && test.status === 'active')) {
-        const newDepartment = await Department.findByPk(departmentId);
+      if (newStatus === 'active') {
         if (newDepartment) {
           await newDepartment.increment('testQuantity', { by: 1 });
         }
       }
     } 
-
     else if (changingStatus) {
       const department = await Department.findByPk(test.departmentId);
       if (department) {
-        if (status === 'active') {
+        if (newStatus === 'active') {
           await department.increment('testQuantity', { by: 1 });
         } else {
           await department.decrement('testQuantity', { by: 1 });
@@ -160,15 +184,37 @@ exports.updateTest = async (req, res) => {
       departmentId,
       price,
       dateCreated: dateCreated || test.dateCreated,
-      status: status || test.status
+      status: newStatus || test.status
     });
     
     const updatedTest = await Test.findByPk(id, {
       include: [{ model: Department }]
     });
     
-    // SEPARATE LOGGING FOR DETAILS AND STATUS CHANGES
-    if (changingDetails) {
+    // Log department transfer separately, regardless of other changes
+    if (changingDepartment) {
+      await logActivity({
+        userId: currentUserId,
+        action: 'TRANSFER_TEST',
+        resourceType: 'TEST',
+        resourceId: test.testId,
+        details: `Test "${testName}" has been moved to ${newDepartmentName} Department`,
+        ipAddress: req.ip || 'unknown',
+        metadata: {
+          oldDepartment: {
+            id: test.departmentId,
+            name: oldDepartmentName
+          },
+          newDepartment: {
+            id: departmentId,
+            name: newDepartmentName
+          }
+        }
+      });
+    }
+    
+    // Only log details changes when name/price/date changed (not for department changes)
+    if ((changingNameOrPrice || changingDate) && !changingDepartment) {
       await logActivity({
         userId: currentUserId,
         action: 'UPDATE_TEST_DETAILS',
@@ -179,15 +225,11 @@ exports.updateTest = async (req, res) => {
         metadata: {
           oldValues: {
             testName: oldValues.testName,
-            departmentId: oldValues.departmentId,
-            departmentName: test.Department?.departmentName,
             price: oldValues.price,
             dateCreated: oldValues.dateCreated ? new Date(oldValues.dateCreated).toISOString() : null
           },
           newValues: {
             testName,
-            departmentId,
-            departmentName: updatedTest.Department?.departmentName,
             price,
             dateCreated: dateCreated ? new Date(dateCreated).toISOString() : new Date(oldValues.dateCreated).toISOString()
           }
@@ -198,14 +240,15 @@ exports.updateTest = async (req, res) => {
     if (changingStatus) {
       await logActivity({
         userId: currentUserId,
-        action: status === 'active' ? 'ACTIVATE_TEST' : 'DEACTIVATE_TEST',
+        action: newStatus === 'active' ? 'ACTIVATE_TEST' : 'DEACTIVATE_TEST',
         resourceType: 'TEST',
         resourceId: test.testId,
-        details: `Test ${status === 'active' ? 'activated' : 'deactivated'}: ${testName}`,
+        details: `${statusChangedByDepartment ? 'Automatically ' : ''}${newStatus === 'active' ? 'Unarchived' : 'Archived'} test: ${testName}${statusChangedByDepartment ? ' due to department status' : ''}`,
         ipAddress: req.ip || 'unknown',
         metadata: {
           oldStatus: oldValues.status,
-          newStatus: status
+          newStatus: newStatus,
+          automaticChange: statusChangedByDepartment
         }
       });
     }

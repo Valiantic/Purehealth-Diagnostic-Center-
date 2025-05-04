@@ -143,7 +143,7 @@ exports.updateReferrer = async (req, res) => {
 
         // Log status change if status changed
         if (statusChanged) {
-            const statusText = status === 'active' ? 'activated' : 'deactivated';
+            const statusText = status === 'active' ? 'Unarchived' : 'Archived';
             const explicitActionType = status === 'active' ? 'ACTIVATE_REFERRER' : 'DEACTIVATE_REFERRER';
             
             await logActivity({
@@ -151,7 +151,7 @@ exports.updateReferrer = async (req, res) => {
                 action: explicitActionType,
                 resourceType: 'REFERRER',
                 resourceId: referrer.referrerId,
-                details: `Referrer ${statusText}: ${firstName} ${lastName}`,
+                details: `${statusText} referrer: ${firstName} ${lastName}`,
                 ipAddress: req.ip,
                 metadata: {
                     oldStatus: oldValues.status,
@@ -236,13 +236,13 @@ exports.updateReferrerStatus = async (req, res) => {
       await referrer.update({ status });
 
       // Log activity with status change details
-      const statusText = status === 'active' ? 'activated' : 'deactivated';
+      const statusText = status === 'active' ? 'Unarchived' : 'Archived';
       await logActivity({
         userId: currentUserId,
         action: status === 'active' ? 'ACTIVATE_REFERRER' : 'DEACTIVATE_REFERRER',
         resourceType: 'REFERRER',
         resourceId: referrer.referrerId,
-        details: `Referrer ${statusText}: ${referrer.firstName} ${referrer.lastName}`,
+        details: `${statusText} referrer: ${referrer.firstName} ${referrer.lastName}`,
         ipAddress: req.ip,
         metadata: {
           oldStatus,

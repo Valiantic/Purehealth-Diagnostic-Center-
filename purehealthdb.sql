@@ -71,3 +71,72 @@ CREATE TABLE `tests` (
   `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`departmentId`) REFERENCES `Departments`(`departmentId`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
+
+-- Create Transactions table
+CREATE TABLE "Transactions" (
+  "transactionId" VARCHAR(5) PRIMARY KEY,
+  "mcNo" VARCHAR(5) NOT NULL CHECK ("mcNo" ~ '^[0-9]{5}$'),
+  "firstName" VARCHAR(255) NOT NULL,
+  "lastName" VARCHAR(255) NOT NULL,
+  "idType" VARCHAR(255) NOT NULL DEFAULT 'Regular',
+  "referrerId" UUID,
+  "birthDate" DATE,
+  "sex" VARCHAR(255) NOT NULL DEFAULT 'Male',
+  "transactionDate" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  "totalAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "totalDiscountAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "totalCashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "totalGCashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "totalBalanceAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "status" VARCHAR(255) NOT NULL DEFAULT 'active',
+  "userId" UUID NOT NULL,
+  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes
+CREATE INDEX "idx_referrer" ON "Transactions" ("referrerId");
+CREATE INDEX "idx_user" ON "Transactions" ("userId");
+
+
+-- Create TestDetails table
+CREATE TABLE "TestDetails" (
+  "testDetailId" VARCHAR(5) PRIMARY KEY,
+  "transactionId" VARCHAR(5) NOT NULL,
+  "testId" UUID NOT NULL,
+  "testName" VARCHAR(255) NOT NULL,
+  "departmentId" UUID NOT NULL,
+  "originalPrice" DECIMAL(10, 2) NOT NULL,
+  "discountPercentage" INTEGER NOT NULL DEFAULT 0,
+  "discountedPrice" DECIMAL(10, 2) NOT NULL,
+  "cashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "gCashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "balanceAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  "status" VARCHAR(255) NOT NULL DEFAULT 'active',
+  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes
+CREATE INDEX "idx_transaction" ON "TestDetails" ("transactionId");
+CREATE INDEX "idx_test" ON "TestDetails" ("testId");
+CREATE INDEX "idx_department" ON "TestDetails" ("departmentId");
+
+
+-- Create DepartmentRevenues table
+CREATE TABLE "DepartmentRevenues" (
+  "revenueId" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "departmentId" UUID NOT NULL,
+  "transactionId" VARCHAR(5) NOT NULL,
+  "testDetailId" VARCHAR(5) NOT NULL,
+  "amount" DECIMAL(10, 2) NOT NULL,
+  "revenueDate" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better query performance
+CREATE INDEX "idx_dept_revenue" ON "DepartmentRevenues" ("departmentId");
+CREATE INDEX "idx_trans_revenue" ON "DepartmentRevenues" ("transactionId");
+CREATE INDEX "idx_testdetail_revenue" ON "DepartmentRevenues" ("testDetailId");
+CREATE INDEX "idx_revenue_date" ON "DepartmentRevenues" ("revenueDate");

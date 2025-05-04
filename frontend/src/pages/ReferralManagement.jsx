@@ -151,6 +151,16 @@ const ReferralManagement = () => {
       return;
     }
     
+    if (!contactNo.trim()) {
+      toast.error('Contact No. is required');
+      return;
+    }
+    
+    if (!clinicAddress.trim()) {
+      toast.error('Clinic Address is required');
+      return;
+    }
+    
     // Format birthday as YYYY-MM-DD for API
     const formattedBirthday = birthday ? birthday : null;
     
@@ -199,6 +209,16 @@ const ReferralManagement = () => {
     
     if (!lastName.trim()) {
       toast.error('Last name is required');
+      return;
+    }
+    
+    if (!contactNo.trim()) {
+      toast.error('Contact No. is required');
+      return;
+    }
+    
+    if (!clinicAddress.trim()) {
+      toast.error('Clinic Address is required');
       return;
     }
     
@@ -495,7 +515,7 @@ const ReferralManagement = () => {
                           <span className={`px-2 py-1 rounded text-xs ${
                             referrer.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
-                            {referrer.status?.toLowerCase() === 'active' ? 'Active' : 'Deactivated'}
+                            {referrer.status?.toLowerCase() === 'active' ? 'Unarchived' : 'Archived'}
                           </span>
                         </td>
                         <td className="p-1 border-r border-green-200 text-center relative">
@@ -712,6 +732,7 @@ const ReferralManagement = () => {
                           value={contactNo}
                           onChange={(e) => setContactNo(e.target.value)}
                           className="w-full border border-gray-300 rounded p-2"
+                          required
                         />
                       </div>
 
@@ -723,6 +744,7 @@ const ReferralManagement = () => {
                           value={clinicAddress}
                           onChange={(e) => setClinicAddress(e.target.value)}
                           className="w-full border border-gray-300 rounded p-2"
+                          required
                         />
                       </div>
                     </div>
@@ -857,8 +879,8 @@ const ReferralManagement = () => {
                             onChange={handleStatusChange}
                             className="w-full border border-gray-300 rounded p-2 appearance-none"
                           >
-                            <option value="active">Active</option>
-                            <option value="inactive">Deactivated</option>
+                            <option value="active">Unarchived</option>
+                            <option value="inactive">Archived</option>
                           </select>
                           <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                             <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
