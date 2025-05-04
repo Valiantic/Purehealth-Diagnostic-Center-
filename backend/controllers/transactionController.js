@@ -287,10 +287,36 @@ exports.updateTransactionStatus = async (req, res) => {
       }
     );
 
-    // Log activity
+    // For cancellations, handle department revenue records
+    if (status === 'cancelled') {
+      // Get all department revenue records for this transaction
+      const revenueRecords = await DepartmentRevenue.findAll({
+        where: { transactionId: id },
+        transaction: t
+      });
+
+      // Update each revenue record to reflect cancellation
+      await DepartmentRevenue.update(
+        { status: 'cancelled' },
+        {
+          where: { transactionId: id },
+          transaction: t
+        }
+      );
+    }
+
+    // Log activity with specific refund message for cancelled status
+    let activityDetails;
+    if (status === 'cancelled') {
+      const patientName = `${transaction.firstName} ${transaction.lastName}`;
+      activityDetails = `Refunded transaction for ${patientName}`;
+    } else {
+      activityDetails = `Updated transaction status to ${status}`;
+    }
+
     await ActivityLog.create({
       action: 'UPDATE',
-      details: `Updated transaction status to ${status}`,
+      details: activityDetails,
       resourceType: 'TRANSACTION',
       entityId: id,
       userId: currentUserId
@@ -309,6 +335,58 @@ exports.updateTransactionStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update transaction status',
+      error: error.message
+    });
+  }
+};
+
+// Update transaction details
+exports.updateTransaction = async (req, res) => {
+  const t = await sequelize.transaction();
+  
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, referrerId } = req.body;
+    
+    const transaction = await Transaction.findByPk(id);
+    
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    // Update transaction with provided values
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (referrerId !== undefined) updateData.referrerId = referrerId;
+
+    await transaction.update(updateData, { transaction: t });
+
+    // Log activity
+    await ActivityLog.create({
+      action: 'UPDATE',
+      details: `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`,
+      resourceType: 'TRANSACTION',
+      entityId: id,
+      userId: req.body.userId || transaction.userId
+    }, { transaction: t });
+
+    await t.commit();
+
+    res.json({
+      success: true,
+      message: 'Transaction updated successfully',
+      data: transaction
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error updating transaction:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update transaction',
       error: error.message
     });
   }
@@ -335,27 +413,7 @@ exports.searchTransactions = async (req, res) => {
       };
     }
 
-    const { count, rows } = await Transaction.findAndCountAll({
-      where: whereClause,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['transactionDate', 'DESC']],
-      include: [
-        {
-          model: TestDetails
-        }
-      ]
-    });
-
-    res.json({
-      success: true,
-      data: {
-        count,
-        transactions: rows,
-        totalPages: Math.ceil(count / limit),
-        currentPage: parseInt(page)
-      }
-    });
+    const { count, rows } = await Transaction.findAnd
   } catch (error) {
     console.error('Error searching transactions:', error);
     res.status(500).json({
@@ -363,5 +421,4 @@ exports.searchTransactions = async (req, res) => {
       message: 'Failed to search transactions',
       error: error.message
     });
-  }
-};
+  }}

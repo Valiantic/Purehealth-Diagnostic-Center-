@@ -160,8 +160,13 @@ export const referrerAPI = {
 // Transaction API
 export const transactionAPI = {
   getAllTransactions: (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
-    return apiClient.get(`/transactions?${queryString}`);
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.status) queryParams.append('status', params.status); // Only include if explicitly set
+    if (params.date) queryParams.append('date', params.date);
+    
+    return apiClient.get(`/transactions?${queryParams}`);
   },
   getTransactionById: (id) => {
     return apiClient.get(`/transactions/${id}`);
@@ -176,8 +181,9 @@ export const transactionAPI = {
       throw error;
     });
   },
-  updateTransactionStatus: (id, status, userId) => {
-    return apiClient.patch(`/transactions/${id}`, {
+  updateTransactionStatus: (transactionId, status, userId) => {
+    // Fix: Remove '/status' from the endpoint path to match backend route
+    return apiClient.patch(`/transactions/${transactionId}`, {
       status,
       currentUserId: userId
     });
@@ -185,18 +191,44 @@ export const transactionAPI = {
   searchTransactions: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     return apiClient.get(`/transactions/search?${queryString}`);
+  },
+  updateTransaction: async (transactionId, data) => {
+    try {
+      const response = await apiClient.put(`/transactions/${transactionId}`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
-// Department Revenue API
+// Extend the revenue API to handle cancelled transactions
 export const revenueAPI = {
   getRevenueByDepartment: (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
+    // Add a default flag to exclude cancelled transactions
+    const updatedParams = { 
+      ...params, 
+      excludeCancelled: params.excludeCancelled !== false, // Default to true if not specified
+    };
+    
+    const queryString = new URLSearchParams(updatedParams).toString();
     return apiClient.get(`/department-revenue/by-department?${queryString}`);
   },
+  
   getRevenueTrend: (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
+    // Add a default flag to exclude cancelled transactions
+    const updatedParams = { 
+      ...params, 
+      excludeCancelled: params.excludeCancelled !== false, // Default to true if not specified
+    };
+    
+    const queryString = new URLSearchParams(updatedParams).toString();
     return apiClient.get(`/department-revenue/trend?${queryString}`);
+  },
+  
+  getRefundsByDepartment: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiClient.get(`/department-revenue/refunds?${queryString}`);
   }
 };
 

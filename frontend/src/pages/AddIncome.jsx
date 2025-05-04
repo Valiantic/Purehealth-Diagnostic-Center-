@@ -93,7 +93,7 @@ const AddIncome = () => {
     lastName: '',
     birthDate: '',
     id: 'Regular',
-    referrer: '',
+    referrer: 'Out Patient',
     sex: 'Male'
   });
 
@@ -299,7 +299,7 @@ const AddIncome = () => {
     } else {
       setGCashPaid(gCashValue);
 
-      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashPaid));
+      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashValue));
       setBalance(newBalance);
       setPrice(newBalance);
     }
@@ -620,13 +620,30 @@ const AddIncome = () => {
         userId: userId
       };
 
-      console.log('Sending transaction data:', JSON.stringify(transactionData, null, 2));
-
       createTransactionMutation.mutate(transactionData);
     } catch (error) {
       console.error('Error preparing transaction data:', error);
       toast.error(`Failed to prepare transaction data: ${error.message}`);
     }
+  };
+
+  // Helper function to calculate age from birthdate
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    
+    const today = new Date();
+    const birthDate = new Date(birthdate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age <= 0) {
+      return "N/A";
+    }
+    
+    return age >= 0 ? age : null;
   };
 
   return (
@@ -687,7 +704,7 @@ const AddIncome = () => {
                       onChange={handleReferrerChange}
                       className="w-full border-2 border-green-800 rounded p-2"
                     >
-                      <option value="">Select a referrer</option>
+                      <option value="">Out Patient</option>
                       {isLoadingReferrers ? (
                         <option value="">Loading referrers...</option>
                       ) : isErrorReferrers ? (
@@ -719,6 +736,11 @@ const AddIncome = () => {
                       onChange={handleDateChange}
                       className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
                     />
+                    {formData.birthDate && (
+                      <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-700 text-sm">
+                        Age: {calculateAge(formData.birthDate)}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -798,20 +820,22 @@ const AddIncome = () => {
                       {isLoadingDepts ? (
                         <div className="p-3 text-center text-gray-500">Loading departments...</div>
                       ) : (
-                        departments.map(dept => (
-                          <div
-                            key={dept.departmentId}
-                            className="p-2 hover:bg-green-100 cursor-pointer"
-                            onClick={() => handleDepartmentSelect(dept.departmentId)}
-                          >
-                            <div className="flex items-center">
-                              <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-green-800 mr-2 ${selectedDepartment === dept.departmentId ? 'bg-green-800' : ''}`}>
-                                {selectedDepartment === dept.departmentId && <span className="text-white text-xs">✓</span>}
-                              </span>
-                              <span>{dept.departmentName}</span>
+                        departments
+                          .filter(dept => dept.status === 'active') 
+                          .map(dept => (
+                            <div
+                              key={dept.departmentId}
+                              className="p-2 hover:bg-green-100 cursor-pointer"
+                              onClick={() => handleDepartmentSelect(dept.departmentId)}
+                            >
+                              <div className="flex items-center">
+                                <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-green-800 mr-2 ${selectedDepartment === dept.departmentId ? 'bg-green-800' : ''}`}>
+                                  {selectedDepartment === dept.departmentId && <span className="text-white text-xs">✓</span>}
+                                </span>
+                                <span>{dept.departmentName}</span>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))
                       )}
                     </div>
                   )}
@@ -1006,7 +1030,7 @@ const AddIncome = () => {
                   </div>
                 </div>
               </div>
-
+              
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-green-700 mb-1">Cash Paid</label>
@@ -1029,7 +1053,7 @@ const AddIncome = () => {
                   />
                 </div>
               </div>
-
+              
               <div className="flex justify-center mt-4">
                 <button
                   className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800 focus:outline-none"
@@ -1073,16 +1097,14 @@ const AddIncome = () => {
                 </div>
                 <div>
                   <label className="block text-green-800 font-medium mb-1">Date Created</label>
-                  <div className="relative">
-                    <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
-                      <input
-                        id="new-test-date"
-                        type="date"
-                        value={testDate}
-                        onChange={(e) => setTestDate(e.target.value)}
-                        className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                      />
-                    </div>
+                  <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
+                    <input
+                      id="new-test-date"
+                      type="date"
+                      value={testDate}
+                      onChange={(e) => setTestDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                    />
                   </div>
                 </div>
                 <div>
@@ -1093,9 +1115,11 @@ const AddIncome = () => {
                     className="w-full border border-gray-300 rounded p-2 appearance-none"
                     required
                   >
-                    {Array.isArray(departments) ? departments.map(dept => (
-                      <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                    )) : <option value="">No departments available</option>}
+                    {Array.isArray(departments) ? departments
+                      .filter(dept => dept.status === 'active')
+                      .map(dept => (
+                        <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
+                      )) : <option value="">No departments available</option>}
                     <option value="add-department">+ Add Department</option>
                   </select>
                 </div>
@@ -1316,15 +1340,14 @@ const AddIncome = () => {
                       {(() => {
                         const selectedReferrerId = formData.referrer;
 
-                        if (!selectedReferrerId) return 'N/A';
+                        if (!selectedReferrerId) return 'Out Patient';
 
                         const selectedReferrer = referrers.find(r => String(r.referrerId) === String(selectedReferrerId));
 
                         if (selectedReferrer) {
                           return `Dr. ${selectedReferrer.lastName || ''} ${selectedReferrer.firstName || ''}`.trim();
                         } else {
-                          console.log('Referrer not found:', selectedReferrerId, 'Available referrers:', referrers);
-                          return 'N/A';
+                          return 'Out Patient';
                         }
                       })()}
                     </div>
@@ -1335,7 +1358,14 @@ const AddIncome = () => {
                   <div className="grid grid-cols-3 gap-1">
                     <div className="font-bold text-green-800">Birth Date:</div>
                     <div className="col-span-2 text-green-700">
-                      {formData.birthDate ? new Date(formData.birthDate).toLocaleDateString() : 'N/A'}
+                      {formData.birthDate ? (
+                        <>
+                          {new Date(formData.birthDate).toLocaleDateString()}
+                          <span className="ml-1 text-gray-700">
+                            (Age: {calculateAge(formData.birthDate)})
+                          </span>
+                        </>
+                      ) : 'N/A'}
                     </div>
 
                     <div className="font-bold text-green-800">Sex:</div>

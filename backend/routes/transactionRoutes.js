@@ -17,4 +17,7 @@ router.get('/:id', transactionController.getTransactionById);
 // Update transaction status
 router.patch('/:id', transactionController.updateTransactionStatus);
 
+// Update transaction
+router.put('/:id', transactionController.updateTransaction);
+
 module.exports = router;

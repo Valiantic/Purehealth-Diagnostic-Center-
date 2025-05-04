@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
-import { Calendar, Download, Edit, X, Check, MoreVertical, ReceiptText } from 'lucide-react';
+import { Calendar, Download, Edit, X, Check, MoreVertical, AlertCircle, Save } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionAPI, departmentAPI, referrerAPI } from '../services/api';
 
 // Helper function to format date as DD-MMM-YYYY
@@ -21,12 +21,39 @@ const formatDate = (date) => {
 const Transaction = () => {
   // Use the custom auth hook - with isAuthenticating check
   const { user, isAuthenticating } = useAuth();
-  const [date, setDate] = useState(formatDate(new Date()));
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-
+  
+  // Confirmation modal state
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [transactionToCancel, setTransactionToCancel] = useState(null);
+  
+  // Reference to the date input elements
+  const incomeDateInputRef = React.useRef(null);
+  const expenseDateInputRef = React.useRef(null);
+  
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Format the date for display
+  const formattedDate = formatDate(selectedDate);
+
+  // Handle date change
+  const handleDateChange = (e) => {
+    const newDate = new Date(e.target.value);
+    if (!isNaN(newDate.getTime())) {
+      setSelectedDate(newDate);
+    }
+  };
+  
+  // Function to open the date picker
+  const openDatePicker = (inputRef) => {
+    if (inputRef && inputRef.current) {
+      inputRef.current.showPicker();
+    }
+  };
 
   const handleNewExpenses = () => {
     navigate('/add-expenses');
@@ -75,12 +102,12 @@ const Transaction = () => {
     isError: isTransactionsError,
     error: transactionsError,
   } = useQuery({
-    queryKey: ['transactions'],
+    queryKey: ['transactions', selectedDate],
     queryFn: async () => {
       const response = await transactionAPI.getAllTransactions({
         page: 1,
         limit: 50,
-        status: 'active',
+        date: selectedDate.toISOString().split('T')[0] 
       });
       return response.data;
     },
@@ -122,8 +149,20 @@ const Transaction = () => {
     : [];
   const referrers = referrersData?.data?.data || [];
 
-  // Process transactions to organize by departments
-  const processedTransactions = transactions.map((transaction) => {
+  // Process transactions to organize by departments and filter by date
+  const processedTransactions = transactions
+    .filter((transaction) => {
+      // Check if transaction date matches selected date
+      if (!transaction.createdAt) return true; // Include if no date (fallback)
+      
+      const transactionDate = new Date(transaction.createdAt);
+      return (
+        transactionDate.getDate() === selectedDate.getDate() &&
+        transactionDate.getMonth() === selectedDate.getMonth() &&
+        transactionDate.getFullYear() === selectedDate.getFullYear()
+      );
+    })
+    .map((transaction) => {
     // Group test details by department
     const departmentRevenues = {};
 
@@ -145,8 +184,8 @@ const Transaction = () => {
       });
     }
 
-    // Find the referrer - improved matching logic
-    let referrerName = 'N/A';
+    // Find the referrer - simplified to show only last name
+    let referrerName = 'Out Patient';
     
     if (transaction.referrerId) {
       // Normalize IDs for comparison by converting both to strings
@@ -155,19 +194,12 @@ const Transaction = () => {
       // Find referrer by ID with string comparison
       const referrer = referrers.find(ref => String(ref.referrerId) === transactionReferrerId);
       
-      // Debug referrer match
-      console.log(`Matching referrer for transaction ${transaction.transactionId}:`, {
-        transactionReferrerId,
-        availableReferrerIds: referrers.map(r => String(r.referrerId)),
-        referrerFound: !!referrer,
-        matchedReferrer: referrer
-      });
-      
       if (referrer) {
-        referrerName = `Dr. ${referrer.lastName || ''} ${referrer.firstName || ''}`.trim();
+        referrerName = referrer.lastName ? `Dr. ${referrer.lastName}` : 'Unknown';
       } else {
-        // Handle missing referrer case
-        referrerName = `ID: ${transactionReferrerId.substring(0, 8)}...`;
+        // Shorter ID display for missing referrers
+        // referrerName = `ID: ${transactionReferrerId.substring(0, 5)}...`;
+        referrerName = 'Out Patient'; 
       }
     }
 
@@ -191,24 +223,175 @@ const Transaction = () => {
     );
   });
 
-  // Calculate department totals
+  // Reset search when date changes
+  useEffect(() => {
+    setSearchTerm('');
+  }, [selectedDate]);
+
+  // Calculate department totals - separate active and cancelled transactions
   const departmentTotals = {};
+  const departmentRefunds = {};
+
   departments.forEach((dept) => {
     departmentTotals[dept.departmentId] = 0;
+    departmentRefunds[dept.departmentId] = 0;
   });
 
   filteredTransactions.forEach((transaction) => {
-    if (transaction.status !== 'cancelled') {
-      Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
+    Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
+      if (transaction.status !== 'cancelled') {
         departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
-      });
-    }
+      } else {
+        departmentRefunds[deptId] = (departmentRefunds[deptId] || 0) + data.amount;
+      }
+    });
   });
+
+  // Check which departments have values in transactions
+  const departmentsWithValues = departments.filter(dept => 
+    departmentTotals[dept.departmentId] > 0 || dept.status === 'active'
+  );
 
   // Calculate total gross
   const totalGross = filteredTransactions.reduce((sum, transaction) => {
     return sum + (transaction.status !== 'cancelled' ? transaction.grossDeposit : 0);
   }, 0);
+
+  // Calculate total GCash
+  const totalGCash = filteredTransactions.reduce((sum, transaction) => {
+    return sum + (transaction.status !== 'cancelled' ? 
+      parseFloat(transaction.originalTransaction.totalGCashAmount || 0) : 0);
+  }, 0);
+  
+  // Calculate total refunded amount
+  const totalRefund = filteredTransactions.reduce((sum, transaction) => {
+    return sum + (transaction.status === 'cancelled' ? transaction.grossDeposit : 0);
+  }, 0);
+
+  // Cancel transaction mutation
+  const cancelTransactionMutation = useMutation({
+    mutationFn: (transactionId) => {
+      // Use the API function correctly
+      return transactionAPI.updateTransactionStatus(
+        transactionId, 
+        'cancelled',
+        user.userId
+      );
+    },
+    onSuccess: () => {
+      // Invalidate and refetch transactions data with more specific options
+      queryClient.invalidateQueries({
+        queryKey: ['transactions'],
+        exact: false,
+        refetchType: 'all'
+      });
+      setIsConfirmModalOpen(false);
+      setTransactionToCancel(null);
+    },
+    onError: (error) => {
+      console.error('Failed to cancel transaction:', error);
+      // You could add toast notification here
+      setIsConfirmModalOpen(false);
+    }
+  });
+
+  // Handle cancel button click
+  const handleCancelClick = (transaction) => {
+    setTransactionToCancel(transaction);
+    setIsConfirmModalOpen(true);
+    setOpenMenuId(null); // Close the dropdown
+  };
+
+  // Confirm cancellation
+  const confirmCancellation = () => {
+    if (transactionToCancel) {
+      cancelTransactionMutation.mutate(transactionToCancel.originalTransaction.transactionId);
+    }
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setIsConfirmModalOpen(false);
+    setTransactionToCancel(null);
+  };
+
+  // Edit transaction state
+  const [editingId, setEditingId] = useState(null);
+  const [editedTransaction, setEditedTransaction] = useState(null);
+
+  // Toggle edit mode for a transaction
+  const handleEditClick = (transaction) => {
+    setEditingId(transaction.id);
+    setEditedTransaction({
+      id: transaction.id,
+      name: transaction.name,
+      referrerId: transaction.originalTransaction.referrerId || '',
+      // We can add more fields here if needed for editing
+    });
+    setOpenMenuId(null); // Close the dropdown
+  };
+
+  // Handle saving edited transaction
+  const saveTransactionMutation = useMutation({
+    mutationFn: (data) => {
+      return transactionAPI.updateTransaction(
+        data.transactionId,
+        {
+          mcNo: data.mcNo,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          referrerId: data.referrerId || null
+        }
+      );
+    },
+    onSuccess: () => {
+      // Invalidate and refetch transactions data
+      queryClient.invalidateQueries({
+        queryKey: ['transactions'],
+        exact: false,
+        refetchType: 'all'
+      });
+      setEditingId(null);
+      setEditedTransaction(null);
+    },
+    onError: (error) => {
+      console.error('Failed to save transaction:', error);
+      // You could add toast notification here
+      setEditingId(null);
+    }
+  });
+
+  // Handle saving edited transaction
+  const handleSaveClick = (transaction) => {
+    if (!editedTransaction) return;
+
+    // Split the name into first and last name
+    const nameParts = editedTransaction.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    saveTransactionMutation.mutate({
+      transactionId: transaction.originalTransaction.transactionId,
+      mcNo: editedTransaction.id,
+      firstName,
+      lastName,
+      referrerId: editedTransaction.referrerId
+    });
+  };
+
+  // Handle input change for edited transaction
+  const handleEditChange = (e, field) => {
+    setEditedTransaction({
+      ...editedTransaction,
+      [field]: e.target.value
+    });
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditedTransaction(null);
+  };
 
   // Page Rendering Security
   if (isAuthenticating) {
@@ -284,15 +467,28 @@ const Transaction = () => {
                 </div>
               </div>
               
-              <div className="flex space-x-2 w-full md:w-auto justify-between md:justify-start">
-                <div className="flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none">
+              <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
+                <div 
+                  className="relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer"
+                  onClick={() => openDatePicker(incomeDateInputRef)}
+                >
                   <input
-                    type="text"
-                    value={date}
-                    className="px-1 md:px-2 py-1 outline-none bg-green-50 w-24 md:w-auto"
-                    readOnly
+                    ref={incomeDateInputRef}
+                    type="date"
+                    className="absolute opacity-0 w-full h-full cursor-pointer z-10"
+                    onChange={handleDateChange}
+                    value={selectedDate.toISOString().split('T')[0]}
                   />
-                  <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
+                  <span className="px-1 md:px-2 py-1 flex-grow">
+                    {formattedDate}
+                  </span>
+                  <Calendar 
+                    className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDatePicker(incomeDateInputRef);
+                    }}
+                  />
                 </div>
                 
                 <button onClick={handleNewIncome} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
@@ -312,141 +508,225 @@ const Transaction = () => {
             </div>
             
             <div className="overflow-x-auto pb-2 relative">
-              <table className="min-w-full border-collapse text-sm md:text-base">
-                <thead>
-                  <tr className="bg-green-800 text-white">
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-10">MC#</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Patient Name</th>
-                    
-                    {/* Department columns - only show active departments */}
-                    {departments
-                      .filter(dept => dept.status === 'active')
-                      .map(dept => (
-                        <th 
-                          key={dept.departmentId} 
-                          className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200"
+              {filteredTransactions.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-gray-500 font-medium">No income transactions found</p>
+                  <p className="text-sm text-gray-400 mt-1">Add a transaction or adjust your search criteria</p>
+                </div>
+              ) : (
+                <div className="max-h-[70vh] overflow-y-auto">
+                  <table className="min-w-full border-collapse text-sm md:text-base">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-green-800 text-white">
+                        <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-20">MC#</th>
+                        <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Patient Name</th>
+                        
+                        {/* Department columns */}
+                        {departmentsWithValues.map(dept => (
+                          <th 
+                            key={dept.departmentId} 
+                            className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-700' : ''}`}
+                          >
+                            {dept.departmentName}
+                            {dept.status !== 'active' && <span className="ml-1 text-xs opacity-75">(archived)</span>}
+                          </th>
+                        ))
+                        }
+                        
+                        <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
+                        <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 w-[80px] md:w-[120px]">Referrer</th>
+                        <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTransactions.map((transaction) => (
+                        <tr 
+                          key={transaction.id} 
+                          className={transaction.status === 'cancelled' 
+                            ? 'bg-gray-100 text-gray-500' 
+                            : 'bg-white'
+                          }
                         >
-                          {dept.departmentName}
-                        </th>
-                      ))
-                    }
-                    
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Referrer</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((transaction) => (
-                    <tr 
-                      key={transaction.id} 
-                      className={transaction.status === 'cancelled' ? 'bg-gray-100' : 'bg-white'}
-                    >
-                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">
-                        {transaction.id}
-                      </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">
-                        {transaction.name}
-                      </td>
-                      
-                      {/* Department amounts */}
-                      {departments
-                        .filter(dept => dept.status === 'active')
-                        .map(dept => {
-                          const deptData = transaction.departmentRevenues[dept.departmentId];
-                          return (
-                            <td 
-                              key={dept.departmentId} 
-                              className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200"
-                            >
-                              {transaction.status === 'cancelled' ? (
-                                <span className="text-green-700 font-medium text-xs md:text-sm">
-                                  {dept.departmentName === 'XRAY' ? 'Canceled' : ''}
-                                </span>
-                              ) : (
-                                deptData && deptData.amount > 0 ? deptData.amount.toFixed(2) : ''
-                              )}
-                            </td>
-                          );
-                        })
-                      }
-                      
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {transaction.grossDeposit.toFixed(2)}
-                      </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 max-w-[100px] truncate">
-                        {/* Show debug info on hover for referrer field */}
-                        <div 
-                          title={`Referrer ID: ${transaction.originalTransaction?.referrerId || 'None'}`} 
-                          className="truncate"
-                        >
-                          {transaction.status === 'cancelled' ? '' : transaction.referrer}
-                        </div>
-                      </td>
-                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                        {transaction.status !== 'cancelled' && (
-                          <div className="relative flex justify-center">
-                            <button 
-                              className="text-gray-600 hover:text-green-600 focus:outline-none"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleIncomeMenu(transaction.id);
-                              }}
-                            >
-                              <MoreVertical size={16} className="md:w-5 md:h-5" />
-                            </button>
-                            
-                            {openMenuId === transaction.id && (
-                              <div 
-                                className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
-                                onClick={handleDropdownClick}
+                          <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">
+                            {editingId === transaction.id ? (
+                              <input
+                                type="text"
+                                value={editedTransaction.id}
+                                onChange={(e) => handleEditChange(e, 'id')}
+                                className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                              />
+                            ) : (
+                              <span className={transaction.status === 'cancelled' ? 'line-through' : ''}>
+                                {transaction.id}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">
+                            {editingId === transaction.id ? (
+                              <input
+                                type="text"
+                                value={editedTransaction.name}
+                                onChange={(e) => handleEditChange(e, 'name')}
+                                className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                              />
+                            ) : (
+                              <span className={transaction.status === 'cancelled' ? 'line-through' : ''}>
+                                {transaction.name}
+                              </span>
+                            )}
+                          </td>
+                          
+                          {/* Department amounts - include inactive departments with values */}
+                          {departmentsWithValues.map(dept => {
+                              const deptData = transaction.departmentRevenues[dept.departmentId];
+                              const isArchivedWithValue = dept.status !== 'active' && 
+                                                        deptData && 
+                                                        deptData.amount > 0;
+                              
+                              return (
+                                <td 
+                                  key={dept.departmentId} 
+                                  className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 
+                                            ${isArchivedWithValue ? 'bg-green-50' : ''}`}
+                                >
+                                  {transaction.status === 'cancelled' ? (
+                                    '' // Don't display revenue data for cancelled transactions
+                                  ) : (
+                                    deptData && deptData.amount > 0 ? deptData.amount.toLocaleString(2) : ''
+                                  )}
+                                </td>
+                              );
+                            })
+                          }
+                          
+                          <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                            {transaction.status === 'cancelled' ? (
+                              '' // Don't display gross amount for cancelled transactions
+                            ) : (
+                              transaction.grossDeposit.toLocaleString(2)
+                            )}
+                          </td>
+                          <td className="py-0 md:py-1 px-1 md:px-2 border border-green-200 max-w-[80px] md:max-w-[120px]">
+                            {editingId === transaction.id ? (
+                              <select
+                                value={editedTransaction.referrerId}
+                                onChange={(e) => handleEditChange(e, 'referrerId')}
+                                className="w-full px-1 py-1 border border-green-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-600"
                               >
-                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-gray-600">
-                                  <ReceiptText size={14} className="mr-2" />
-                                 Details
-                                </button>
-                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600">
-                                  <Edit size={14} className="mr-2" />
-                                  Edit
-                                </button>
-                                <button className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600">
-                                  <X size={14} className="mr-2" />
-                                  Cancel
-                                </button>
+                                <option value="">Out Patient</option>
+                                {referrers.map(ref => (
+                                  <option key={ref.referrerId} value={ref.referrerId}>
+                                    Dr. {ref.lastName}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div 
+                                title={`Referrer: ${transaction.originalTransaction?.referrerId || 'None'}`} 
+                                className={`truncate text-xs md:text-sm font-medium ${transaction.status === 'cancelled' ? 'text-gray-500' : ''}`}
+                              >
+                                {transaction.referrer} {/* Always display referrer, even for cancelled transactions */}
                               </div>
                             )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  
-                  {/* Totals row */}
-                  <tr className="bg-green-100">
-                    <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
-                    
-                    {/* Department totals */}
-                    {departments
-                      .filter(dept => dept.status === 'active')
-                      .map(dept => (
-                        <td 
-                          key={dept.departmentId} 
-                          className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200"
-                        >
-                          {departmentTotals[dept.departmentId] > 0 ? 
-                            departmentTotals[dept.departmentId].toFixed(2) : ''}
+                          </td>
+                          <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                            {transaction.status !== 'cancelled' && (
+                              <div className="relative flex justify-center">
+                                {editingId === transaction.id ? (
+                                  <div className="flex space-x-1">
+                                    <button 
+                                      className="text-green-600 hover:text-green-800 focus:outline-none"
+                                      onClick={() => handleSaveClick(transaction)}
+                                      disabled={saveTransactionMutation.isPending}
+                                    >
+                                      <Save size={16} className="md:w-5 md:h-5" />
+                                    </button>
+                                    <button 
+                                      className="text-red-600 hover:text-red-800 focus:outline-none"
+                                      onClick={handleCancelEdit}
+                                    >
+                                      <X size={16} className="md:w-5 md:h-5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button 
+                                    className="text-gray-600 hover:text-green-600 focus:outline-none"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleIncomeMenu(transaction.id);
+                                    }}
+                                  >
+                                    <MoreVertical size={16} className="md:w-5 md:h-5" />
+                                  </button>
+                                )}
+                                
+                                {openMenuId === transaction.id && !editingId && (
+                                  <div 
+                                    className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                                    onClick={handleDropdownClick}
+                                  >
+                                    <button 
+                                      className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
+                                      onClick={() => handleEditClick(transaction)}
+                                    >
+                                      <Edit size={14} className="mr-2" />
+                                      Edit
+                                    </button>
+                                    <button 
+                                      className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
+                                      onClick={() => handleCancelClick(transaction)}
+                                    >
+                                      <X size={14} className="mr-2" />
+                                      Cancel
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {transaction.status === 'cancelled' && (
+                              <span className="text-red-500 text-xs md:text-sm font-medium">Cancelled</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      
+                      {/* Totals row */}
+                      <tr className="bg-green-100">
+                        <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
+                        
+                        {/* Department totals - include inactive departments with values */}
+                        {departmentsWithValues.map(dept => (
+                            <td 
+                              key={dept.departmentId} 
+                              className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 
+                  ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
+                            >
+                              <div>
+                                {departmentTotals[dept.departmentId] > 0 ? 
+                                  departmentTotals[dept.departmentId].toLocaleString(2) : ''}
+                            </div>
+                           
+                            </td>
+                          ))
+                        }
+                        
+                        <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                          {totalGross.toLocaleString(2)}
                         </td>
-                      ))
-                    }
-                    
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                      {totalGross.toFixed(2)}
-                    </td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
-                  </tr>
-                </tbody>
-              </table>
+                        <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
+                        <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Remove pagination controls and just show count */}
+              <div className="flex justify-end mt-4 px-2">
+                <div className="text-sm text-gray-600">
+                  Showing {filteredTransactions.length} {filteredTransactions.length === 1 ? 'patient' : 'patients'}
+                </div>
+              </div>
             </div>
           </div>
           
@@ -457,23 +737,7 @@ const Transaction = () => {
                 Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
               </button>
               
-              <div className="ml-0 md:ml-4 flex flex-wrap items-center font-bold text-green-800 text-xs md:text-base">
-                <span className="mr-1">Legend:</span>
-                <div className="flex items-center mr-2">
-                  <span className="mr-1">Downpayment</span>
-                  <span className="h-3 w-3 md:h-4 md:w-4 rounded-full border-2 md:border-4 border-yellow-500 inline-block"></span>
-                </div>
-                
-                <div className="flex items-center mr-2">
-                  <span className="mr-1">Refunded</span>
-                  <span className="h-3 w-3 md:h-4 md:w-4 rounded-full border-2 md:border-4 border-red-500 inline-block"></span>
-                </div>
-                
-                <div className="flex items-center">
-                  <span className="mr-1">GCash</span>
-                  <span className="h-3 w-3 md:h-4 md:w-4 rounded-full border-2 md:border-4 border-blue-500 inline-block"></span>
-                </div>
-              </div>
+            
             </div>
             
             {/* Summary Box */}
@@ -485,8 +749,7 @@ const Transaction = () => {
                       GCASH
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {/* Replace with actual GCASH total */}
-                      0.00
+                      {totalGCash.toLocaleString(2)}
                     </td>
                   </tr>
                   <tr>
@@ -494,8 +757,7 @@ const Transaction = () => {
                       REFUND
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {/* Replace with actual REFUND total */}
-                      0.00
+                      {totalRefund.toLocaleString(2)}
                     </td>
                   </tr>
                   <tr>
@@ -537,14 +799,27 @@ const Transaction = () => {
               </div>
               
               <div className="flex space-x-2 w-full md:w-auto justify-between md:justify-start">
-                <div className="flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none">
+                <div 
+                  className="relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer"
+                  onClick={() => openDatePicker(expenseDateInputRef)}
+                >
                   <input
-                    type="text"
-                    value={date}
-                    className="px-1 md:px-2 py-1 outline-none bg-green-50 w-24 md:w-auto"
-                    readOnly
+                    ref={expenseDateInputRef}
+                    type="date"
+                    className="absolute opacity-0 w-full h-full cursor-pointer z-10" 
+                    onChange={handleDateChange}
+                    value={selectedDate.toISOString().split('T')[0]}
                   />
-                  <Calendar className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" />
+                  <span className="px-1 md:px-2 py-1 flex-grow">
+                    {formattedDate}
+                  </span>
+                  <Calendar 
+                    className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDatePicker(expenseDateInputRef);
+                    }}
+                  />
                 </div>
                 
                 <button onClick={handleNewExpenses} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
@@ -564,29 +839,71 @@ const Transaction = () => {
             </div>
             
             <div className="overflow-x-auto pb-2 relative">
-              <table className="min-w-full border-collapse text-sm md:text-base">
-                <thead>
-                  <tr className="bg-green-800 text-white">
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Payee</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Purpose</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Department</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Amount</th>
-                    <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Replace with actual expense data */}
-                  <tr className="bg-green-100">
-                    <td colSpan={3} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800">TOTAL:</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold">0.00</td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
-                  </tr>
-                </tbody>
-              </table>
+              {/* Placeholder for expenses - replace with actual expenses data check */}
+              {true ? (
+                <div className="text-center py-8 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-gray-500 font-medium">No expense records found</p>
+                  <p className="text-sm text-gray-400 mt-1">Track your expenses by adding new records</p>
+                </div>
+              ) : (
+                <table className="min-w-full border-collapse text-sm md:text-base">
+                  <thead>
+                    <tr className="bg-green-800 text-white">
+                      <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Payee</th>
+                      <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Purpose</th>
+                      <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Department</th>
+                      <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Amount</th>
+                      <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Replace with actual expense data */}
+                    <tr className="bg-green-100">
+                      <td colSpan={3} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800">TOTAL:</td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold">0.00</td>
+                      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */
+      isConfirmModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center mb-4 text-red-600">
+              <AlertCircle className="mr-2" size={24} />
+              <h3 className="text-lg font-semibold">Confirm Cancellation</h3>
+            </div>
+            
+            <p className="mb-6">
+              Are you sure you want to cancel the transaction for 
+              <span className="font-bold"> {transactionToCancel?.name}</span>? 
+              This will mark the transaction as refunded and update financial records.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button 
+                onClick={closeModal}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+              >
+                No, Keep It
+              </button>
+              <button 
+                onClick={confirmCancellation}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                disabled={cancelTransactionMutation.isPending}
+              >
+                {cancelTransactionMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
