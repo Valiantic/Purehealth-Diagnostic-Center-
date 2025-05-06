@@ -79,6 +79,7 @@ CREATE TABLE "Transactions" (
   "firstName" VARCHAR(255) NOT NULL,
   "lastName" VARCHAR(255) NOT NULL,
   "idType" VARCHAR(255) NOT NULL DEFAULT 'Regular',
+  "idNumber" VARCHAR(255) NOT NULL DEFAULT 'XXXX-XXXX',
   "referrerId" UUID,
   "birthDate" DATE,
   "sex" VARCHAR(255) NOT NULL DEFAULT 'Male',

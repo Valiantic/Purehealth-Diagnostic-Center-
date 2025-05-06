@@ -23,6 +23,7 @@ const AddIncome = () => {
   const [discount, setDiscount] = useState(20);
   const [cashPaid, setCashPaid] = useState(0);
   const [gCashPaid, setGCashPaid] = useState(0);
+  const [discountFieldFocused, setDiscountFieldFocused] = useState(false);
 
   const [discountedPrice, setDiscountedPrice] = useState(0);
   const [balance, setBalance] = useState(0);
@@ -40,6 +41,8 @@ const AddIncome = () => {
     dateCreated: formatDate(new Date())
   });
   const [queue, setQueue] = useState([]);
+
+  const [generatedMcNo, setGeneratedMcNo] = useState('');
 
   function formatDate(date) {
     const day = date.getDate().toString().padStart(2, '0');
@@ -94,7 +97,8 @@ const AddIncome = () => {
     birthDate: '',
     id: 'Regular',
     referrer: 'Out Patient',
-    sex: 'Male'
+    sex: 'Male',
+    idNumber: '' 
   });
 
   const [searchTest, setSearchTest] = useState('');
@@ -522,6 +526,11 @@ const AddIncome = () => {
     if (!formData.referrer) missingFields.push("Referrer");
     if (!formData.birthDate) missingFields.push("Birth Date");
     if (!formData.sex) missingFields.push("Sex");
+    
+    if ((formData.id === "Senior Citizen" || formData.id === "Person with Disability") && 
+        !formData.idNumber.trim()) {
+      missingFields.push("ID Number");
+    }
 
     if (missingFields.length > 0) {
       toast.error(`Please fill in the following fields: ${missingFields.join(", ")}`);
@@ -543,6 +552,9 @@ const AddIncome = () => {
     mutationFn: (transactionData) =>
       transactionAPI.createTransaction(transactionData, user?.userId || user?.id),
     onSuccess: () => {
+      const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
+      localStorage.setItem('mcNumberCounter', ((currentCounter + 1) % 10).toString());
+      
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction saved successfully');
       closeTransactionSummary();
@@ -553,8 +565,13 @@ const AddIncome = () => {
         birthDate: '',
         id: 'Regular',
         referrer: '',
-        sex: 'Male'
+        sex: 'Male',
+        idNumber: ''
       });
+      
+      // Generate new MC number for next transaction
+      const nextMcNumber = getNextMcNumber();
+      setGeneratedMcNo(nextMcNumber);
     },
     onError: (error) => {
       console.error('Transaction error:', error);
@@ -609,10 +626,11 @@ const AddIncome = () => {
       });
 
       const transactionData = {
-        mcNo: Math.floor(10000 + Math.random() * 90000).toString(),
+        mcNo: generatedMcNo, 
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         idType: formData.id,
+        idNumber: formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || '',  
         referrerId: formData.referrer || null,
         birthDate: formData.birthDate || null,
         sex: formData.sex,
@@ -646,6 +664,100 @@ const AddIncome = () => {
     return age >= 0 ? age : null;
   };
 
+ 
+  const getNextMcNumber = () => {
+
+    const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
+    const nextDigit = (currentCounter + 1) % 10;
+    
+    return `0410${nextDigit}`;
+  };
+
+  useEffect(() => {
+    const existingCounter = localStorage.getItem('mcNumberCounter');
+    
+    if (existingCounter === null) {
+      localStorage.setItem('mcNumberCounter', '0');
+    }
+    
+    const mcNumber = getNextMcNumber();
+    setGeneratedMcNo(mcNumber);
+  }, []);
+
+  const [isOptionsDropdownOpen, setIsOptionsDropdownOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [showDiscountCheckboxes, setShowDiscountCheckboxes] = useState(false);
+  const [testsToDiscount, setTestsToDiscount] = useState({});
+  const optionsButtonRef = useRef(null);
+  
+  const handleApplyDiscount = () => {
+    if (globalDiscount <= 0) {
+      toast.error("Please enter a valid discount percentage");
+      return;
+    }
+    setShowDiscountCheckboxes(true);
+    setIsDiscountModalOpen(false);
+        const initialSelection = {};
+    testsTable.forEach((_, index) => {
+      initialSelection[index] = false;
+    });
+    setTestsToDiscount(initialSelection);
+  };
+
+  const handleDiscountCheckboxToggle = (index) => {
+    setTestsToDiscount(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+    
+    if (!testsToDiscount[index]) {
+      const updatedTestsTable = [...testsTable];
+      const test = updatedTestsTable[index];
+      const originalTest = selectedTests[index];
+      const originalPrice = parseFloat(originalTest.price) || 0;
+      
+      const discountMultiplier = (100 - globalDiscount) / 100;
+      const newPrice = roundToTwoDecimals(originalPrice * discountMultiplier);
+      
+      updatedTestsTable[index] = {
+        ...test,
+        disc: `${globalDiscount}%`,
+        cash: newPrice.toFixed(2),
+        bal: '0.00'
+      };
+      
+      setTestsTable(updatedTestsTable);
+    } else {
+      const updatedTestsTable = [...testsTable];
+      const test = updatedTestsTable[index];
+      const originalTest = selectedTests[index];
+      const originalPrice = parseFloat(originalTest.price) || 0;
+      
+      updatedTestsTable[index] = {
+        ...test,
+        disc: '0%',
+        cash: originalPrice.toFixed(2),
+        bal: '0.00'
+      };
+      
+      setTestsTable(updatedTestsTable);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (optionsButtonRef.current && !optionsButtonRef.current.contains(e.target)) {
+        setIsOptionsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [optionsButtonRef]);
+
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
       <Sidebar />
@@ -662,8 +774,9 @@ const AddIncome = () => {
             </div>
 
             <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+
+              <div className="flex flex-col md:flex-row gap-4 mb-4">
+                <div className="flex-1">
                   <label className="block text-green-800 font-medium mb-1">First Name *</label>
                   <input
                     type="text"
@@ -673,7 +786,7 @@ const AddIncome = () => {
                   />
                 </div>
 
-                <div>
+                <div className="flex-1">
                   <label className="block text-green-800 font-medium mb-1">Last Name *</label>
                   <input
                     type="text"
@@ -683,20 +796,49 @@ const AddIncome = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">ID</label>
+                <div className="flex-1">
+                  <label className="block text-green-800 font-medium mb-1">MC#</label>
+                  <input
+                    type="text"
+                    value={generatedMcNo}
+                    className="w-full border-2 border-green-800 rounded p-2 bg-green-800 text-white"
+                    disabled
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="block text-green-800 font-medium mb-1">Birth Date</label>
+                  <div className="relative" onClick={() => document.getElementById('birth-date-input').showPicker()}>
+                    <input
+                      id="birth-date-input"
+                      type="date"
+                      value={formData.birthDate}
+                      onChange={handleDateChange}
+                      className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
+                    />
+                    {formData.birthDate && (
+                      <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-700 text-sm">
+                        Age: {calculateAge(formData.birthDate)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1">
+                  <label className="block text-green-800 font-medium mb-1">Sex</label>
                   <select
-                    value={formData.id}
-                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                    value={formData.sex}
+                    onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
-                    <option>Regular</option>
-                    <option>Senior Citizen</option>
-                    <option>Person with Disability</option>
+                    <option>Male</option>
+                    <option>Female</option>
                   </select>
                 </div>
 
-                <div>
+                <div className="flex-1">
                   <label className="block text-green-800 font-medium mb-1">Referrer</label>
                   <div className="relative">
                     <select
@@ -725,35 +867,32 @@ const AddIncome = () => {
                     </select>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Birth Date</label>
-                  <div className="relative" onClick={() => document.getElementById('birth-date-input').showPicker()}>
-                    <input
-                      id="birth-date-input"
-                      type="date"
-                      value={formData.birthDate}
-                      onChange={handleDateChange}
-                      className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
-                    />
-                    {formData.birthDate && (
-                      <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-700 text-sm">
-                        Age: {calculateAge(formData.birthDate)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Sex</label>
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="block text-green-800 font-medium mb-1">ID</label>
                   <select
-                    value={formData.sex}
-                    onChange={(e) => setFormData({ ...formData, sex: e.target.value })}
+                    value={formData.id}
+                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
-                    <option>Male</option>
-                    <option>Female</option>
+                    <option>Regular</option>
+                    <option>Senior Citizen</option>
+                    <option>Person with Disability</option>
                   </select>
+                </div>
+
+                <div className="flex-1">
+                  <label className="block text-green-800 font-medium mb-1">ID Number</label>
+                  <input
+                    type="text"
+                    value={formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || ''}
+                    onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+                    className="w-full border-2 border-green-800 rounded p-2"
+                    disabled={formData.id === "Regular"}
+                    placeholder={formData.id === "Regular" ? "XXXX-XXXX" : "Enter ID number"}
+                  />
                 </div>
               </div>
             </div>
@@ -919,7 +1058,7 @@ const AddIncome = () => {
                         <th className="px-2 py-1 text-sm">Cash</th>
                         <th className="px-2 py-1 text-sm">GCash</th>
                         <th className="px-2 py-1 text-sm">Balance</th>
-                        <th className="px-2 py-1 text-sm">Option</th>
+                        <th className="px-2 py-1 text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -935,7 +1074,15 @@ const AddIncome = () => {
                             <td className="px-2 py-1">{parseFloat(test.cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td className="px-2 py-1">{test.gCash}</td>
                             <td className="px-2 py-1">{test.bal}</td>
-                            <td className="px-2 py-1 text-center">
+                            <td className="px-2 py-1 text-center flex items-center justify-center space-x-1">
+                              {showDiscountCheckboxes && (
+                                <input 
+                                  type="checkbox"
+                                  checked={testsToDiscount[index] || false}
+                                  onChange={() => handleDiscountCheckboxToggle(index)}
+                                  className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                                />
+                              )}
                               <button
                                 className="text-green-800"
                                 onClick={() => handleRemoveTest(index)}
@@ -961,7 +1108,41 @@ const AddIncome = () => {
                           <td className="px-2 py-1 text-left text-green-800">
                             {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="px-2 py-1 text-left text-green-800"></td>
+                          <td className="px-2 py-1 text-center relative">
+                            <div ref={optionsButtonRef} className="relative">
+                              <button 
+                                className="bg-green-700 hover:bg-green-600 text-white text-xs px-2 py-1 rounded flex items-center"
+                                onClick={() => setIsOptionsDropdownOpen(!isOptionsDropdownOpen)}
+                              >
+                                Options <span className="ml-1">▼</span>
+                              </button>
+                              
+                              {isOptionsDropdownOpen && (
+                                <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 min-w-[120px]">
+                                  <button 
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 text-green-800"
+                                    onClick={() => {
+                                      setIsOptionsDropdownOpen(false);
+                                      setIsDiscountModalOpen(true);
+                                    }}
+                                  >
+                                   % Apply Discount
+                                  </button>
+                                  {showDiscountCheckboxes && (
+                                    <button 
+                                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 text-red-600"
+                                      onClick={() => {
+                                        setShowDiscountCheckboxes(false);
+                                        setIsOptionsDropdownOpen(false);
+                                      }}
+                                    >
+                                      Cancel Discount
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       )}
                     </tbody>
@@ -1351,6 +1532,8 @@ const AddIncome = () => {
                         }
                       })()}
                     </div>
+                    <div className='font-bold text-green-800'>MC #:</div>
+                    <div className="col-span-2 text-green-700">{generatedMcNo || 'N/A'}</div>
                   </div>
                 </div>
 
@@ -1373,6 +1556,8 @@ const AddIncome = () => {
 
                     <div className="font-bold text-green-800">ID:</div>
                     <div className="col-span-2 text-green-700">{formData.id}</div>
+                    <div className="font-bold text-green-800">ID #:</div>
+                    <div className="col-span-2 text-green-700">{formData.idNumber || 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -1432,6 +1617,83 @@ const AddIncome = () => {
               >
                 {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Discount Modal */}
+      {isDiscountModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
+            <div className="bg-green-700 text-white p-3 flex justify-between items-center">
+              <h2 className="font-medium">Apply Global Discount</h2>
+              <button
+                onClick={() => setIsDiscountModalOpen(false)}
+                className="text-white hover:text-gray-200 focus:outline-none"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className='font-bold text-green-800'>Total Price</label>
+                  <div>
+                    <input
+                      value={parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      className='w-full p-2 rounded border border-gray-300 bg-green-700 text-white border border-green-700'
+                      disabled
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className='font-bold text-green-800'>Total Discounted</label>
+                  <div>
+                    <input
+                      value={parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0) * (globalDiscount / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      className='w-full p-2 rounded border border-gray-300 bg-green-700 text-white border border-green-700'
+                      disabled
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-green-700 mb-2">Discount (%)</label>
+                <div className="flex">
+                  <input
+                    type="number"
+                    value={discountFieldFocused ? globalDiscount || '' : globalDiscount}
+                    onChange={(e) => setGlobalDiscount(parseInt(e.target.value) || 0)}
+                    onFocus={() => setDiscountFieldFocused(true)}
+                    className="w-full p-2 rounded border border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="Enter discount percentage"
+                  />
+                  <span className="inline-flex items-center px-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r">%</span>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  After setting the discount, you will be able to select which tests to apply it to.
+                </p>
+              </div>
+              
+              <div className="flex justify-center gap-3 mt-4">
+                <button
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 focus:outline-none"
+                  onClick={() => setIsDiscountModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800 focus:outline-none"
+                  onClick={handleApplyDiscount}
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           </div>
         </div>

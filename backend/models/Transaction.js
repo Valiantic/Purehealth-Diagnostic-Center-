@@ -36,6 +36,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'Regular'
     },
+    idNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'XXXX-XXXX'
+    },
     referrerId: {
       type: DataTypes.UUID,
       allowNull: true,

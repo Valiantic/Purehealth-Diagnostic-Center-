@@ -172,7 +172,6 @@ export const transactionAPI = {
     return apiClient.get(`/transactions/${id}`);
   },
   createTransaction: (transactionData, userId) => {
-    console.log('Creating transaction with:', { ...transactionData, userId });
     return apiClient.post('/transactions', {
       ...transactionData,
       userId
