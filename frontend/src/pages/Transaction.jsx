@@ -670,7 +670,7 @@ const Transaction = () => {
                                       onClick={() => handleEditClick(transaction)}
                                     >
                                       <Edit size={14} className="mr-2" />
-                                      Edit
+                                      Edit 
                                     </button>
                                     <button 
                                       className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
