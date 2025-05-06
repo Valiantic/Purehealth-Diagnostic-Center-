@@ -10,6 +10,7 @@ exports.createTransaction = async (req, res) => {
       firstName,
       lastName,
       idType,
+      idNumber,  
       referrerId,
       birthDate,
       sex,
@@ -73,6 +74,7 @@ exports.createTransaction = async (req, res) => {
       firstName,
       lastName,
       idType,
+      idNumber,  
       referrerId: referrerId || null,
       birthDate: birthDate || null,
       sex,
@@ -413,7 +415,29 @@ exports.searchTransactions = async (req, res) => {
       };
     }
 
-    const { count, rows } = await Transaction.findAnd
+    const { count, rows } = await Transaction.findAndCountAll({
+      where: whereClause,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: TestDetails,
+          attributes: ['testName', 'departmentId', 'originalPrice', 'discountPercentage', 
+                      'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: {
+        count,
+        transactions: rows,
+        totalPages: Math.ceil(count / limit),
+        currentPage: parseInt(page)
+      }
+    });
   } catch (error) {
     console.error('Error searching transactions:', error);
     res.status(500).json({
@@ -421,4 +445,5 @@ exports.searchTransactions = async (req, res) => {
       message: 'Failed to search transactions',
       error: error.message
     });
-  }}
+  }
+};
