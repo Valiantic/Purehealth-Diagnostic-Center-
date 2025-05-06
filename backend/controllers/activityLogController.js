@@ -20,14 +20,21 @@ const getActivityLogs = async (req, res) => {
           // Search in details field
           { details: { [Op.like]: `%${search}%` } },
           
-          // Search by date (in created date) - simpler approach to avoid MySQL functions
+          // Search by date
           Sequelize.where(
             Sequelize.fn('DATE', Sequelize.col('ActivityLog.createdAt')),
             { [Op.like]: `%${search}%` }
           ),
           
-          // Use simpler approach for userInfo search
-          { userInfo: { [Op.like]: `%${search}%` } }
+          // Search by userInfo
+          { userInfo: { [Op.like]: `%${search}%` } },
+          
+          // Search by userId (to match activities by a specific user)
+          Sequelize.literal(`ActivityLog.userId IN (SELECT userId FROM Users WHERE 
+            firstName LIKE '%${search}%' OR 
+            lastName LIKE '%${search}%' OR 
+            email LIKE '%${search}%' OR 
+            role LIKE '%${search}%')`)
         ]
       };
     }
@@ -54,15 +61,7 @@ const getActivityLogs = async (req, res) => {
         {
           model: User,
           attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role'],
-          required: false, // Use LEFT JOIN to include logs even if user is deleted
-          where: search ? {
-            [Op.or]: [
-              { firstName: { [Op.like]: `%${search}%` } },
-              { lastName: { [Op.like]: `%${search}%` } },
-              { email: { [Op.like]: `%${search}%` } },
-              { role: { [Op.like]: `%${search}%` } }
-            ]
-          } : undefined
+          required: false // Use LEFT JOIN to include logs even if user is deleted
         }
       ],
       order: [[sort, order]],
@@ -71,22 +70,21 @@ const getActivityLogs = async (req, res) => {
       distinct: true 
     });
     
-       // Format response data 
-      const formattedLogs = logs.rows.map(log => {
+    // Format response data 
+    const formattedLogs = logs.rows.map(log => {
       const plainLog = log.get({ plain: true });
       
-      // FIXED: Always use stored userInfo if it exists - this preserves historical data
-      const userData = plainLog.userInfo ? plainLog.userInfo : 
-                       plainLog.User ? {
-                         id: plainLog.User.userId,
-                         name: `${plainLog.User.firstName} ${plainLog.User.middleName ? plainLog.User.middleName + ' ' : ''}${plainLog.User.lastName}`,
-                         email: plainLog.User.email,
-                         role: plainLog.User.role
-                       } : {
-                         name: 'Deleted User',
-                         email: 'deleted@user.com',
-                         role: 'unknown'
-                       };
+      // Use User data if available, otherwise fall back to stored userInfo or "Deleted User"
+      const userData = plainLog.User ? {
+        id: plainLog.User.userId,
+        name: `${plainLog.User.firstName} ${plainLog.User.middleName ? plainLog.User.middleName + ' ' : ''}${plainLog.User.lastName}`,
+        email: plainLog.User.email,
+        role: plainLog.User.role
+      } : plainLog.userInfo ? plainLog.userInfo : {
+        name: 'Deleted User',
+        email: 'deleted@user.com',
+        role: 'unknown'
+      };
       
       return {
         logId: plainLog.logId,
