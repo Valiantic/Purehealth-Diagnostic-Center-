@@ -120,6 +120,10 @@ export const testAPI = {
       status,
       currentUserId
     });
+  },
+  updateTestDetail: async (testDetailId, data) => {
+    const response = await axios.put(`/api/test-details/${testDetailId}`, data);
+    return response;
   }
 };
 
@@ -191,14 +195,41 @@ export const transactionAPI = {
     const queryString = new URLSearchParams(params).toString();
     return apiClient.get(`/transactions/search?${queryString}`);
   },
-  updateTransaction: async (transactionId, data) => {
+  updateTransaction: async (transactionId, transactionData) => {
     try {
-      const response = await apiClient.put(`/transactions/${transactionId}`, data);
+      // Fix: Use apiClient instead of axiosInstance
+      const response = await apiClient.put(`/transactions/${transactionId}`, transactionData);
       return response.data;
     } catch (error) {
+      console.error('Error updating transaction:', error);
       throw error;
     }
-  }
+  },
+  
+  // Fix the checkMcNoExists function to properly handle parameters
+  checkMcNoExists: async (mcNo, currentTransactionId = null) => {
+    try {
+      // Added debugging to verify parameters and URL
+      
+      // Build URL manually to ensure correct format
+      let url = `${API_BASE_URL}/transactions/check-mcno?mcNo=${encodeURIComponent(mcNo)}`;
+      if (currentTransactionId) {
+        url += `&currentId=${encodeURIComponent(currentTransactionId)}`;
+      }
+      
+      
+      // Use axios directly instead of apiClient for better debugging
+      const response = await axios.get(url);
+      
+      return response.data;
+    } catch (error) {
+      console.error('MC# validation error:', error);
+      throw {
+        message: error.response?.data?.message || error.message || 'Failed to check MC#',
+        exists: false
+      };
+    }
+  },
 };
 
 // Extend the revenue API to handle cancelled transactions

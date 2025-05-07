@@ -1,4 +1,5 @@
 const { Transaction, TestDetails, ActivityLog, Department, DepartmentRevenue, sequelize } = require('../models');
+const { Op } = require('sequelize'); // Fix: use CommonJS require syntax instead of ES Module import
 
 // Create a new transaction with items and track department revenue
 exports.createTransaction = async (req, res) => {
@@ -291,11 +292,6 @@ exports.updateTransactionStatus = async (req, res) => {
 
     // For cancellations, handle department revenue records
     if (status === 'cancelled') {
-      // Get all department revenue records for this transaction
-      const revenueRecords = await DepartmentRevenue.findAll({
-        where: { transactionId: id },
-        transaction: t
-      });
 
       // Update each revenue record to reflect cancellation
       await DepartmentRevenue.update(
@@ -311,7 +307,7 @@ exports.updateTransactionStatus = async (req, res) => {
     let activityDetails;
     if (status === 'cancelled') {
       const patientName = `${transaction.firstName} ${transaction.lastName}`;
-      activityDetails = `Refunded transaction for ${patientName}`;
+      activityDetails = `Cancelled transaction for ${patientName}`;
     } else {
       activityDetails = `Updated transaction status to ${status}`;
     }
@@ -348,7 +344,18 @@ exports.updateTransaction = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { firstName, lastName, referrerId } = req.body;
+    const { 
+      mcNo,
+      firstName, 
+      lastName, 
+      referrerId,
+      birthDate,
+      sex,
+      idType,
+      idNumber,
+      userId,
+      testDetails
+    } = req.body;
     
     const transaction = await Transaction.findByPk(id);
     
@@ -361,11 +368,126 @@ exports.updateTransaction = async (req, res) => {
 
     // Update transaction with provided values
     const updateData = {};
+    if (mcNo !== undefined) updateData.mcNo = mcNo;
     if (firstName !== undefined) updateData.firstName = firstName;
     if (lastName !== undefined) updateData.lastName = lastName;
-    if (referrerId !== undefined) updateData.referrerId = referrerId;
+    // Convert "Out Patient" string to null for the database
+    if (referrerId !== undefined) {
+      updateData.referrerId = referrerId === "Out Patient" || referrerId === "" ? null : referrerId;
+    }
+    if (birthDate !== undefined) updateData.birthDate = birthDate;
+    if (sex !== undefined) updateData.sex = sex;
+    if (idType !== undefined) updateData.idType = idType;
+    if (idNumber !== undefined) updateData.idNumber = idNumber;
 
     await transaction.update(updateData, { transaction: t });
+
+    // Update test details if provided
+    if (testDetails && Array.isArray(testDetails)) {
+      let totalCashAmount = 0;
+      let totalGCashAmount = 0;
+      let totalBalanceAmount = 0;
+      let totalRefundAmount = 0;
+      let totalDiscountAmount = 0;
+      
+      // Process each test detail and update department revenue
+      for (const detail of testDetails) {
+        if (detail.testDetailId) {
+          // Get the original test detail before updating
+          const originalTestDetail = await TestDetails.findByPk(detail.testDetailId);
+          if (!originalTestDetail) continue;
+          
+          // Parse values safely and ensure they're numbers
+          const originalPrice = parseFloat(originalTestDetail.originalPrice) || 0;
+          const discountPercentage = parseInt(detail.discountPercentage) || 0;
+          const discountedPrice = parseFloat(detail.discountedPrice) || 0;
+          const cashAmount = parseFloat(detail.cashAmount) || 0;
+          const gCashAmount = parseFloat(detail.gCashAmount) || 0;
+          const totalPayment = cashAmount + gCashAmount;
+          
+          // Calculate discount amount explicitly
+          const discountAmount = originalPrice - discountedPrice;
+          totalDiscountAmount += discountAmount;
+          
+          // Calculate refund if payment exceeds discounted price
+          let refundAmount = 0;
+          if (totalPayment > discountedPrice) {
+            refundAmount = totalPayment - discountedPrice;
+            totalRefundAmount += refundAmount;
+            
+            // Log the refund
+            await ActivityLog.create({
+              action: 'REFUND',
+              details: `Refund of ₱${refundAmount.toFixed(2)} for test ${originalTestDetail.testName}`,
+              resourceType: 'TRANSACTION',
+              entityId: id,
+              userId: userId || transaction.userId,
+              metadata: JSON.stringify({
+                refundAmount: refundAmount,
+                testDetailId: detail.testDetailId
+              })
+            }, { transaction: t });
+          }
+          
+          // Calculate balance (cannot be negative)
+          const balanceAmount = Math.max(0, discountedPrice - totalPayment);
+          
+          // Update the test detail with all values
+          await TestDetails.update(
+            {
+              discountPercentage: discountPercentage,
+              discountedPrice: discountedPrice,
+              cashAmount: cashAmount,
+              gCashAmount: gCashAmount,
+              balanceAmount: balanceAmount,
+            },
+            {
+              where: { testDetailId: detail.testDetailId },
+              transaction: t
+            }
+          );
+          
+          // Always update department revenue to reflect the discounted price
+          await DepartmentRevenue.update(
+            {
+              amount: discountedPrice, // This is the key part: revenue is only the discounted price
+              status: 'active',       // Ensure it's marked as active
+              metadata: JSON.stringify({
+                originalAmount: originalPrice,
+                discountAmount: discountAmount,
+                discountPercentage: discountPercentage
+              })
+            },
+            {
+              where: { 
+                testDetailId: detail.testDetailId,
+                transactionId: id
+              },
+              transaction: t
+            }
+          );
+          
+          // Add to running totals
+          totalCashAmount += cashAmount;
+          totalGCashAmount += gCashAmount;
+          totalBalanceAmount += balanceAmount;
+        }
+      }
+      
+      // Update transaction totals
+      await transaction.update({
+        totalCashAmount,
+        totalGCashAmount,
+        totalBalanceAmount,
+        totalDiscountAmount,
+        metadata: JSON.stringify({
+          ...JSON.parse(transaction.metadata || '{}'),
+          totalRefundAmount,
+          totalDiscountAmount,
+          updatedAt: new Date().toISOString()
+        })
+      }, { transaction: t });
+    }
 
     // Log activity
     await ActivityLog.create({
@@ -373,15 +495,30 @@ exports.updateTransaction = async (req, res) => {
       details: `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`,
       resourceType: 'TRANSACTION',
       entityId: id,
-      userId: req.body.userId || transaction.userId
+      userId: userId || transaction.userId
     }, { transaction: t });
 
     await t.commit();
 
+    // Fetch the updated transaction with details for response
+    const updatedTransaction = await Transaction.findByPk(id, {
+      include: [
+        {
+          model: TestDetails,
+          include: [
+            {
+              model: Department,
+              attributes: ['departmentName']
+            }
+          ]
+        }
+      ]
+    });
+
     res.json({
       success: true,
       message: 'Transaction updated successfully',
-      data: transaction
+      data: updatedTransaction
     });
   } catch (error) {
     await t.rollback();
@@ -389,6 +526,37 @@ exports.updateTransaction = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update transaction',
+      error: error.message
+    });
+  }
+};
+
+// Check if MC# exists
+exports.checkMcNoExists = async (req, res) => {
+  try {
+    const { mcNo } = req.query;
+    
+    if (!mcNo) {
+      return res.status(400).json({
+        success: false,
+        message: 'MC number is required'
+      });
+    }
+    
+    const transaction = await Transaction.findOne({
+      where: { mcNo }
+    });
+    
+    res.json({
+      success: true,
+      exists: !!transaction,
+      data: transaction || null
+    });
+  } catch (error) {
+    console.error('Error checking MC number:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check MC number',
       error: error.message
     });
   }
@@ -403,15 +571,15 @@ exports.searchTransactions = async (req, res) => {
     const whereClause = {};
     
     if (name) {
-      whereClause[sequelize.Op.or] = [
-        { firstName: { [sequelize.Op.like]: `%${name}%` } },
-        { lastName: { [sequelize.Op.like]: `%${name}%` } }
+      whereClause[Op.or] = [
+        { firstName: { [Op.like]: `%${name}%` } },
+        { lastName: { [Op.like]: `%${name}%` } }
       ];
     }
     
     if (startDate && endDate) {
       whereClause.transactionDate = {
-        [sequelize.Op.between]: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate), new Date(endDate)]
       };
     }
 
@@ -419,12 +587,13 @@ exports.searchTransactions = async (req, res) => {
       where: whereClause,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']],
+      order: [['transactionDate', 'DESC']],
       include: [
         {
           model: TestDetails,
-          attributes: ['testName', 'departmentId', 'originalPrice', 'discountPercentage', 
-                      'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount']
+          attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 
+                      'discountPercentage', 'discountedPrice', 'cashAmount', 
+                      'gCashAmount', 'balanceAmount']
         }
       ]
     });

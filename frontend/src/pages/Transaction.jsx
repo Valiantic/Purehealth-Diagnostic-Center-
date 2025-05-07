@@ -3,10 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
-import { Calendar, Download, Edit, X, Check, MoreVertical, AlertCircle, Save } from 'lucide-react';
-import useAuth from '../hooks/useAuth';
+import { Calendar, Download, Edit, X, MoreVertical, Save } from 'lucide-react';
+import useAuth from '../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionAPI, departmentAPI, referrerAPI } from '../services/api';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+const noSpinnerStyle = { 
+  WebkitAppearance: 'none',
+  MozAppearance: 'textfield',
+  margin: 0, 
+  appearance: 'textfield' 
+};
 
 // Helper function to format date as DD-MMM-YYYY
 const formatDate = (date) => {
@@ -16,6 +25,38 @@ const formatDate = (date) => {
   const month = months[d.getMonth()];
   const year = d.getFullYear();
   return `${day}-${month}-${year}`;
+};
+
+// Format date as MM/DD/YY
+const formatShortDate = (date) => {
+  if (!date) return 'N/A';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return 'N/A';
+  
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const year = String(d.getFullYear()).slice(-2);
+  
+  return `${month}/${day}/${year}`;
+};
+
+// Calculate age based on birthdate
+const calculateAge = (birthdate) => {
+  if (!birthdate) return '';
+  
+  const birthDate = new Date(birthdate);
+  if (isNaN(birthDate.getTime())) return '';
+  
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  // Adjust age if birthday hasn't occurred yet this year
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
 };
 
 const Transaction = () => {
@@ -29,6 +70,29 @@ const Transaction = () => {
   // Confirmation modal state
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [transactionToCancel, setTransactionToCancel] = useState(null);
+  
+  // Transaction summary modal state
+  const [isTransactionSummaryOpen, setIsTransactionSummaryOpen] = useState(false);
+  const [selectedSummaryTransaction, setSelectedSummaryTransaction] = useState(null);
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [editedSummaryTransaction, setEditedSummaryTransaction] = useState(null);
+  
+  // Fix: Add proper state variables for MC# validation
+  const [mcNoExists, setMcNoExists] = useState(false);
+  const [isMcNoChecking, setIsMcNoChecking] = useState(false);
+  
+  // Add state for tracking potential refunds
+  const [potentialRefundAmount, setPotentialRefundAmount] = useState(0);
+  
+  // Add state to track actual refunds (not just potential)
+  const [confirmedRefundAmount, setConfirmedRefundAmount] = useState(0);
+
+  // Fix: Define idTypeOptions for the dropdown
+  const idTypeOptions = [
+    { value: 'Regular', label: 'Regular' },
+    { value: 'Person with Disability', label: 'PWD' },
+    { value: 'Senior Citizen', label: 'Senior Citizen' }
+  ];
   
   // Reference to the date input elements
   const incomeDateInputRef = React.useRef(null);
@@ -122,7 +186,7 @@ const Transaction = () => {
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await departmentAPI.getAllDepartments(true);
-      return response;
+      return response.data;
     },
     staleTime: 60000,
   });
@@ -163,57 +227,53 @@ const Transaction = () => {
       );
     })
     .map((transaction) => {
-    // Group test details by department
-    const departmentRevenues = {};
+      // Group test details by department
+      const departmentRevenues = {};
+      // Initialize department revenues to 0
+      departments.forEach((dept) => {
+        departmentRevenues[dept.departmentId] = {
+          name: dept.departmentName,
+          amount: 0,
+          isActive: dept.status === 'active',
+        };
+      });
 
-    // Initialize department revenues to 0
-    departments.forEach((dept) => {
-      departmentRevenues[dept.departmentId] = {
-        name: dept.departmentName,
-        amount: 0,
-        isActive: dept.status === 'active',
+      // Sum up revenue for each department
+      if (transaction.TestDetails && transaction.TestDetails.length > 0) {
+        transaction.TestDetails.forEach((test) => {
+          if (departmentRevenues[test.departmentId]) {
+            departmentRevenues[test.departmentId].amount += parseFloat(test.discountedPrice) || 0;
+          }
+        });
+      }
+      
+      // Find the referrer - simplified to show only last name
+      let referrerName = 'Out Patient';
+      
+      if (transaction.referrerId) {
+        // Normalize IDs for comparison by converting both to strings
+        const transactionReferrerId = String(transaction.referrerId);
+        const referrer = referrers.find(ref => String(ref.referrerId) === transactionReferrerId);
+        
+        if (referrer) {
+          referrerName = referrer.lastName ? `Dr. ${referrer.lastName}` : 'Unknown';
+        } else {
+          // Shorter ID display for missing referrers
+          referrerName = 'Out Patient';    
+        }
+      }
+
+      return {
+        id: transaction.mcNo,
+        name: `${transaction.firstName} ${transaction.lastName}`,
+        departmentRevenues,
+        referrer: referrerName,
+        grossDeposit: parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount),
+        status: transaction.status,
+        // Store original transaction for debugging
+        originalTransaction: transaction
       };
     });
-
-    // Sum up revenue for each department
-    if (transaction.TestDetails && transaction.TestDetails.length > 0) {
-      transaction.TestDetails.forEach((test) => {
-        if (departmentRevenues[test.departmentId]) {
-          departmentRevenues[test.departmentId].amount += parseFloat(test.discountedPrice) || 0;
-        }
-      });
-    }
-
-    // Find the referrer - simplified to show only last name
-    let referrerName = 'Out Patient';
-    
-    if (transaction.referrerId) {
-      // Normalize IDs for comparison by converting both to strings
-      const transactionReferrerId = String(transaction.referrerId);
-      
-      // Find referrer by ID with string comparison
-      const referrer = referrers.find(ref => String(ref.referrerId) === transactionReferrerId);
-      
-      if (referrer) {
-        referrerName = referrer.lastName ? `Dr. ${referrer.lastName}` : 'Unknown';
-      } else {
-        // Shorter ID display for missing referrers
-        // referrerName = `ID: ${transactionReferrerId.substring(0, 5)}...`;
-        referrerName = 'Out Patient'; 
-      }
-    }
-
-    return {
-      id: transaction.mcNo,
-      name: `${transaction.firstName} ${transaction.lastName}`,
-      departmentRevenues,
-      referrer: referrerName,
-      grossDeposit: parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount),
-      status: transaction.status,
-      // Store original transaction for debugging
-      originalTransaction: transaction
-    };
-  });
 
   // Filter transactions based on search term
   const filteredTransactions = processedTransactions.filter((transaction) => {
@@ -231,7 +291,6 @@ const Transaction = () => {
   // Calculate department totals - separate active and cancelled transactions
   const departmentTotals = {};
   const departmentRefunds = {};
-
   departments.forEach((dept) => {
     departmentTotals[dept.departmentId] = 0;
     departmentRefunds[dept.departmentId] = 0;
@@ -246,7 +305,7 @@ const Transaction = () => {
       }
     });
   });
-
+  
   // Check which departments have values in transactions
   const departmentsWithValues = departments.filter(dept => 
     departmentTotals[dept.departmentId] > 0 || dept.status === 'active'
@@ -259,13 +318,8 @@ const Transaction = () => {
 
   // Calculate total GCash
   const totalGCash = filteredTransactions.reduce((sum, transaction) => {
-    return sum + (transaction.status !== 'cancelled' ? 
+    return sum + (transaction.status !== 'cancelled' ?
       parseFloat(transaction.originalTransaction.totalGCashAmount || 0) : 0);
-  }, 0);
-  
-  // Calculate total refunded amount
-  const totalRefund = filteredTransactions.reduce((sum, transaction) => {
-    return sum + (transaction.status === 'cancelled' ? transaction.grossDeposit : 0);
   }, 0);
 
   // Cancel transaction mutation
@@ -273,7 +327,7 @@ const Transaction = () => {
     mutationFn: (transactionId) => {
       // Use the API function correctly
       return transactionAPI.updateTransactionStatus(
-        transactionId, 
+        transactionId,
         'cancelled',
         user.userId
       );
@@ -291,7 +345,6 @@ const Transaction = () => {
     onError: (error) => {
       console.error('Failed to cancel transaction:', error);
       // You could add toast notification here
-      setIsConfirmModalOpen(false);
     }
   });
 
@@ -309,90 +362,476 @@ const Transaction = () => {
     }
   };
 
-  // Close modal
-  const closeModal = () => {
-    setIsConfirmModalOpen(false);
-    setTransactionToCancel(null);
-  };
-
   // Edit transaction state
   const [editingId, setEditingId] = useState(null);
   const [editedTransaction, setEditedTransaction] = useState(null);
 
   // Toggle edit mode for a transaction
   const handleEditClick = (transaction) => {
-    setEditingId(transaction.id);
-    setEditedTransaction({
-      id: transaction.id,
-      name: transaction.name,
-      referrerId: transaction.originalTransaction.referrerId || '',
-      // We can add more fields here if needed for editing
-    });
+    // Instead of setting up inline editing, open the transaction summary modal
+    openTransactionSummary(transaction);
     setOpenMenuId(null); // Close the dropdown
   };
 
-  // Handle saving edited transaction
-  const saveTransactionMutation = useMutation({
-    mutationFn: (data) => {
-      return transactionAPI.updateTransaction(
-        data.transactionId,
-        {
-          mcNo: data.mcNo,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          referrerId: data.referrerId || null
+  // Function to open transaction summary modal
+  const openTransactionSummary = (transaction) => {
+    setSelectedSummaryTransaction(transaction);
+    setIsTransactionSummaryOpen(true);
+    setOpenMenuId(null); // Close the dropdown
+  };
+
+  const closeTransactionSummary = () => {
+    setIsTransactionSummaryOpen(false);
+    setIsEditingSummary(false);
+    setEditedSummaryTransaction(null);
+    setSelectedSummaryTransaction(null);
+  };
+
+  // Enter edit mode for transaction summary
+  const handleEnterEditMode = () => {
+    // Create a deep copy of the transaction for editing
+    setEditedSummaryTransaction(JSON.parse(JSON.stringify(selectedSummaryTransaction)));
+    setIsEditingSummary(true);
+  };
+
+  // Cancel edit for transaction summary
+  const handleCancelEdit = () => {
+    setIsEditingSummary(false);
+    setEditedSummaryTransaction(null);
+  };
+  
+  // Fix ID Type handling to properly set ID number to "XXXX-XXXX" when Regular is selected
+  const handleSummaryInputChange = (e, field) => {
+    // Special handling for ID Type
+    if (field === 'idType') {
+      const newIdType = e.target.value;
+      
+      // If idType is changed to "Regular", automatically set ID number to "XXXX-XXXX"
+      if (newIdType === 'Regular') {
+        setEditedSummaryTransaction({
+          ...editedSummaryTransaction,
+          originalTransaction: {
+            ...editedSummaryTransaction.originalTransaction,
+            idType: newIdType,
+            idNumber: 'XXXX-XXXX' // Force set ID number when Regular is selected
+          }
+        });
+        console.log("Set ID number to XXXX-XXXX for Regular");
+        return;
+      }
+      // If it's changed to something else, clear the ID number to force user input
+      else {
+        setEditedSummaryTransaction({
+          ...editedSummaryTransaction,
+          originalTransaction: {
+            ...editedSummaryTransaction.originalTransaction,
+            idType: newIdType,
+            idNumber: '' // Clear the ID number
+          }
+        });
+        return;
+      }
+    }
+    
+    // Normal handling for other fields
+    setEditedSummaryTransaction({
+      ...editedSummaryTransaction,
+      originalTransaction: {
+        ...editedSummaryTransaction.originalTransaction,
+        [field]: e.target.value
+      }
+    });
+  };
+
+  // Fix MC# validation to properly handle transaction ID and API response
+  const handleMcNoChange = (e) => {
+    const newMcNo = e.target.value;
+
+    // Always update state immediately
+    setEditedSummaryTransaction((prev) => ({
+      ...prev,
+      id: newMcNo,
+    }));
+
+    // Skip validation if empty or unchanged
+    if (!newMcNo || newMcNo === selectedSummaryTransaction.id) {
+      setMcNoExists(false);
+      setIsMcNoChecking(false);
+      return;
+    }
+
+    // Start checking
+    setIsMcNoChecking(true);
+
+    // Debounce API calls
+    clearTimeout(window.mcNoValidationTimer);
+    window.mcNoValidationTimer = setTimeout(async () => {
+      try {
+        // Get transaction ID directly from selectedSummaryTransaction
+        const transactionId = selectedSummaryTransaction?.originalTransaction?.transactionId;
+
+        if (!transactionId) {
+          console.error("Missing transaction ID:", selectedSummaryTransaction);
+          toast.error("Could not validate MC# - missing transaction ID");
+          setMcNoExists(false);
+          return;
         }
-      );
+
+        console.log(`Validating MC#: ${newMcNo} for transaction: ${transactionId}`);
+
+        const response = await transactionAPI.checkMcNoExists(newMcNo, transactionId);
+        console.log("MC# validation response:", response);
+
+        if (response && typeof response.exists === "boolean") {
+          setMcNoExists(response.exists);
+          if (response.exists) {
+            toast.error("This MC# is already in use by another transaction");
+          }
+        } else {
+          console.error("Invalid response format:", response);
+          setMcNoExists(false);
+        }
+      } catch (error) {
+        console.error("MC# validation error:", error);
+        toast.error(`Error validating MC#: ${error.message || "Unknown error"}`);
+        setMcNoExists(false);
+      } finally {
+        setIsMcNoChecking(false);
+      }
+    }, 500);
+  };
+
+  // Add the missing validateTransaction function
+  const validateTransaction = (data) => {
+    console.log("Validating transaction data:", data);
+    // Check required fields
+    if (!data.firstName || !data.lastName) {
+      toast.error('Patient name is required');
+      return false;
+    }
+    
+    // Check if MC# is empty
+    if (!data.mcNo) {
+      toast.error('MC# is required');
+      return false;
+    }
+    
+    // Check if ID Type is not Regular but ID Number is empty
+    if (data.idType && data.idType !== 'Regular' && (!data.idNumber || data.idNumber === 'XXXX-XXXX')) {
+      toast.error('ID Number is required when ID Type is not Regular');
+      return false;
+    }
+    
+    // Make sure we have a transactionId
+    if (!data.transactionId) {
+      toast.error('Transaction ID is required for updating');
+      console.error('Missing transaction ID:', data);
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Enhanced save function with better debug logging
+  const handleSaveEdit = () => {
+    if (!editedSummaryTransaction) {
+      toast.error("No changes to save");
+      return;
+    }
+    
+    // Don't save if MC# validation failed
+    if (mcNoExists) {
+      toast.error('MC# already exists in another transaction');
+      return;
+    }
+    
+    // Get transaction ID directly from the source
+    const transactionId = selectedSummaryTransaction?.originalTransaction?.transactionId;
+    if (!transactionId) {
+      toast.error("Missing transaction ID - cannot save changes");
+      console.error("Missing transaction ID in:", selectedSummaryTransaction);
+      return;
+    }
+    
+    // Prepare test details data for saving - critical for updating tests!
+    const testDetails = editedSummaryTransaction.originalTransaction.TestDetails.map(test => ({
+      testDetailId: test.testDetailId,
+      discountPercentage: test.discountPercentage,
+      discountedPrice: test.discountedPrice,
+      cashAmount: test.cashAmount || "0.00",
+      gCashAmount: test.gCashAmount || "0.00",
+      balanceAmount: test.balanceAmount || "0.00",
+    }));
+    
+    // Prepare data with guaranteed transaction ID and including test details
+    const transactionData = {
+      transactionId: transactionId,
+      mcNo: editedSummaryTransaction.id,
+      firstName: editedSummaryTransaction.originalTransaction.firstName,
+      lastName: editedSummaryTransaction.originalTransaction.lastName,
+      referrerId: editedSummaryTransaction.originalTransaction.referrerId,
+      birthDate: editedSummaryTransaction.originalTransaction.birthDate || null,
+      sex: editedSummaryTransaction.originalTransaction.sex || null,
+      idType: editedSummaryTransaction.originalTransaction.idType || 'Regular',
+      idNumber: editedSummaryTransaction.originalTransaction.idNumber || 'XXXX-XXXX',
+      userId: user.userId,
+      testDetails: testDetails
+    };
+    
+    // Log the data being sent
+    console.log("Saving transaction with data:", transactionData);
+    
+    // Validate before saving
+    if (!validateTransaction(transactionData)) {
+      return;
+    }
+    
+    // Submit the update
+    saveEditedTransactionMutation.mutate(transactionData);
+  };
+  
+  // Fix saveEditedTransactionMutation to properly refetch data
+  const saveEditedTransactionMutation = useMutation({
+    mutationFn: (data) => {
+      return transactionAPI.updateTransaction(data.transactionId, data);
     },
-    onSuccess: () => {
-      // Invalidate and refetch transactions data
-      queryClient.invalidateQueries({
-        queryKey: ['transactions'],
-        exact: false,
-        refetchType: 'all'
-      });
-      setEditingId(null);
-      setEditedTransaction(null);
+    onSuccess: (response) => {
+      // Check if response contains the expected structure
+      if (response && response.data) {
+        // Show success toast
+        toast.success('Transaction updated successfully');
+        
+        // Force refetch transactions data to ensure we get updated data
+        queryClient.removeQueries(['transactions']);
+        queryClient.invalidateQueries({
+          queryKey: ['transactions'],
+          refetchActive: true,
+          refetchInactive: false
+        });
+        
+        // If the transaction summary modal is going to remain open, update the selected transaction
+        if (response.data) {
+          // Get the formatted transaction data
+          const updatedTransaction = formatTransactionForDisplay(response.data);
+          setSelectedSummaryTransaction(updatedTransaction);
+        }
+        
+        // Reset states
+        setIsEditingSummary(false);
+        setEditedSummaryTransaction(null);
+        closeTransactionSummary();
+      } else {
+        console.error('Unexpected response format:', response);
+        toast.error('Failed to save changes: Unexpected response format');
+      }
     },
     onError: (error) => {
       console.error('Failed to save transaction:', error);
-      // You could add toast notification here
-      setEditingId(null);
+      toast.error('Failed to save changes: ' + (error.message || 'Unknown error'));
     }
   });
-
-  // Handle saving edited transaction
-  const handleSaveClick = (transaction) => {
-    if (!editedTransaction) return;
-
-    // Split the name into first and last name
-    const nameParts = editedTransaction.name.split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    saveTransactionMutation.mutate({
-      transactionId: transaction.originalTransaction.transactionId,
-      mcNo: editedTransaction.id,
-      firstName,
-      lastName,
-      referrerId: editedTransaction.referrerId
+  
+  // Helper function to format transaction data from API response for display
+  const formatTransactionForDisplay = (transaction) => {
+    if (!transaction) return null;
+    
+    // Find referrer name
+    let referrerName = 'Out Patient';
+    if (transaction.referrerId) {
+      const referrer = referrers.find(ref => 
+        String(ref.referrerId) === String(transaction.referrerId)
+      );
+      if (referrer) {
+        referrerName = referrer.lastName ? `Dr. ${referrer.lastName}` : 'Unknown';
+      }
+    }
+    
+    // Group test details by department
+    const departmentRevenues = {};
+    departments.forEach((dept) => {
+      departmentRevenues[dept.departmentId] = {
+        name: dept.departmentName,
+        amount: 0,
+        isActive: dept.status === 'active',
+      };
     });
+    
+    // Sum up revenue for each department
+    if (transaction.TestDetails && transaction.TestDetails.length > 0) {
+      transaction.TestDetails.forEach((test) => {
+        if (departmentRevenues[test.departmentId]) {
+          departmentRevenues[test.departmentId].amount += parseFloat(test.discountedPrice) || 0;
+        }
+      });
+    }
+    
+    return {
+      id: transaction.mcNo,
+      name: `${transaction.firstName} ${transaction.lastName}`,
+      departmentRevenues,
+      referrer: referrerName,
+      grossDeposit: parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount),
+      status: transaction.status,
+      originalTransaction: transaction
+    };
   };
+  
+  // Add state to track refunds
+  const [refundAmounts, setRefundAmounts] = useState({});
+  
+  // Add effect to calculate confirmed refunds including both cancelled transactions and payment refunds
+  useEffect(() => {
+    // Calculate total refunds from cancelled transactions
+    const cancelledRefunds = filteredTransactions.reduce((sum, transaction) => {
+      if (transaction.status === 'cancelled') {
+        return sum + (parseFloat(transaction.grossDeposit) || 0);
+      }
+      return sum;
+    }, 0);
+    
+    // Add any payment refunds that were recorded
+    const paymentRefunds = Object.values(refundAmounts).reduce((sum, amount) => {
+      return sum + amount;
+    }, 0);
+    
+    setConfirmedRefundAmount(cancelledRefunds + paymentRefunds);
+  }, [filteredTransactions, refundAmounts]);
 
-  // Handle input change for edited transaction
-  const handleEditChange = (e, field) => {
-    setEditedTransaction({
-      ...editedTransaction,
-      [field]: e.target.value
+  // Create an improved handleTestDetailChange that restricts input and handles refunds
+  const handleTestDetailChange = (index, field, value) => {
+    console.log(`Changing ${field} to ${value} for index ${index}`);
+    
+    // Create a shallow copy first
+    const updatedTransaction = {
+      ...editedSummaryTransaction,
+      originalTransaction: {
+        ...editedSummaryTransaction.originalTransaction,
+        TestDetails: [...editedSummaryTransaction.originalTransaction.TestDetails]
+      }
+    };
+    
+    // Create a copy of the test we're modifying
+    const testCopy = {...updatedTransaction.originalTransaction.TestDetails[index]};
+    
+    // Ensure proper numeric input handling
+    if (field === 'cashAmount' || field === 'gCashAmount') {
+      // Only allow numeric input with up to 2 decimal places
+      const numericRegex = /^\d+(\.\d{0,2})?$/;
+      if (value && !numericRegex.test(value)) {
+        return; // Reject non-numeric input
+      }
+      
+      // Parse the discounted price and the current values
+      const discountedPrice = parseFloat(testCopy.discountedPrice) || 0;
+      const numValue = parseFloat(value) || 0;
+      const otherField = field === 'cashAmount' ? 'gCashAmount' : 'cashAmount';
+      const otherValue = parseFloat(testCopy[otherField]) || 0;
+      const totalPayment = numValue + otherValue;
+      
+      // Set the new value directly (no automatic adjustment)
+      testCopy[field] = value;
+      
+      // Calculate refund if payment exceeds price
+      const refundId = `test-${testCopy.testDetailId}`;
+      if (totalPayment > discountedPrice) {
+        const refundAmount = totalPayment - discountedPrice;
+        
+        // Update refund tracking for this test
+        setRefundAmounts(prev => ({
+          ...prev,
+          [refundId]: refundAmount
+        }));
+        
+        // Show warning about refund
+        toast.info(`Payment exceeds price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+      } else {
+        // Clear any previously tracked refund for this test
+        setRefundAmounts(prev => {
+          const newRefunds = {...prev};
+          delete newRefunds[refundId];
+          return newRefunds;
+        });
+      }
+      
+      // Update balance - always based on actual calculation
+      testCopy.balanceAmount = Math.max(0, discountedPrice - totalPayment).toFixed(2);
+    }
+    else if (field === 'discountPercentage') {
+      // Only allow integer percentages from 0-100
+      if (value && !/^\d{0,3}$/.test(value)) {
+        return; // Reject non-numeric input
+      }
+      
+      const percentValue = parseInt(value) || 0;
+      if (percentValue > 100) {
+        toast.warning('Discount cannot exceed 100%');
+        testCopy.discountPercentage = "100";
+      } else {
+        testCopy.discountPercentage = value;
+      }
+      
+      // Calculate new discounted price
+      const originalPrice = parseFloat(testCopy.originalPrice) || 0;
+      const discountPercent = Math.min(100, parseInt(testCopy.discountPercentage) || 0);
+      const newDiscountedPrice = originalPrice * (1 - discountPercent/100);
+      testCopy.discountedPrice = newDiscountedPrice.toFixed(2);
+      
+      // Recalculate balance
+      const cashAmount = parseFloat(testCopy.cashAmount || 0);
+      const gCashAmount = parseFloat(testCopy.gCashAmount || 0);
+      const totalPayment = cashAmount + gCashAmount;
+      
+      // Check for potential refund if price is now less than payment
+      const refundId = `test-${testCopy.testDetailId}`;
+      if (totalPayment > newDiscountedPrice) {
+        const refundAmount = totalPayment - newDiscountedPrice;
+        
+        // Update refund tracking
+        setRefundAmounts(prev => ({
+          ...prev,
+          [refundId]: refundAmount
+        }));
+        
+        toast.info(`Payment now exceeds discounted price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+      } else {
+        // Clear any previously tracked refund
+        setRefundAmounts(prev => {
+          const newRefunds = {...prev};
+          delete newRefunds[refundId];
+          return newRefunds;
+        });
+      }
+      
+      testCopy.balanceAmount = Math.max(0, newDiscountedPrice - totalPayment).toFixed(2);
+    }
+    else {
+      // For other fields, just set the value
+      testCopy[field] = value;
+    }
+    
+    // Update the test in the array
+    updatedTransaction.originalTransaction.TestDetails[index] = testCopy;
+    
+    // Calculate new totals
+    let totalCash = 0;
+    let totalGCash = 0;
+    let totalBalance = 0;
+    
+    updatedTransaction.originalTransaction.TestDetails.forEach(test => {
+      totalCash += parseFloat(test.cashAmount || 0);
+      totalGCash += parseFloat(test.gCashAmount || 0);
+      totalBalance += parseFloat(test.balanceAmount || 0);
     });
+    
+    // Update totals in the transaction
+    updatedTransaction.originalTransaction.totalCashAmount = totalCash.toFixed(2);
+    updatedTransaction.originalTransaction.totalGCashAmount = totalGCash.toFixed(2);
+    updatedTransaction.originalTransaction.totalBalanceAmount = totalBalance.toFixed(2);
+    
+    // Update state with the new values
+    setEditedSummaryTransaction(updatedTransaction);
   };
-
-  // Cancel editing
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditedTransaction(null);
-  };
-
+  
   // Page Rendering Security
   if (isAuthenticating) {
     return null;
@@ -437,7 +876,7 @@ const Transaction = () => {
       <div className="md:block md:w-64 flex-shrink-0">
         <Sidebar />
       </div>
-         
+      
       {/* Main content */}
       <div className="flex-grow p-2 md:p-4">
         {/* Income section */}
@@ -490,7 +929,7 @@ const Transaction = () => {
                     }}
                   />
                 </div>
-                
+                    
                 <button onClick={handleNewIncome} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
                   New
                 </button>
@@ -530,8 +969,7 @@ const Transaction = () => {
                             {dept.departmentName}
                             {dept.status !== 'active' && <span className="ml-1 text-xs opacity-75">(archived)</span>}
                           </th>
-                        ))
-                        }
+                        ))}
                         
                         <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
                         <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 w-[80px] md:w-[120px]">Referrer</th>
@@ -576,28 +1014,25 @@ const Transaction = () => {
                             )}
                           </td>
                           
-                          {/* Department amounts - include inactive departments with values */}
+                          {/* Department columns and amounts - fixes for rendering issues */}
                           {departmentsWithValues.map(dept => {
-                              const deptData = transaction.departmentRevenues[dept.departmentId];
-                              const isArchivedWithValue = dept.status !== 'active' && 
-                                                        deptData && 
-                                                        deptData.amount > 0;
-                              
-                              return (
-                                <td 
-                                  key={dept.departmentId} 
-                                  className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 
-                                            ${isArchivedWithValue ? 'bg-green-50' : ''}`}
-                                >
-                                  {transaction.status === 'cancelled' ? (
-                                    '' // Don't display revenue data for cancelled transactions
-                                  ) : (
-                                    deptData && deptData.amount > 0 ? deptData.amount.toLocaleString(2) : ''
-                                  )}
-                                </td>
-                              );
-                            })
-                          }
+                            const deptData = transaction.departmentRevenues[dept.departmentId];
+                            const isArchivedWithValue = dept.status !== 'active' && 
+                                                      deptData && 
+                                                      deptData.amount > 0;
+                                
+                            return (
+                              <td 
+                                key={dept.departmentId} 
+                                className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${isArchivedWithValue ? 'bg-green-50' : ''}`}
+                              >
+                                {transaction.status === 'cancelled' 
+                                  ? '' // Don't display revenue data for cancelled transactions
+                                  : (deptData && deptData.amount > 0 ? deptData.amount.toLocaleString(2) : '')
+                                }
+                              </td>
+                            );
+                          })}
                           
                           <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
                             {transaction.status === 'cancelled' ? (
@@ -641,7 +1076,7 @@ const Transaction = () => {
                                     >
                                       <Save size={16} className="md:w-5 md:h-5" />
                                     </button>
-                                    <button 
+                                    <button  
                                       className="text-red-600 hover:text-red-800 focus:outline-none"
                                       onClick={handleCancelEdit}
                                     >
@@ -670,9 +1105,9 @@ const Transaction = () => {
                                       onClick={() => handleEditClick(transaction)}
                                     >
                                       <Edit size={14} className="mr-2" />
-                                      Edit 
+                                      Edit
                                     </button>
-                                    <button 
+                                    <button
                                       className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
                                       onClick={() => handleCancelClick(transaction)}
                                     >
@@ -696,20 +1131,17 @@ const Transaction = () => {
                         
                         {/* Department totals - include inactive departments with values */}
                         {departmentsWithValues.map(dept => (
-                            <td 
-                              key={dept.departmentId} 
-                              className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 
-                  ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
-                            >
-                              <div>
-                                {departmentTotals[dept.departmentId] > 0 ? 
-                                  departmentTotals[dept.departmentId].toLocaleString(2) : ''}
+                          <td 
+                            key={dept.departmentId} 
+                            className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
+                          >
+                            <div>
+                              {departmentTotals[dept.departmentId] > 0 ? 
+                                departmentTotals[dept.departmentId].toLocaleString(2) : ''}
                             </div>
-                           
-                            </td>
-                          ))
-                        }
-                        
+                          </td>
+                        ))}
+                          
                         <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
                           {totalGross.toLocaleString(2)}
                         </td>
@@ -743,6 +1175,11 @@ const Transaction = () => {
             {/* Summary Box */}
             <div className="mt-2 md:mt-0 border border-gray-300 w-full md:w-auto">
               <table className="border-collapse w-full md:w-auto text-sm md:text-base">
+                <thead className='bg-yellow-500 text-gray-800 font-bold'>
+                  <tr>
+                    <th className="px-4 py-2 text-white" colSpan="2">INCOME SUMMARY</th>
+                  </tr>
+                </thead>
                 <tbody>
                   <tr>
                     <td className="bg-blue-500 text-white font-medium py-1 px-2 md:px-4 border border-gray-300 text-center">
@@ -757,12 +1194,15 @@ const Transaction = () => {
                       REFUND
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {totalRefund.toLocaleString(2)}
+                      {/* Only show confirmed refunds, not potential ones */}
+                      {confirmedRefundAmount > 0
+                        ? confirmedRefundAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : "0.00"}
                     </td>
                   </tr>
                   <tr>
                     <td className="bg-green-800 text-white font-medium py-1 px-2 md:px-4 border border-gray-300 text-center">
-                      TOTAL
+                      DEPOSIT
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
                       {totalGross.toLocaleString()}
@@ -821,7 +1261,7 @@ const Transaction = () => {
                     }}
                   />
                 </div>
-                
+                    
                 <button onClick={handleNewExpenses} className="px-3 md:px-8 py-1 md:py-2 bg-green-800 text-white rounded-md text-sm md:text-base flex-1 md:flex-none md:w-32 hover:bg-green-600">
                   New
                 </button>
@@ -850,7 +1290,7 @@ const Transaction = () => {
                   <thead>
                     <tr className="bg-green-800 text-white">
                       <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Payee</th>
-                      <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Purpose</th>
+                      <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Purpose</th>
                       <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Department</th>
                       <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Amount</th>
                       <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
@@ -871,39 +1311,399 @@ const Transaction = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal */
-      isConfirmModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex items-center mb-4 text-red-600">
-              <AlertCircle className="mr-2" size={24} />
-              <h3 className="text-lg font-semibold">Confirm Cancellation</h3>
+      {/* Transaction Summary Modal */}
+      {isTransactionSummaryOpen && selectedSummaryTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-md w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] flex flex-col">
+            <div className="bg-green-800 text-white p-3 md:p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
+              <h2 className="text-lg md:text-xl font-bold">
+                {isEditingSummary ? 'Edit Transaction' : 'Transaction Summary'}
+              </h2>
+              <button
+                onClick={closeTransactionSummary}
+                className="text-white hover:text-gray-200 focus:outline-none"
+              >
+                <X size={20} className="md:w-6 md:h-6" />
+              </button>
             </div>
-            
-            <p className="mb-6">
-              Are you sure you want to cancel the transaction for 
-              <span className="font-bold"> {transactionToCancel?.name}</span>? 
-              This will mark the transaction as refunded and update financial records.
+
+            <div className="overflow-y-auto flex-1 scrollbar-hide"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch'
+              }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
+                <div className="p-3 md:border-r border-gray-200">
+                  <div className="grid grid-cols-3 gap-1">
+                    <div className="font-bold text-green-800">First Name:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <input
+                          type="text"
+                          value={editedSummaryTransaction.originalTransaction.firstName}
+                          onChange={(e) => handleSummaryInputChange(e, 'firstName')}
+                          className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                        />
+                      ) : (
+                        selectedSummaryTransaction.originalTransaction?.firstName || 'N/A'
+                      )}
+                    </div>
+
+                    <div className="font-bold text-green-800">Last Name:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <input
+                          type="text"
+                          value={editedSummaryTransaction.originalTransaction.lastName}
+                          onChange={(e) => handleSummaryInputChange(e, 'lastName')}
+                          className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                        />
+                      ) : (
+                        selectedSummaryTransaction.originalTransaction?.lastName || 'N/A'
+                      )}
+                    </div>
+                    
+                    <div className="font-bold text-green-800">Referrer:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <select
+                          value={editedSummaryTransaction.originalTransaction.referrerId || ""}
+                          onChange={(e) => handleSummaryInputChange(e, 'referrerId')}
+                          className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                        >
+                          <option value="">Out Patient</option>
+                          {referrers.map(ref => (
+                            <option key={ref.referrerId} value={ref.referrerId}>
+                              Dr. {ref.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        selectedSummaryTransaction.referrer || 'Out Patient'
+                      )}
+                    </div>
+
+                    <div className="font-bold text-green-800">MC #:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <div>
+                          <input
+                            type="text"
+                            value={editedSummaryTransaction.id}
+                            onChange={handleMcNoChange}
+                            className={`w-full px-2 py-1 border ${mcNoExists ? 'border-red-500' : 'border-green-600'} rounded focus:outline-none focus:ring-1 ${mcNoExists ? 'focus:ring-red-500' : 'focus:ring-green-600'}`}
+                          />
+                          {isMcNoChecking && <span className="text-xs text-blue-500 mt-1">Checking...</span>}
+                          {mcNoExists && <span className="text-xs text-red-500 mt-1">This MC# already exists in the database</span>}
+                        </div>
+                      ) : (
+                        selectedSummaryTransaction.id
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3">
+                  <div className="grid grid-cols-3 gap-1">
+                    <div className="font-bold text-green-800">Birth Date:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <div className="relative">
+                          <input
+                            type="date"
+                            value={editedSummaryTransaction.originalTransaction.birthDate ? 
+                              new Date(editedSummaryTransaction.originalTransaction.birthDate).toISOString().split('T')[0] : ''}
+                            onChange={(e) => handleSummaryInputChange(e, 'birthDate')}
+                            className="w-full px-2 py-1 border border-green-600 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-600"
+                            onClick={(e) => e.target.showPicker()}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          {selectedSummaryTransaction.originalTransaction?.birthDate
+                            ? `${formatShortDate(selectedSummaryTransaction.originalTransaction.birthDate)}  (Age: ${calculateAge(selectedSummaryTransaction.originalTransaction.birthDate)})`
+                            : 'N/A'}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="font-bold text-green-800">Sex:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <select
+                          value={editedSummaryTransaction.originalTransaction.sex || ""}
+                          onChange={(e) => handleSummaryInputChange(e, 'sex')}
+                          className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                        >
+                          <option value="">Select</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                        </select>
+                      ) : (
+                        selectedSummaryTransaction.originalTransaction?.sex || 'N/A'
+                      )}
+                    </div>
+
+                    <div className="font-bold text-green-800">ID Type:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <select
+                          value={editedSummaryTransaction.originalTransaction.idType || ''}
+                          onChange={(e) => handleSummaryInputChange(e, 'idType')}
+                          className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                        >
+                          {idTypeOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        selectedSummaryTransaction.originalTransaction?.idType || 'Regular'
+                      )}
+                    </div>
+
+                    <div className="font-bold text-green-800">ID #:</div>
+                    <div className="col-span-2 text-green-700">
+                      {isEditingSummary ? (
+                        <input
+                          type="text"
+                          value={editedSummaryTransaction.originalTransaction.idNumber || ''}
+                          onChange={(e) => handleSummaryInputChange(e, 'idNumber')}
+                          className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
+                          readOnly={editedSummaryTransaction.originalTransaction.idType === 'Regular'} 
+                          disabled={editedSummaryTransaction.originalTransaction.idType === 'Regular'}
+                        />
+                      ) : (
+                        selectedSummaryTransaction.originalTransaction?.idNumber || 'N/A'
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead className="bg-gray-100 sticky top-0 z-10">
+                    <tr>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Price</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc. %</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(isEditingSummary ? editedSummaryTransaction : selectedSummaryTransaction)
+                      .originalTransaction?.TestDetails?.map((test, index) => (
+                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                        <td className="p-1 md:p-2 border-b border-gray-200">
+                          {/* Test name is always read-only */}
+                          <div className="text-xs md:text-sm">{test.testName}</div>
+                        </td>
+                        <td className="p-1 md:p-2 border-b border-gray-200">
+                          {isEditingSummary ? (
+                            <div className="text-xs md:text-sm font-medium">
+                              {parseFloat(test.discountedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          ) : (
+                            <div className="text-xs md:text-sm">
+                              {parseFloat(test.discountedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-1 md:p-2 border-b border-gray-200">
+                          {isEditingSummary ? (
+                            <input
+                              type="text" 
+                              inputMode="numeric" 
+                              pattern="[0-9]*" 
+                              value={test.discountPercentage || ''}
+                              onChange={(e) => handleTestDetailChange(index, 'discountPercentage', e.target.value)}
+                              style={noSpinnerStyle}
+                              className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                              placeholder="0"
+                            />
+                          ) : (
+                            <div className="text-xs md:text-sm">{`${test.discountPercentage}%`}</div>
+                          )}
+                        </td>
+                        <td className="p-1 md:p-2 border-b border-gray-200">
+                          {isEditingSummary ? (
+                            <input
+                              type="text" 
+                              inputMode="decimal"
+                              value={test.cashAmount || ''}
+                              onChange={(e) => handleTestDetailChange(index, 'cashAmount', e.target.value)}
+                              onKeyPress={(e) => {
+                                // Allow only numbers and decimal point
+                                const regex = /^[0-9.]*$/;
+                                if (!regex.test(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              style={{...noSpinnerStyle, caretColor: 'auto'}}
+                              className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                              placeholder="0.00"
+                            />
+                          ) : (
+                            <div className="text-xs md:text-sm">
+                              {parseFloat(test.cashAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-1 md:p-2 border-b border-gray-200">
+                          {isEditingSummary ? (
+                            <input
+                              type="text" 
+                              inputMode="decimal"
+                              value={test.gCashAmount || ''}
+                              onChange={(e) => handleTestDetailChange(index, 'gCashAmount', e.target.value)}
+                              onKeyPress={(e) => {
+                                // Allow only numbers and decimal point
+                                const regex = /^[0-9.]*$/;
+                                if (!regex.test(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              style={{...noSpinnerStyle, caretColor: 'auto'}}
+                              className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                              placeholder="0.00"
+                            />
+                          ) : (
+                            <div className="text-xs md:text-sm">
+                              {parseFloat(test.gCashAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-1 md:p-2 border-b border-gray-200">
+                          {isEditingSummary ? (
+                            <input
+                              type="text" 
+                              inputMode="decimal"
+                              value={test.balanceAmount}
+                              onChange={(e) => handleTestDetailChange(index, 'balanceAmount', e.target.value)}
+                              className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                              placeholder="0.00"
+                            />
+                          ) : (
+                            <div className="text-xs md:text-sm">
+                              {parseFloat(test.balanceAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            }</div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {(isEditingSummary ? editedSummaryTransaction : selectedSummaryTransaction)
+                      .originalTransaction?.TestDetails?.length > 0 && (
+                      <tr className="bg-green-100 font-bold">
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={3}>TOTAL</td>
+                        <td className="p-2 border-b border-gray-200 text-green-800">
+                          {parseFloat(
+                            isEditingSummary 
+                              ? editedSummaryTransaction.originalTransaction.totalCashAmount 
+                              : selectedSummaryTransaction.originalTransaction.totalCashAmount || 0
+                          ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800">
+                          {parseFloat(
+                            isEditingSummary 
+                              ? editedSummaryTransaction.originalTransaction.totalGCashAmount 
+                              : selectedSummaryTransaction.originalTransaction.totalGCashAmount || 0
+                          ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800">
+                          {parseFloat(
+                            isEditingSummary 
+                              ? editedSummaryTransaction.originalTransaction.totalBalanceAmount 
+                              : selectedSummaryTransaction.originalTransaction.totalBalanceAmount || 0
+                          ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
+              {isEditingSummary ? (
+                <>
+                  <button
+                    className="bg-gray-500 text-white px-8 py-2 rounded hover:bg-gray-600 focus:outline-none"
+                    onClick={handleCancelEdit}
+                    disabled={saveEditedTransactionMutation.isPending}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
+                    onClick={handleSaveEdit}
+                    disabled={saveEditedTransactionMutation.isPending}
+                  >
+                    {saveEditedTransactionMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
+                    onClick={handleEnterEditMode}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
+                  >
+                    Export
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Confirmation Modal */}
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-md p-6 max-w-sm w-full">
+            <h3 className="text-xl font-bold text-red-600 mb-4">Confirm Cancellation</h3>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to cancel this transaction? This action cannot be undone.
             </p>
-            
-            <div className="flex justify-end space-x-3">
-              <button 
-                onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsConfirmModalOpen(false)}
               >
                 No, Keep It
               </button>
-              <button 
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                 onClick={confirmCancellation}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 disabled={cancelTransactionMutation.isPending}
               >
-                {cancelTransactionMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancelTransactionMutation.isPending ? 'Cancelling...' : 'Yes, Cancel It'}
               </button>
             </div>
           </div>
         </div>
       )}
+      
+      {/* Add ToastContainer near the top of the component */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };

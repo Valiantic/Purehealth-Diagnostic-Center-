@@ -26,6 +26,29 @@ module.exports = (sequelize) => {
     revenueDate: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
+    },
+    status: {
+      type: DataTypes.STRING,
+      defaultValue: 'active',
+      allowNull: false
+    },
+    metadata: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      get() {
+        const metadataStr = this.getDataValue('metadata');
+        if (metadataStr) {
+          try {
+            return JSON.parse(metadataStr);
+          } catch (e) {
+            return {};
+          }
+        }
+        return {};
+      },
+      set(value) {
+        this.setDataValue('metadata', JSON.stringify(value));
+      }
     }
   }, {
     timestamps: true,
