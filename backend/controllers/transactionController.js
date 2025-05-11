@@ -65,8 +65,29 @@ exports.createTransaction = async (req, res) => {
       totalBalanceAmount += balanceAmount;
     });
 
-    // Generate 5-digit MC number if not provided
-    const generatedMcNo = mcNo || Math.floor(10000 + Math.random() * 90000).toString();
+    // Generate sequential MC number if not provided
+    let generatedMcNo;
+    if (mcNo) {
+      generatedMcNo = mcNo;
+    } else {
+      // Find the highest MC number in the database
+      const highestMcTransaction = await Transaction.findOne({
+        attributes: ['mcNo'],
+        order: [['mcNo', 'DESC']]
+      }, { transaction: t });
+      
+      // Generate the next MC number
+      if (highestMcTransaction && highestMcTransaction.mcNo) {
+        // Convert string to number, increment, then format back to string with leading zeros
+        const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
+        const nextNumber = currentNumber + 1;
+        generatedMcNo = String(nextNumber).padStart(5, '0');
+      } else {
+        // If no existing transactions, start from 10000
+        generatedMcNo = '10000';
+      }
+    }
+    
     console.log(`Using mcNo: ${generatedMcNo}`);
 
     // Create the transaction record
@@ -292,18 +313,40 @@ exports.updateTransactionStatus = async (req, res) => {
 
     // For cancellations, handle department revenue records
     if (status === 'cancelled') {
+      // Get all department revenues for this transaction
+      const departmentRevenues = await DepartmentRevenue.findAll({
+        where: { transactionId: id },
+        transaction: t
+      });
 
-      // Update each revenue record to reflect cancellation
-      await DepartmentRevenue.update(
-        { status: 'cancelled' },
-        {
-          where: { transactionId: id },
-          transaction: t
+      // Update each revenue record to reflect cancellation, not refund
+      for (const revenue of departmentRevenues) {
+        // Get existing metadata or create empty object
+        let metadata = {};
+        try {
+          if (revenue.metadata) {
+            metadata = typeof revenue.metadata === 'string' ? 
+              JSON.parse(revenue.metadata) : revenue.metadata;
+          }
+        } catch (e) {
+          console.error('Error parsing revenue metadata:', e);
         }
-      );
+
+        // Update metadata with cancellation flag
+        metadata.isCancellation = true;
+        metadata.isRefund = false;
+        metadata.cancelledAt = new Date().toISOString();
+        metadata.cancelledBy = currentUserId;
+
+        // Update the revenue record
+        await revenue.update({
+          status: 'cancelled',
+          metadata: JSON.stringify(metadata)
+        }, { transaction: t });
+      }
     }
 
-    // Log activity with specific refund message for cancelled status
+    // Log activity with specific message for cancelled status
     let activityDetails;
     if (status === 'cancelled') {
       const patientName = `${transaction.firstName} ${transaction.lastName}`;
@@ -313,7 +356,7 @@ exports.updateTransactionStatus = async (req, res) => {
     }
 
     await ActivityLog.create({
-      action: 'UPDATE',
+      action: status === 'cancelled' ? 'CANCEL_TRANSACTION' : 'UPDATE',
       details: activityDetails,
       resourceType: 'TRANSACTION',
       entityId: id,
@@ -354,7 +397,8 @@ exports.updateTransaction = async (req, res) => {
       idType,
       idNumber,
       userId,
-      testDetails
+      testDetails,
+      isRefundProcessing
     } = req.body;
     
     const transaction = await Transaction.findByPk(id);
@@ -409,22 +453,42 @@ exports.updateTransaction = async (req, res) => {
           const discountAmount = originalPrice - discountedPrice;
           totalDiscountAmount += discountAmount;
           
-          // Calculate refund if payment exceeds discounted price
           let refundAmount = 0;
-          if (totalPayment > discountedPrice) {
-            refundAmount = totalPayment - discountedPrice;
+          let isRefunded = !!detail.isRefunded; // Convert to boolean
+          
+          if (isRefunded) {
+            refundAmount = parseFloat(originalTestDetail.originalPrice) || 0;
             totalRefundAmount += refundAmount;
             
-            // Log the refund
             await ActivityLog.create({
               action: 'REFUND',
-              details: `Refund of ₱${refundAmount.toFixed(2)} for test ${originalTestDetail.testName}`,
+              details: `Manual refund of test: ${originalTestDetail.testName} - ₱${refundAmount.toFixed(2)}`,
               resourceType: 'TRANSACTION',
               entityId: id,
               userId: userId || transaction.userId,
               metadata: JSON.stringify({
                 refundAmount: refundAmount,
-                testDetailId: detail.testDetailId
+                testDetailId: detail.testDetailId,
+                isManualRefund: true,
+                testName: originalTestDetail.testName
+              })
+            }, { transaction: t });
+          } 
+          else if (totalPayment > discountedPrice) {
+            refundAmount = totalPayment - discountedPrice;
+            totalRefundAmount += refundAmount;
+            
+            await ActivityLog.create({
+              action: 'REFUND',
+              details: `Automatic refund for test: ${originalTestDetail.testName} - ₱${refundAmount.toFixed(2)} due to overpayment`,
+              resourceType: 'TRANSACTION',
+              entityId: id,
+              userId: userId || transaction.userId,
+              metadata: JSON.stringify({
+                refundAmount: refundAmount,
+                testDetailId: detail.testDetailId,
+                isManualRefund: false,
+                testName: originalTestDetail.testName
               })
             }, { transaction: t });
           }
@@ -432,7 +496,6 @@ exports.updateTransaction = async (req, res) => {
           // Calculate balance (cannot be negative)
           const balanceAmount = Math.max(0, discountedPrice - totalPayment);
           
-          // Update the test detail with all values
           await TestDetails.update(
             {
               discountPercentage: discountPercentage,
@@ -440,6 +503,7 @@ exports.updateTransaction = async (req, res) => {
               cashAmount: cashAmount,
               gCashAmount: gCashAmount,
               balanceAmount: balanceAmount,
+              status: isRefunded ? 'refunded' : 'active'
             },
             {
               where: { testDetailId: detail.testDetailId },
@@ -447,15 +511,16 @@ exports.updateTransaction = async (req, res) => {
             }
           );
           
-          // Always update department revenue to reflect the discounted price
           await DepartmentRevenue.update(
             {
-              amount: discountedPrice, // This is the key part: revenue is only the discounted price
-              status: 'active',       // Ensure it's marked as active
+              amount: isRefunded ? 0 : discountedPrice, // Set amount to 0 when refunded
+              status: isRefunded ? 'refunded' : 'active', // Mark as refunded in department revenue
               metadata: JSON.stringify({
                 originalAmount: originalPrice,
                 discountAmount: discountAmount,
-                discountPercentage: discountPercentage
+                discountPercentage: discountPercentage,
+                refundAmount: isRefunded ? discountedPrice : 0,
+                isRefunded: isRefunded
               })
             },
             {
@@ -467,10 +532,12 @@ exports.updateTransaction = async (req, res) => {
             }
           );
           
-          // Add to running totals
-          totalCashAmount += cashAmount;
-          totalGCashAmount += gCashAmount;
-          totalBalanceAmount += balanceAmount;
+          // Only add active tests to running totals
+          if (!isRefunded) {
+            totalCashAmount += cashAmount;
+            totalGCashAmount += gCashAmount;
+            totalBalanceAmount += balanceAmount;
+          }
         }
       }
       
@@ -484,6 +551,7 @@ exports.updateTransaction = async (req, res) => {
           ...JSON.parse(transaction.metadata || '{}'),
           totalRefundAmount,
           totalDiscountAmount,
+          refundProcessed: isRefundProcessing ? true : false,
           updatedAt: new Date().toISOString()
         })
       }, { transaction: t });

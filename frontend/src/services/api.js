@@ -82,7 +82,7 @@ export const departmentAPI = {
     });
   },
   updateDepartment: async (departmentId, departmentName, dateCreated, status, currentUserId) => {
-    return axios.put(`${API_BASE_URL}/departments/${departmentId}`, {
+    return apiClient.put(`/departments/${departmentId}`, {
       departmentName,
       dateCreated,
       status,
@@ -122,8 +122,10 @@ export const testAPI = {
     });
   },
   updateTestDetail: async (testDetailId, data) => {
-    const response = await axios.put(`/api/test-details/${testDetailId}`, data);
-    return response;
+    return apiClient.put(`/test-details/${testDetailId}`, data);
+  },
+  getTestDetails: async (transactionId) => {
+    return apiClient.get(`/test-details/transaction/${transactionId}`);
   }
 };
 
@@ -172,8 +174,24 @@ export const transactionAPI = {
     
     return apiClient.get(`/transactions?${queryParams}`);
   },
-  getTransactionById: (id) => {
-    return apiClient.get(`/transactions/${id}`);
+  getTransactionById: async (id) => {
+    try {
+      const response = await apiClient.get(`/transactions/${id}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching transaction by ID:', error);
+      throw error;
+    }
+  },
+  getTransactionSummary: async (params = {}) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiClient.get(`/transactions/summary?${queryString}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transaction summary:', error);
+      throw error;
+    }
   },
   createTransaction: (transactionData, userId) => {
     return apiClient.post('/transactions', {
@@ -185,10 +203,34 @@ export const transactionAPI = {
     });
   },
   updateTransactionStatus: (transactionId, status, userId) => {
-    // Fix: Remove '/status' from the endpoint path to match backend route
-    return apiClient.patch(`/transactions/${transactionId}`, {
+    // Validate inputs before making request
+    if (!transactionId) {
+      return Promise.reject(new Error('Transaction ID is required'));
+    }
+    
+    if (!status) {
+      return Promise.reject(new Error('Status is required'));  
+    }
+    
+    if (!userId) {
+      return Promise.reject(new Error('User ID is required'));
+    }
+    
+    return apiClient.patch(`/transactions/${transactionId}/status`, {
       status,
       currentUserId: userId
+    }).catch(error => {
+      console.error('Error updating transaction status:', error.response?.data || error.message);
+      
+      // Create more user-friendly error message
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Server error occurred';
+                          
+      const enhancedError = new Error(errorMessage);
+      enhancedError.response = error.response;
+      throw enhancedError;
     });
   },
   searchTransactions: (params = {}) => {
@@ -197,7 +239,6 @@ export const transactionAPI = {
   },
   updateTransaction: async (transactionId, transactionData) => {
     try {
-      // Fix: Use apiClient instead of axiosInstance
       const response = await apiClient.put(`/transactions/${transactionId}`, transactionData);
       return response.data;
     } catch (error) {
@@ -209,14 +250,11 @@ export const transactionAPI = {
   // Fix the checkMcNoExists function to properly handle parameters
   checkMcNoExists: async (mcNo, currentTransactionId = null) => {
     try {
-      // Added debugging to verify parameters and URL
-      
       // Build URL manually to ensure correct format
       let url = `${API_BASE_URL}/transactions/check-mcno?mcNo=${encodeURIComponent(mcNo)}`;
       if (currentTransactionId) {
         url += `&currentId=${encodeURIComponent(currentTransactionId)}`;
       }
-      
       
       // Use axios directly instead of apiClient for better debugging
       const response = await axios.get(url);

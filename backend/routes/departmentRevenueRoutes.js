@@ -8,4 +8,7 @@ router.get('/by-department', departmentRevenueController.getRevenueByDepartment)
 // Get revenue trend
 router.get('/trend', departmentRevenueController.getRevenueTrend);
 
+// Get refunds by department
+router.get('/refunds', departmentRevenueController.getRefundsByDepartment);
+
 module.exports = router;

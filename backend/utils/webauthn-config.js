@@ -9,7 +9,7 @@ const origin = process.env.NODE_ENV === 'production' ? process.env.ORIGIN : 'htt
 // In production, set RP_ID to your actual domain
 const expectedOrigin = process.env.NODE_ENV === 'production' 
   ? [origin]
-  : ['http://localhost:3000']; // Add your development domains here
+  : ['http://localhost:3000']; 
 
 module.exports = {
   rpName,
