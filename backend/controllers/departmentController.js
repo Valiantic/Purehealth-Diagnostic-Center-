@@ -1,4 +1,4 @@
-const { Department } = require('../models');
+const { Department, Test } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
 const sequelize = require('../models').sequelize;
 const { Op } = require('sequelize'); 
@@ -107,21 +107,37 @@ const updateDepartmentStatus = async (req, res) => {
     }
     
     const oldStatus = department.status;
+    
+    // Only proceed if status is actually changing
+    if (oldStatus === status) {
+      return res.json(department);
+    }
+    
     department.status = status;
     await department.save();
     
+    // Find all tests in this department and update their status
+    const testsUpdated = await Test.update(
+      { status: status },
+      { where: { departmentId: departmentId } }
+    );
+    
+    const testsCount = testsUpdated[0]; // Number of tests updated
+    
     res.json(department);
 
+    // Single activity log for department and all tests
     await logActivity({
       userId: currentUserId,
       action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
       resourceType: 'DEPARTMENT',
       resourceId: department.departmentId, 
-      details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${department.departmentName}`,
+      details: `${status === 'active' ? 'Unarchived' : 'Archived'} department: ${department.departmentName} along with ${testsCount} test(s)`,
       ipAddress: req.ip,
       metadata: {
         oldStatus: oldStatus,
-        newStatus: status
+        newStatus: status,
+        affectedTests: testsCount
       }
     });
   } catch (error) {
@@ -182,6 +198,16 @@ const updateDepartment = async (req, res) => {
       status: status || department.status
     });
     
+    // If status is changing, update all associated tests
+    let testsCount = 0;
+    if (changingStatus) {
+      const testsUpdated = await Test.update(
+        { status: status },
+        { where: { departmentId: departmentId } }
+      );
+      testsCount = testsUpdated[0]; // Number of tests updated
+    }
+    
     res.json(department);
 
     // SEPARATE LOGGING FOR DETAILS AND STATUS CHANGES
@@ -212,11 +238,12 @@ const updateDepartment = async (req, res) => {
         action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
         resourceType: 'DEPARTMENT',
         resourceId: department.departmentId,
-        details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${departmentName}`,
+        details: `${status === 'active' ? 'Unarchived' : 'Archived'} department: ${departmentName} along with ${testsCount} test(s)`,
         ipAddress: req.ip,
         metadata: {
           oldStatus: oldValues.status,
-          newStatus: status
+          newStatus: status,
+          affectedTests: testsCount
         }
       });
     }

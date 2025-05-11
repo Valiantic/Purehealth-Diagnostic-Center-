@@ -108,7 +108,7 @@ const Department = () => {
     mutationFn: ({ id, status }) => departmentAPI.updateDepartmentStatus(id, status, user.userId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['departments'] })
-      const statusMessage = variables.status === 'active' ? 'activated' : 'deactivated'
+      const statusMessage = variables.status === 'active' ? 'unarchived' : 'archived'
       toast.success(`Department successfully ${statusMessage}`)
     },
     onError: (error) => {
@@ -366,7 +366,7 @@ const Department = () => {
                                 <td className="p-1 border-r border-green-200 text-center">{new Date(dept.createdAt).toLocaleDateString()}</td>
                                 <td className="p-1 border-r border-green-200 text-center">
                                   <span className={`px-2 py-1 rounded text-xs ${dept.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {dept.status.charAt(0).toUpperCase() + dept.status.slice(1)}
+                                    {dept.status === 'active' ? 'Unarchived' : 'Archived'}
                                   </span>
                                 </td>
                                 <td className="p-1 border-r border-green-200 text-center">
@@ -522,8 +522,8 @@ const Department = () => {
                                 onChange={(e) => setDepartmentStatus(e.target.value)}
                                 className="w-full border border-gray-300 rounded p-2 appearance-none"
                               >
-                                <option value="active">Active</option>
-                                <option value="inactive">Deactivated</option>
+                                <option value="active">Unarchived</option>
+                                <option value="inactive">Archived</option>
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                                 <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">

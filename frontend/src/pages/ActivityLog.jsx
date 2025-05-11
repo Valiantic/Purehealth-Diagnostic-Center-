@@ -193,15 +193,16 @@ const ActivityLog = () => {
                 </div>
                 <div className="border border-green-800 rounded-b">
                 
-                  <div className="overflow-x-auto w-full max-h-[calc(100vh-380px)]">
-                    <table className="min-w-[800px] w-full text-sm">
+                  {/* Replaced nested scrolling containers with single responsive table container */}
+                  <div className="overflow-auto w-full" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+                    <table className="w-full text-sm table-fixed">
                       <thead className="sticky top-0 bg-green-100 z-10">
                         <tr className="border-b border-green-800">
-                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[120px] w-[15%]">User</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[10%]">Role</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[10%]">Time</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[100px] w-[10%]">Date</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium min-w-[250px] w-[55%]">Action</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[15%] sm:w-[15%]">User</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium hidden sm:table-cell w-[10%]">Role</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[15%] sm:w-[10%]">Time</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[15%] sm:w-[10%]">Date</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[55%]">Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -220,10 +221,10 @@ const ActivityLog = () => {
                         ) : (
                           currentLogs.map(log => (
                             <tr key={log.logId} className="border-b border-green-200">
-                              <td className="p-1 pl-2 border-r border-green-200">
+                              <td className="p-1 pl-2 border-r border-green-200 truncate">
                                 {log.user?.name || 'System'}
                               </td>
-                              <td className="p-1 border-r border-green-200 text-center">
+                              <td className="p-1 border-r border-green-200 text-center hidden sm:table-cell">
                                 <span
                                   className={`px-2 py-1 rounded text-xs ${
                                     log.user?.role === 'admin'
@@ -244,7 +245,7 @@ const ActivityLog = () => {
                               <td className="p-1 border-r border-green-200 text-center">
                                 {log.date}
                               </td>
-                              <td className="p-1 pl-4 border-r border-green-200">
+                              <td className="p-1 pl-2 sm:pl-4 border-r border-green-200 break-words">
                                 {log.details}
                               </td>
                             </tr>
