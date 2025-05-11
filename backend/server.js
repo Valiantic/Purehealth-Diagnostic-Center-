@@ -12,6 +12,7 @@ const testRoutes = require('./routes/testRoutes');
 const referrerRoutes = require('./routes/referrerRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const departmentRevenueRoutes = require('./routes/departmentRevenueRoutes');
+const testDetailsRoutes = require('./routes/testDetailsRoute'); // Change back to match actual filename
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,6 +36,7 @@ app.use('/api/tests', testRoutes);
 app.use('/api/referrers', referrerRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/department-revenue', departmentRevenueRoutes);
+app.use('/api/test-details', testDetailsRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

@@ -553,7 +553,8 @@ const AddIncome = () => {
       transactionAPI.createTransaction(transactionData, user?.userId || user?.id),
     onSuccess: () => {
       const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
-      localStorage.setItem('mcNumberCounter', ((currentCounter + 1) % 10).toString());
+      // Increment counter without modulo, allowing it to grow beyond 9
+      localStorage.setItem('mcNumberCounter', (currentCounter + 1).toString());
       
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction saved successfully');
@@ -666,11 +667,14 @@ const AddIncome = () => {
 
  
   const getNextMcNumber = () => {
-
     const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
-    const nextDigit = (currentCounter + 1) % 10;
+    const nextCounter = currentCounter + 1;
     
-    return `0410${nextDigit}`;
+    if (nextCounter >= 10) {
+      return `041${nextCounter}`;
+    } else {
+      return `0410${nextCounter}`;
+    }
   };
 
   useEffect(() => {
