@@ -3,7 +3,9 @@ import Sidebar from '../components/Sidebar'
 import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import useAuth from '../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query';
-import { departmentAPI } from '../services/api';
+import { departmentAPI, expenseAPI } from '../services/api';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AddExpenses = () => {
 
@@ -126,10 +128,33 @@ const AddExpenses = () => {
     setShowSummaryModal(false);
   };
 
-  const handleConfirmTransaction = () => {
-    setShowSummaryModal(false);
-    setExpenses([]);
-  }
+  const handleConfirmTransaction = async () => {
+    try {
+      const expenseData = {
+        name: name || 'Unnamed Expense',
+        departmentId: selectedDepartment,
+        date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        expenses: expenses.map(exp => ({
+          paidTo: exp.paidTo,
+          purpose: exp.purpose,
+          amount: exp.amount
+        })),
+        userId: user.userId
+      };
+      
+      const response = await expenseAPI.createExpense(expenseData);
+      
+      setShowSummaryModal(false);
+      setExpenses([]);
+      setPaidTo('');
+      setPurpose('');
+      setAmount('');
+      setName('');
+      toast.success('Expense saved successfully');
+    } catch (error) {
+      toast.error('Failed to save expense');
+    }
+  };
 
   // Add a new expense to the list
   const handleAddExpense = () => {
@@ -201,7 +226,8 @@ const AddExpenses = () => {
   return (
     <div className="flex min-h-screen bg-gray-100">
     <Sidebar />
-
+    <ToastContainer position="top-right" autoClose={3000} />
+    
     <div className="flex-1 overflow-auto p-4 sm:p-6 pt-16 lg:pt-6 lg:ml-64">
     
       <div className="flex flex-col lg:flex-row gap-6">
@@ -467,7 +493,7 @@ const AddExpenses = () => {
             <div className="px-4 py-2 border-t flex items-center bg-green-100">
               <div className="text-sm font-medium text-green-800 flex-shrink-0">TOTAL:</div>
               <div className="flex-1"></div>
-              <div className="text-sm text-right font-medium text-green-800 w-24 mr-4">
+              <div className="text-sm text-right font-medium text-green-800 w-24 mr-12">
                 {calculateTotal().toLocaleString()}
               </div>
               <div className="w-10"></div>

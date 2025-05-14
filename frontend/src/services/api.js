@@ -300,3 +300,12 @@ export const revenueAPI = {
   }
 };
 
+export const expenseAPI = {
+  createExpense: (expenseData) => {
+    return apiClient.post('/expenses', expenseData);
+  },
+  getExpenses: (params = {}) => {
+    return apiClient.get('/expenses', { params });
+  }
+};
+
