@@ -453,10 +453,12 @@ exports.updateTransaction = async (req, res) => {
           const discountAmount = originalPrice - discountedPrice;
           totalDiscountAmount += discountAmount;
           
+          // Calculate refund if payment exceeds discounted price or if item was explicitly marked for refund
           let refundAmount = 0;
-          let isRefunded = !!detail.isRefunded; // Convert to boolean
+          let isRefunded = !!detail.isRefunded;
           
           if (isRefunded) {
+        
             refundAmount = parseFloat(originalTestDetail.originalPrice) || 0;
             totalRefundAmount += refundAmount;
             
@@ -475,9 +477,11 @@ exports.updateTransaction = async (req, res) => {
             }, { transaction: t });
           } 
           else if (totalPayment > discountedPrice) {
+            // Handle automatic refunds from overpayment
             refundAmount = totalPayment - discountedPrice;
             totalRefundAmount += refundAmount;
             
+            // Log the automatic refund with the amount clearly shown
             await ActivityLog.create({
               action: 'REFUND',
               details: `Automatic refund for test: ${originalTestDetail.testName} - ₱${refundAmount.toFixed(2)} due to overpayment`,
@@ -496,6 +500,7 @@ exports.updateTransaction = async (req, res) => {
           // Calculate balance (cannot be negative)
           const balanceAmount = Math.max(0, discountedPrice - totalPayment);
           
+          // Update the test detail with all values including refund status
           await TestDetails.update(
             {
               discountPercentage: discountPercentage,
@@ -511,6 +516,7 @@ exports.updateTransaction = async (req, res) => {
             }
           );
           
+          // Update department revenue to reflect the discounted price or mark as refunded
           await DepartmentRevenue.update(
             {
               amount: isRefunded ? 0 : discountedPrice, // Set amount to 0 when refunded

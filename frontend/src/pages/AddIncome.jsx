@@ -892,6 +892,7 @@ const AddIncome = () => {
                   <input
                     type="text"
                     value={formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || ''}
+                    maxLength={5}
                     onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                     disabled={formData.id === "Regular"}
