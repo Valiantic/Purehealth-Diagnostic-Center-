@@ -7,6 +7,7 @@ import { Calendar, Download, Edit, X, MoreVertical, Save } from 'lucide-react';
 import useAuth from '../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionAPI, departmentAPI, referrerAPI, revenueAPI } from '../services/api';
+import Loading from '../components/Loading';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -1300,8 +1301,7 @@ const Transaction = () => {
           <Sidebar />
         </div>
         <div className="flex-grow p-4 flex items-center justify-center">
-          <div className="text-green-800 font-semibold text-lg">Loading data...</div>
-        </div>
+            <Loading message="Loading data hang in there..." height={200} />        </div>
       </div>
     );
   }
