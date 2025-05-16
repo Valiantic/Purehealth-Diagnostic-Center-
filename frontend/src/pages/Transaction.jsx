@@ -296,7 +296,8 @@ const Transaction = () => {
           name: dept.departmentName,
           amount: 0,
           isActive: dept.status === 'active',
-          refundAmount: 0 
+          refundAmount: 0,
+          balanceAmount: 0 
         };
       });
 
@@ -310,7 +311,12 @@ const Transaction = () => {
           if (isTestRefunded(test)) {
             departmentRevenues[deptId].refundAmount += parseFloat(test.originalPrice || test.discountedPrice) || 0;
           } else {
-            departmentRevenues[deptId].amount += parseFloat(test.discountedPrice) || 0;
+            const testPrice = parseFloat(test.discountedPrice) || 0;
+            const balanceAmount = parseFloat(test.balanceAmount) || 0;
+            
+            departmentRevenues[deptId].balanceAmount += balanceAmount;
+            
+            departmentRevenues[deptId].amount += (testPrice - balanceAmount);
           }
         });
       }
@@ -319,7 +325,11 @@ const Transaction = () => {
       if (transaction.TestDetails && transaction.TestDetails.length > 0) {
         grossDeposit = transaction.TestDetails
           .filter(test => test.status !== 'refunded')
-          .reduce((sum, test) => sum + (parseFloat(test.discountedPrice) || 0), 0);
+          .reduce((sum, test) => {
+            const testPrice = parseFloat(test.discountedPrice) || 0;
+            const balanceAmount = parseFloat(test.balanceAmount) || 0;
+            return sum + (testPrice - balanceAmount);
+          }, 0);
       } else {
         grossDeposit = parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount);
       }
@@ -368,11 +378,13 @@ const Transaction = () => {
 
   // Calculate department totals - separate active and cancelled transactions
   const departmentTotals = {};
+  const departmentBalanceTotals = {}; 
  
   // Initialize department refund totals to 0
   const departmentRefundTotals = {};
   departments.forEach(dept => {
     departmentRefundTotals[dept.departmentId] = 0;
+    departmentBalanceTotals[dept.departmentId] = 0; 
   });
 
   // Calculate refund total directly from the transactions visible in the table
@@ -426,12 +438,16 @@ const Transaction = () => {
           const deptId = test.departmentId;
           if (test.status === 'refunded') {
           } else {
-            departmentTotals[deptId] = (departmentTotals[deptId] || 0) + parseFloat(test.discountedPrice || 0);
+            const testPrice = parseFloat(test.discountedPrice || 0);
+            const balanceAmount = parseFloat(test.balanceAmount) || 0;
+            departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + balanceAmount;
+            departmentTotals[deptId] = (departmentTotals[deptId] || 0) + (testPrice - balanceAmount);
           }
         });
       } else {
         Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
           departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
+          departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + (data.balanceAmount || 0);
         });
       }
     }
@@ -442,24 +458,12 @@ const Transaction = () => {
     departmentTotals[dept.departmentId] > 0 || departmentRefundTotals[dept.departmentId] > 0 || dept.status === 'active'
   );
 
-  const totalGross = filteredTransactions.reduce((sum, transaction) => {
-    if (transaction.status === 'cancelled') {
-      return sum; 
-    }
+  const totalGross = Object.values(departmentTotals).reduce((sum, amount) => {
+    return sum + Math.max(0, amount);
+  }, 0);
 
-    let transactionGross = 0;
-    
-    if (transaction.originalTransaction?.TestDetails) {
-      transaction.originalTransaction.TestDetails.forEach(test => {
-        if (test.status !== 'refunded') {
-          transactionGross += parseFloat(test.discountedPrice) || 0;
-        }
-      });
-    } else {
-      transactionGross = transaction.grossDeposit;
-    }
-    
-    return sum + transactionGross;
+  const totalGrossWithBalances = totalGross + Object.values(departmentBalanceTotals).reduce((sum, balance) => {
+    return sum + balance;
   }, 0);
 
   // Add detailed refund information for the income summary box
@@ -1194,7 +1198,12 @@ const Transaction = () => {
       }
       
       // Update balance - always based on actual calculation
-      testCopy.balanceAmount = Math.max(0, discountedPrice - totalPayment).toFixed(2);
+      const newBalanceAmount = Math.max(0, discountedPrice - totalPayment).toFixed(2);
+      testCopy.balanceAmount = newBalanceAmount;
+      
+      const oldBalance = parseFloat(test.balanceAmount || 0);
+      const newBalance = parseFloat(newBalanceAmount);
+      
     }
     else if (field === 'discountPercentage') {
       // Only allow integer percentages from 0-100
@@ -1520,18 +1529,19 @@ const Transaction = () => {
                                                       deptData && 
                                                       deptData.amount > 0;
                             const hasRefund = transaction.status !== 'cancelled' && deptData && deptData.refundAmount > 0;
+                            const hasBalance = transaction.status !== 'cancelled' && deptData && deptData.balanceAmount > 0;
                                 
                             return (
                               <td 
                                 key={dept.departmentId} 
-                                className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${isArchivedWithValue ? 'bg-green-50' : ''} ${hasRefund ? 'relative' : ''}`}
+                                className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${isArchivedWithValue ? 'bg-green-50' : ''} ${hasRefund || hasBalance ? 'relative' : ''}`}
                               >
                                 {transaction.status === 'cancelled' 
-                                  ? <span className="text-gray-500 text-xs">Cancelled</span> // Clear indication of cancelled transactions without labeling as refunded
+                                  ? <span className="text-gray-500 text-xs">Cancelled</span>
                                   : (
                                       <>
                                         {deptData && deptData.amount > 0 ? (
-                                          <span className={hasRefund ? 'relative' : ''}>
+                                          <span className={hasBalance ? 'relative' : ''}>
                                             {deptData.amount.toLocaleString(2)}
                                           </span>
                                         ) : ''}
@@ -1643,6 +1653,7 @@ const Transaction = () => {
                           // Calculate net revenue (total minus refunds)
                           const grossRevenue = departmentTotals[dept.departmentId] || 0;
                           const refundAmount = departmentRefundTotals[dept.departmentId] || 0;
+                          const balanceAmount = departmentBalanceTotals[dept.departmentId] || 0;
                           const netRevenue = Math.max(0, grossRevenue);
                           
                           return (
@@ -1754,7 +1765,7 @@ const Transaction = () => {
                           }
                         });
                         
-                        const depositAmount = Math.max(0, totalGross - refundTotal - totalGCash);
+                        const depositAmount = Math.max(0, totalGross - totalGCash);
                         
                         return depositAmount.toLocaleString(undefined, { 
                           minimumFractionDigits: 2, 
@@ -1876,6 +1887,7 @@ const Transaction = () => {
                   style={{
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
+                   
                     WebkitOverflowScrolling: 'touch'
                   }}>
                   {isEditingSummary && isRefundMode && (
