@@ -722,13 +722,50 @@ const AddIncome = () => {
       const originalPrice = parseFloat(originalTest.price) || 0;
       
       const discountMultiplier = (100 - globalDiscount) / 100;
-      const newPrice = roundToTwoDecimals(originalPrice * discountMultiplier);
+      const newDiscountedPrice = roundToTwoDecimals(originalPrice * discountMultiplier);
+      
+      // Get current payment values
+      const currentCash = parseFloat(test.cash) || 0;
+      const currentGCash = parseFloat(test.gCash) || 0;
+      const currentBalance = parseFloat(test.bal) || 0;
+      const totalPayment = currentCash + currentGCash + currentBalance;
+      
+      // Calculate proportion of each payment method
+      const cashProportion = totalPayment > 0 ? currentCash / totalPayment : 0;
+      const gCashProportion = totalPayment > 0 ? currentGCash / totalPayment : 0;
+      const balProportion = totalPayment > 0 ? currentBalance / totalPayment : 1; // Default to balance if no payments
+      
+      // Apply discount proportionally to each payment method
+      let newCash, newGCash, newBalance;
+      
+      if (currentCash > 0 && currentGCash === 0 && currentBalance === 0) {
+        // If only cash payment exists
+        newCash = newDiscountedPrice;
+        newGCash = 0;
+        newBalance = 0;
+      } else if (currentCash === 0 && currentGCash > 0 && currentBalance === 0) {
+        // If only GCash payment exists
+        newCash = 0;
+        newGCash = newDiscountedPrice;
+        newBalance = 0;
+      } else if (currentCash === 0 && currentGCash === 0 && currentBalance > 0) {
+        // If only balance exists
+        newCash = 0;
+        newGCash = 0;
+        newBalance = newDiscountedPrice;
+      } else {
+        // If multiple payment methods exist, maintain proportions
+        newCash = roundToTwoDecimals(newDiscountedPrice * cashProportion);
+        newGCash = roundToTwoDecimals(newDiscountedPrice * gCashProportion);
+        newBalance = roundToTwoDecimals(newDiscountedPrice * balProportion);
+      }
       
       updatedTestsTable[index] = {
         ...test,
         disc: `${globalDiscount}%`,
-        cash: newPrice.toFixed(2),
-        bal: '0.00'
+        cash: newCash.toFixed(2),
+        gCash: newGCash.toFixed(2),
+        bal: newBalance.toFixed(2)
       };
       
       setTestsTable(updatedTestsTable);
@@ -738,11 +775,45 @@ const AddIncome = () => {
       const originalTest = selectedTests[index];
       const originalPrice = parseFloat(originalTest.price) || 0;
       
+      // Get payment method that was used originally (before any discount)
+      const originalCash = parseFloat(test.cash) || 0;
+      const originalGCash = parseFloat(test.gCash) || 0;
+      const originalBalance = parseFloat(test.bal) || 0;
+      
+      // Determine which payment method was primarily used
+      const hasCash = originalCash > 0;
+      const hasGCash = originalGCash > 0;
+      const hasBalance = originalBalance > 0;
+      
+      let restoredCash = '0.00';
+      let restoredGCash = '0.00';
+      let restoredBalance = '0.00';
+      
+      if (hasCash && !hasGCash && !hasBalance) {
+        // Only cash was used
+        restoredCash = originalPrice.toFixed(2);
+      } else if (!hasCash && hasGCash && !hasBalance) {
+        // Only GCash was used
+        restoredGCash = originalPrice.toFixed(2);
+      } else if (!hasCash && !hasGCash && hasBalance) {
+        restoredBalance = originalPrice.toFixed(2);
+      } else {
+        const totalPayment = originalCash + originalGCash + originalBalance;
+        const cashProportion = totalPayment > 0 ? originalCash / totalPayment : 0;
+        const gCashProportion = totalPayment > 0 ? originalGCash / totalPayment : 0;
+        const balProportion = totalPayment > 0 ? originalBalance / totalPayment : 1;
+        
+        restoredCash = (originalPrice * cashProportion).toFixed(2);
+        restoredGCash = (originalPrice * gCashProportion).toFixed(2);
+        restoredBalance = (originalPrice * balProportion).toFixed(2);
+      }
+      
       updatedTestsTable[index] = {
         ...test,
         disc: '0%',
-        cash: originalPrice.toFixed(2),
-        bal: '0.00'
+        cash: restoredCash,
+        gCash: restoredGCash,
+        bal: restoredBalance
       };
       
       setTestsTable(updatedTestsTable);
