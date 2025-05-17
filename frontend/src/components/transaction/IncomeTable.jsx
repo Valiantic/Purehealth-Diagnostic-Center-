@@ -194,4 +194,110 @@ const TransactionRow = ({
   );
 };
 
-export default TransactionRow;
+const IncomeTable = ({ 
+  filteredTransactions, 
+  departmentsWithValues, 
+  departmentTotals,
+  totalGross,
+  editingId, 
+  editedTransaction, 
+  openMenuId, 
+  referrers, 
+  handlers
+}) => {
+  return (
+    <div className="relative">
+      <div className="md:hidden text-sm text-gray-500 italic mb-2 flex items-center">
+        <span>Swipe horizontally to view more</span>
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+      
+      <div className="overflow-x-auto pb-2 relative">
+        {filteredTransactions.length === 0 ? (
+          <div className="text-center py-8 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-gray-500 font-medium">No income transactions found on this day</p>
+            <p className="text-sm text-gray-400 mt-1">Add a transaction or adjust your search criteria</p>
+          </div>
+        ) : (
+          <div className="max-h-[70vh] overflow-y-auto">
+            <table className="min-w-full border-collapse text-sm md:text-base">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-green-800 text-white">
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-20">MC#</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Patient Name</th>
+                  
+                  {/* Department columns */}
+                  {departmentsWithValues.map(dept => (
+                    <th 
+                      key={dept.departmentId} 
+                      className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-700' : ''}`}
+                    >
+                      {dept.departmentName}
+                      {dept.status !== 'active' && <span className="ml-1 text-xs opacity-75">(archived)</span>}
+                    </th>
+                  ))}
+                  
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 w-[80px] md:w-[120px]">Referrer</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTransactions.map((transaction) => (
+                  <TransactionRow
+                    key={transaction.id}
+                    transaction={transaction}
+                    departmentsWithValues={departmentsWithValues}
+                    editingId={editingId}
+                    editedTransaction={editedTransaction}
+                    openMenuId={openMenuId}
+                    referrers={referrers}
+                    handlers={handlers}
+                  />
+                ))}
+                
+                {/* Totals row */}
+                <tr className="bg-green-100">
+                  <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
+                  
+                  {departmentsWithValues.map(dept => {
+                    const grossRevenue = departmentTotals[dept.departmentId] || 0;
+                    const netRevenue = Math.max(0, grossRevenue);
+                    
+                    return (
+                      <td 
+                        key={dept.departmentId} 
+                        className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
+                      >
+                        <div className="font-bold">
+                          {netRevenue > 0 ? netRevenue.toLocaleString(2) : '0.00'}
+                        </div>
+                      </td>
+                    );
+                  })}
+                    
+                  <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                    {totalGross.toLocaleString(2)}
+                  </td>
+                  <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
+                  <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        
+        <div className="flex justify-end mt-4 px-2">
+          <div className="text-sm text-gray-600">
+            Showing {filteredTransactions.length} {filteredTransactions.length === 1 ? 'patient' : 'patients'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default IncomeTable;
+export { TransactionRow };
