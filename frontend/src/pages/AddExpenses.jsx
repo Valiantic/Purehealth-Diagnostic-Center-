@@ -492,8 +492,8 @@ const AddExpenses = () => {
             {/* Summary Row */}
             <div className="px-4 py-2 border-t flex items-center bg-green-100">
               <div className="text-sm font-medium text-green-800 flex-shrink-0">TOTAL:</div>
-              <div className="flex-1"></div>
-              <div className="text-sm text-right font-medium text-green-800 w-24 mr-12">
+              <div className="flex-grow"></div>
+              <div className="text-sm font-bold text-green-800 text-right pr-8">
                 {calculateTotal().toLocaleString()}
               </div>
               <div className="w-10"></div>
@@ -580,9 +580,10 @@ const AddExpenses = () => {
                     </div>
                     
                     {/* Total Row */}
-                    <div className="px-4 py-3 flex justify-between items-center bg-green-100">
+                    <div className="px-4 py-3 flex items-center bg-green-100">
                       <div className="text-sm font-bold text-green-800">TOTAL:</div>
-                      <div className="text-sm font-bold text-green-800">
+                      <div className="flex-grow"></div>
+                      <div className="text-sm font-bold text-green-800 text-right">
                         {calculateTotal().toLocaleString()}
                       </div>
                     </div>
