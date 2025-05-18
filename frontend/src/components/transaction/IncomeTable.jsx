@@ -278,7 +278,7 @@ const IncomeTable = ({
                     );
                   })}
                     
-                  <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                  <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold text-green-700">
                     {totalGross.toLocaleString(2)}
                   </td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>

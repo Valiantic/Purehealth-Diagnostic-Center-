@@ -8,7 +8,7 @@ const DateSelector = ({
   className = "relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer"
 }) => {
 
-    const openDatePicker = () => {
+  const openDatePicker = () => {
     if (inputRef && inputRef.current) {
       inputRef.current.showPicker();
     }
@@ -22,6 +22,16 @@ const DateSelector = ({
     });
   };
 
+  const formatDateForInput = (date) => {
+    if (!date) return '';
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  };
+
   return (
     <div 
       className={className}
@@ -32,7 +42,7 @@ const DateSelector = ({
         type="date"
         className="absolute opacity-0 w-full h-full cursor-pointer z-10"
         onChange={onDateChange}
-        value={date.toISOString().split('T')[0]}
+        value={formatDateForInput(date)}
       />
       <span className="px-1 md:px-2 py-1 flex-grow">
         {formatDateToDisplay(date)}
