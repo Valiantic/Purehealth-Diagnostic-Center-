@@ -4,6 +4,10 @@ import { transactionAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { formatTransactionForDisplay } from '../utils/transactionUtils';
 
+/**
+ * Custom hook to manage transaction-related state and actions.
+ */
+
 export const useTransactionManagement = (user, selectedDate, departments, referrers) => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
