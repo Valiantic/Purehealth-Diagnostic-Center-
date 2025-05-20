@@ -15,8 +15,10 @@ import IncomeTable from '../components/transaction/IncomeTable';
 import ExpenseTable from '../components/transaction/ExpenseTable';
 import ConfirmationModal from '../components/transaction/ConfirmationModal';
 import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal';
+import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
 import { useTransactionManagement } from '../hooks/useTransactionManagement';
 import { useTransactionData } from '../hooks/useTransactionData';
+import useMenuToggle from '../hooks/useMenuToggle';
 
 const Transaction = () => {
   const { user, isAuthenticating } = useAuth();
@@ -25,6 +27,10 @@ const Transaction = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expenseSearchTerm, setExpenseSearchTerm] = useState('');
   const [pendingRefundAmount, setPendingRefundAmount] = useState(0);
+  
+  // Use our menu toggle hook BEFORE any conditional returns
+  // This ensures the hook is always called in the same order
+  const { openMenuId: expenseMenuId, toggleMenu: toggleExpMenu, handleDropdownClick: handleExpenseDropdownClick } = useMenuToggle();
   
   const idTypeOptions = [
     { value: 'Regular', label: 'Regular' },
@@ -165,6 +171,70 @@ const Transaction = () => {
     setSearchTerm('');
   }, [selectedDate]);
 
+  // Add new state for expense modal
+  const [isExpenseSummaryOpen, setIsExpenseSummaryOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState(null);
+  const [isEditingExpense, setIsEditingExpense] = useState(false);
+
+  // Function to handle expense edit clicks and open the expense modal
+  const handleExpenseEdit = (expense) => {
+    console.log('Opening expense edit modal for:', expense);
+    
+    // Set the selected expense and open the expense modal
+    setSelectedExpense(expense);
+    setIsExpenseSummaryOpen(true);
+  };
+  
+  // Function to handle closing the expense modal
+  const closeExpenseSummary = () => {
+    setIsExpenseSummaryOpen(false);
+    setSelectedExpense(null);
+    setIsEditingExpense(false);
+  };
+  
+  // Function to handle saving expense changes
+  const handleSaveExpenseChanges = async (updatedExpense) => {
+    // Check if we're just toggling edit mode
+    if (updatedExpense.isEditing !== undefined) {
+      setIsEditingExpense(updatedExpense.isEditing);
+      return;
+    }
+    
+    try {
+      // The updated expense already includes the changes made in the modal
+      // and API call has been handled in the modal component
+      
+      // Update local state
+      setIsEditingExpense(false);
+      
+      // Check if the expense date was changed
+      if (updatedExpense.date) {
+        const expDate = new Date(updatedExpense.date);
+        const currentExpDate = new Date(expenseDate);
+        
+        // If the date was changed to a different day, update the expense date selector
+        // to show the new date where the expense now appears
+        if (expDate.getDate() !== currentExpDate.getDate() ||
+            expDate.getMonth() !== currentExpDate.getMonth() ||
+            expDate.getFullYear() !== currentExpDate.getFullYear()) {
+          
+          // Set expense date to the new date so the expense is visible immediately
+          setExpenseDate(expDate);
+        }
+      }
+      
+      // Refresh expense data with the correct date
+      refetchExpenseData();
+      
+      // Close modal after saving
+      closeExpenseSummary();
+    } catch (error) {
+      console.error('Error processing expense update:', error);
+      // Error handling is done in the modal component
+    }
+  };
+
+  // Early returns - these come AFTER all hooks are called
   if (isAuthenticating) {
     return null;
   }
@@ -226,14 +296,15 @@ const Transaction = () => {
     handleDropdownClick
   };
 
+  // Update the expense handlers with our new menu handlers
   const expenseHandlers = {
     handleEditClick,
     handleCancelClick,
     handleEditChange,
     handleSaveClick,
     handleCancelInlineEdit,
-    toggleExpenseMenu,
-    handleDropdownClick
+    toggleExpenseMenu: toggleExpMenu,  // Use the menu toggle from our hook
+    handleDropdownClick: handleExpenseDropdownClick  // Use the dropdown handler from our hook
   };
 
   const summaryHandlers = {
@@ -418,15 +489,29 @@ const Transaction = () => {
             totalExpense={totalExpense || 0}
             editingId={editingId}
             editedExpense={editedTransaction}
-            openMenuId={openMenuId}
+            openMenuId={expenseMenuId}
             handlers={expenseHandlers}
             expenseSearchTerm={expenseSearchTerm}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`} 
+            onExpenseEditClick={handleExpenseEdit}  // This will now open the ExpenseSummaryModal
           />
         </div>
       </div>
       
-      {/* Transaction Summary Modal */}
+      {/* Expense Summary Modal */}
+      {isExpenseSummaryOpen && selectedExpense && (
+        <ExpenseSummaryModal
+          isOpen={isExpenseSummaryOpen}
+          onClose={closeExpenseSummary}
+          expense={selectedExpense}
+          isEditing={isEditingExpense}
+          departments={departments}
+          onSave={handleSaveExpenseChanges}
+          isLoading={false}
+        />
+      )}
+
+      {/* Transaction Summary Modal - keep this for income transactions */}
       {isTransactionSummaryOpen && selectedSummaryTransaction && (
         <TransactionSummaryModal
           isOpen={isTransactionSummaryOpen}
@@ -445,7 +530,7 @@ const Transaction = () => {
           handlers={summaryHandlers}
         />
       )}
-
+      
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={isConfirmModalOpen}

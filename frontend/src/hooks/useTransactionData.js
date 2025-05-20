@@ -343,39 +343,61 @@ export const useTransactionData = (selectedDate, expenseDate) => {
     return { totalGross, totalGCash };
   };
 
-  // Filter expenses by search term
-  const filterExpenses = (expenses, searchTerm) => {
-    if (!searchTerm) return expenses;
+  // Modify the filterExpenses function to properly filter by date
+  const filterExpenses = (expenses, searchTerm = "") => {
+    if (!expenses) return [];
     
-    return expenses.filter((expense) => {
-      if (!expense) return false;
+    return expenses.filter(expense => {
+      // First check if the expense date matches the selected expense date
+      const expenseItemDate = new Date(expense.date);
+      const selectedExpDay = expenseDate.getDate();
+      const selectedExpMonth = expenseDate.getMonth();
+      const selectedExpYear = expenseDate.getFullYear();
       
-      const name = String(expense.name || '').toLowerCase();
-      const purpose = String(expense.purpose || expense.expensePurpose || expense.description || '').toLowerCase();
-      const department = String(expense.departmentName || 
-                       (expense.department?.departmentName) || 
-                       (expense.Department?.departmentName) || '').toLowerCase();
-      const amount = String(expense.amount || expense.expenseAmount || 0);
+      const expenseDay = expenseItemDate.getDate();
+      const expenseMonth = expenseItemDate.getMonth();
+      const expenseYear = expenseItemDate.getFullYear();
       
-      let itemsMatch = false;
-      if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
-        itemsMatch = expense.ExpenseItems.some(item => {
-          const itemPurpose = String(item.purpose || item.description || '').toLowerCase();
-          const itemAmount = String(item.amount || 0);
-          
-          return itemPurpose.includes(searchTerm.toLowerCase()) || 
-                 itemAmount.includes(searchTerm);
-        });
+      const dateMatches = (
+        expenseDay === selectedExpDay &&
+        expenseMonth === selectedExpMonth &&
+        expenseYear === selectedExpYear
+      );
+      
+      if (!dateMatches) {
+        return false;
       }
+      
+      // Then apply search term filtering
+      if (!searchTerm) return true;
       
       const searchLower = searchTerm.toLowerCase();
       
-      return searchLower === '' || 
-             name.includes(searchLower) || 
-             purpose.includes(searchLower) || 
-             department.includes(searchLower) ||
-             amount.includes(searchTerm) ||
-             itemsMatch;
+      // Check if expense name matches search
+      if (expense.name && expense.name.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Check if any expense item purpose or paidTo matches search
+      if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
+        return expense.ExpenseItems.some(item => 
+          (item.purpose && item.purpose.toLowerCase().includes(searchLower)) ||
+          (item.paidTo && item.paidTo.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      // Check department name
+      const departmentName = 
+        expense.Department?.departmentName || 
+        expense.department?.departmentName || 
+        expense.departmentName || 
+        '';
+        
+      if (departmentName.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      return false;
     });
   };
 

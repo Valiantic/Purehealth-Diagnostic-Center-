@@ -306,6 +306,31 @@ export const expenseAPI = {
   },
   getExpenses: (params = {}) => {
     return apiClient.get('/expenses', { params });
+  },
+  getExpenseById: (expenseId) => {
+    if (!expenseId) throw new Error('Expense ID is required');
+    return apiClient.get(`/expenses/${expenseId}`);
+  },
+  // New method for direct API calls that bypass apiClient for troubleshooting
+  updateExpenseDirectly: (expenseId, expenseData) => {
+    if (!expenseId) throw new Error('Expense ID is required');
+    
+    console.log(`Making direct PUT request to /expenses/${expenseId}`, expenseData);
+    
+    return axios.put(
+      `${API_BASE_URL}/expenses/${expenseId}`, 
+      expenseData,
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    ).catch(error => {
+      console.error('Error in direct expense update:', error.response?.data || error.message);
+      throw error;
+    });
+  },
+  deleteExpense: (expenseId) => {
+    if (!expenseId) throw new Error('Expense ID is required');
+    return apiClient.delete(`/expenses/${expenseId}`);
   }
 };
 
