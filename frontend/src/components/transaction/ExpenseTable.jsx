@@ -7,7 +7,8 @@ const ExpenseTable = ({
   editingId,
   openMenuId,
   handlers,
-  expenseSearchTerm 
+  expenseSearchTerm,
+  onExpenseEditClick
 }) => {
   const {
     handleEditClick,
@@ -15,7 +16,19 @@ const ExpenseTable = ({
     handleSaveClick,
     handleCancelInlineEdit,
     toggleExpenseMenu,
+    handleDropdownClick, 
   } = handlers || {};
+
+  // Simplified kebab click handler that doesn't use any hooks
+  const handleKebabClick = (e, id) => {
+    if (e) {
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
+    }
+    
+    if (handleDropdownClick) handleDropdownClick(e);
+    if (toggleExpenseMenu) toggleExpenseMenu(id);
+  };
 
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     const dateA = new Date(a.createdAt || 0);
@@ -83,22 +96,30 @@ const ExpenseTable = ({
                 }
                 
                 const amount = parseFloat(expense.amount || expense.expenseAmount || 0);
+                const isPaid = expense.status === 'paid';
                 
                 return [(
                   <tr 
                     key={`exp-single-${expenseId}-${expenseIndex}`} 
                     className="border-b border-green-200 hover:bg-gray-50 text-xs md:text-sm"
                   >
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">{expenseName || 'Unknown'}</td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200"><span className="font-medium">{expensePurpose}</span></td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">{departmentName || 'N/A'}</td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 text-right border border-green-200">
+                    <td className={`py-1 md:py-2 px-2 md:px-3 border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
+                      {expenseName || 'Unknown'}
+                    </td>
+                    <td className={`py-1 md:py-2 px-2 md:px-3 border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
+                      <span className="font-medium">{expensePurpose}</span>
+                    </td>
+                    <td className={`py-1 md:py-2 px-2 md:px-3 border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
+                      {departmentName || 'N/A'}
+                    </td>
+                    <td className={`py-1 md:py-2 px-2 md:px-3 text-right border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
                       <span className="font-medium">
                         {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2
                         })}
                       </span>
+                      {isPaid && <span className="ml-2 text-xs text-green-600 font-medium">(Paid)</span>}
                     </td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
                       {editingId === expenseId ? (
@@ -119,22 +140,26 @@ const ExpenseTable = ({
                       ) : (
                         <div className="relative flex justify-center">
                           <button 
-                            className="text-gray-600 hover:text-green-600 focus:outline-none"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpenseMenu && toggleExpenseMenu(expenseId);
-                            }}
+                            className="text-gray-600 hover:text-green-600 focus:outline-none p-1"
+                            onClick={(e) => handleKebabClick(e, expenseId)}
                           >
                             <MoreVertical size={16} className="md:w-5 md:h-5" />
                           </button>
                           
                           {openMenuId === expenseId && (
                             <div 
-                              className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                              className="absolute right-0 mt-1 w-32 bg-white shadow-lg rounded-md border border-gray-200 z-50"
+                              onClick={(e) => e.stopPropagation()} 
                             >
                               <button 
                                 className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
-                                onClick={() => handleEditClick && handleEditClick(expense)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onExpenseEditClick) {
+                                    onExpenseEditClick(expense);
+                                  }
+                                  toggleExpenseMenu(null); // Close menu after clicking
+                                }}
                               >
                                 <span className="mr-2 inline-block">
                                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -143,18 +168,6 @@ const ExpenseTable = ({
                                   </svg>
                                 </span>
                                 Edit
-                              </button>
-                              <button
-                                className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
-                                onClick={() => handleCancelClick && handleCancelClick(expenseId)}
-                              >
-                                <span className="mr-2 inline-block">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                  </svg>
-                                </span>
-                                Cancel
                               </button>
                             </div>
                           )}
@@ -191,42 +204,54 @@ const ExpenseTable = ({
                 }
                 
                 const amount = parseFloat(expenseItem.amount || 0);
+                const isPaid = expenseItem.status === 'paid';
                 
                 return (
                   <tr 
                     key={uniqueItemKey} 
                     className={`border-b border-green-200 hover:bg-gray-50 text-xs md:text-sm ${itemIndex > 0 ? 'bg-gray-50' : ''}`}
                   >
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">{expenseName || 'Unknown'}</td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200"><span className="font-medium">{expensePurpose}</span></td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">{departmentName || 'N/A'}</td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 text-right border border-green-200">
+                    <td className={`py-1 md:py-2 px-2 md:px-3 border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
+                      {expenseName || 'Unknown'}
+                    </td>
+                    <td className={`py-1 md:py-2 px-2 md:px-3 border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
+                      <span className="font-medium">{expensePurpose}</span>
+                    </td>
+                    <td className={`py-1 md:py-2 px-2 md:px-3 border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
+                      {departmentName || 'N/A'}
+                    </td>
+                    <td className={`py-1 md:py-2 px-2 md:px-3 text-right border border-green-200 ${isPaid ? "line-through text-green-600" : ""}`}>
                       <span className="font-medium">
                         {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2
                         })}
                       </span>
+                      {isPaid && <span className="ml-2 text-xs text-green-600 font-medium">(Paid)</span>}
                     </td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
                       <div className="relative flex justify-center">
                         <button 
-                          className="text-gray-600 hover:text-green-600 focus:outline-none"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpenseMenu && toggleExpenseMenu(uniqueItemKey);
-                          }}
+                          className="text-gray-600 hover:text-green-600 focus:outline-none p-1"
+                          onClick={(e) => handleKebabClick(e, uniqueItemKey)}
                         >
                           <MoreVertical size={16} className="md:w-5 md:h-5" />
                         </button>
                         
                         {openMenuId === uniqueItemKey && (
                           <div 
-                            className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                            className="absolute right-0 mt-1 w-32 bg-white shadow-lg rounded-md border border-gray-200 z-50"
+                            onClick={(e) => e.stopPropagation()} 
                           >
                             <button 
                               className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
-                              onClick={() => handleEditClick && handleEditClick(expense)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onExpenseEditClick) {
+                                  onExpenseEditClick(expense);
+                                }
+                                toggleExpenseMenu(null); // Close menu after clicking
+                              }}
                             >
                               <span className="mr-2 inline-block">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -235,18 +260,6 @@ const ExpenseTable = ({
                                 </svg>
                               </span>
                               Edit
-                            </button>
-                            <button
-                              className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
-                              onClick={() => handleCancelClick && handleCancelClick(expenseId)}
-                            >
-                              <span className="mr-2 inline-block">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                              </span>
-                              Cancel
                             </button>
                           </div>
                         )}
