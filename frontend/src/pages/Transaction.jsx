@@ -15,6 +15,7 @@ import IncomeTable from '../components/transaction/IncomeTable';
 import ExpenseTable from '../components/transaction/ExpenseTable';
 import ConfirmationModal from '../components/transaction/ConfirmationModal';
 import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal';
+import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
 import { useTransactionManagement } from '../hooks/useTransactionManagement';
 import { useTransactionData } from '../hooks/useTransactionData';
 
@@ -25,6 +26,9 @@ const Transaction = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expenseSearchTerm, setExpenseSearchTerm] = useState('');
   const [pendingRefundAmount, setPendingRefundAmount] = useState(0);
+  const [isExpenseSummaryOpen, setIsExpenseSummaryOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState(null);
+  const [isEditingExpense, setIsEditingExpense] = useState(false);
   
   const idTypeOptions = [
     { value: 'Regular', label: 'Regular' },
@@ -149,21 +153,73 @@ const Transaction = () => {
   const handleNewExpenses = () => navigate('/add-expenses');
   const handleNewIncome = () => navigate('/add-income');
 
+  const [localExpenseMenuId, setLocalExpenseMenuId] = useState(null);
+
+  const toggleExpenseMenuFixed = (id) => {
+    
+    if (localExpenseMenuId === id) {
+      setLocalExpenseMenuId(null);
+    } else {
+      setLocalExpenseMenuId(id);
+    }
+  };
+
   useEffect(() => {
-    const handleClickOutside = () => {
-      toggleIncomeMenu(null);
-      toggleExpenseMenu(null);
+    const handleClickOutside = (event) => {
+      // Only run this if a menu is open
+      if (localExpenseMenuId && !event.target.closest('.menu-dropdown') && !event.target.closest('.menu-button')) {
+        setLocalExpenseMenuId(null);
+      }
     };
 
     document.addEventListener('click', handleClickOutside);
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, []);
+  }, [localExpenseMenuId]);
 
   useEffect(() => {
     setSearchTerm('');
   }, [selectedDate]);
+
+  const handleEditExpense = (expense) => {
+    setSelectedExpense(expense);
+    setIsEditingExpense(true);
+    setIsExpenseSummaryOpen(true);
+  };
+  
+  const closeExpenseSummary = () => {
+    setIsExpenseSummaryOpen(false);
+    setSelectedExpense(null);
+    setIsEditingExpense(false);
+  };
+
+  const handleSaveExpenseChanges = async (updatedExpense) => {
+    if (updatedExpense.isEditing !== undefined) {
+      setIsEditingExpense(updatedExpense.isEditing);
+      return;
+    }
+    
+    closeExpenseSummary();
+    
+    try {
+      
+      await refetchExpenseData(expenseDate);
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['expenses', expenseDate] 
+      });
+      
+      setTimeout(() => {
+        refetchExpenseData(expenseDate);
+      }, 500);
+      
+      toast.success('Expense data refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh expense data:', error);
+      toast.error('Failed to refresh expense data');
+    }
+  };
 
   if (isAuthenticating) {
     return null;
@@ -232,7 +288,7 @@ const Transaction = () => {
     handleEditChange,
     handleSaveClick,
     handleCancelInlineEdit,
-    toggleExpenseMenu,
+    toggleExpenseMenu: toggleExpenseMenuFixed, 
     handleDropdownClick
   };
 
@@ -418,9 +474,16 @@ const Transaction = () => {
             totalExpense={totalExpense || 0}
             editingId={editingId}
             editedExpense={editedTransaction}
-            openMenuId={openMenuId}
-            handlers={expenseHandlers}
+            openMenuId={null}
+            handlers={{
+              handleEditClick,
+              handleCancelClick,
+              handleSaveClick,
+              handleCancelInlineEdit,
+              toggleExpenseMenu: null
+            }}
             expenseSearchTerm={expenseSearchTerm}
+            onEditExpense={handleEditExpense}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`} 
           />
         </div>
@@ -453,6 +516,19 @@ const Transaction = () => {
         onConfirm={confirmCancellation}
         isPending={mutations?.cancelTransaction?.isPending}
       />
+
+      {/* New Expense Summary Modal */}
+      {isExpenseSummaryOpen && selectedExpense && (
+        <ExpenseSummaryModal
+          isOpen={isExpenseSummaryOpen}
+          onClose={closeExpenseSummary}
+          expense={selectedExpense}
+          isEditing={isEditingExpense}
+          departments={departments}
+          onSave={handleSaveExpenseChanges}
+          isLoading={false}
+        />
+      )}
 
       {/* ToastContainer for notifications */}
       <ToastContainer

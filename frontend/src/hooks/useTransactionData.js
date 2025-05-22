@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { transactionAPI, departmentAPI, referrerAPI, revenueAPI, expenseAPI } from '../services/api';
 import { isTestRefunded } from '../utils/transactionUtils';
@@ -408,10 +407,24 @@ export const useTransactionData = (selectedDate, expenseDate) => {
   };
 
   const refetchExpenseData = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    queryClient.removeQueries({ queryKey: ['expenses'] });
-    queryClient.fetchQuery({
-      queryKey: ['expenses', dateStr],
+    const dateToUse = date || expenseDate;
+    
+    let dateStr;
+    try {
+      if (dateToUse instanceof Date && !isNaN(dateToUse.getTime())) {
+        dateStr = dateToUse.toISOString().split('T')[0];
+      } else {
+        dateStr = new Date().toISOString().split('T')[0];
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      dateStr = new Date().toISOString().split('T')[0];
+    }
+        
+    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    
+    return queryClient.fetchQuery({
+      queryKey: ['expenses', dateToUse],
       queryFn: () => expenseAPI.getExpenses({ date: dateStr })
     });
   };

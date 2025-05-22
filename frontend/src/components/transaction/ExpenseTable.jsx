@@ -1,5 +1,5 @@
-import React from 'react';
-import { MoreVertical, Save, X, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { MoreVertical, Download, Edit } from 'lucide-react';
 
 const ExpenseTable = ({ 
   filteredExpenses, 
@@ -7,21 +7,50 @@ const ExpenseTable = ({
   editingId,
   openMenuId,
   handlers,
-  expenseSearchTerm 
+  expenseSearchTerm,
+  onEditExpense
 }) => {
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+  
   const {
     handleEditClick,
-    handleCancelClick,
     handleSaveClick,
     handleCancelInlineEdit,
     toggleExpenseMenu,
   } = handlers || {};
 
+  const toggleDropdown = (id, e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setOpenDropdownId(openDropdownId === id ? null : id);
+  };
+
+  const handleEditFromDropdown = (expense, e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setOpenDropdownId(null); 
+    if (onEditExpense) {
+      onEditExpense(expense);
+    }
+  };
+
+  // Sort expenses by creation date (newest first)
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     const dateA = new Date(a.createdAt || 0);
     const dateB = new Date(b.createdAt || 0);
     return dateB - dateA; 
   });
+
+  React.useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenDropdownId(null);
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   if (!filteredExpenses || filteredExpenses.length === 0) {
     return (
@@ -39,6 +68,7 @@ const ExpenseTable = ({
       </div>
     );
   }
+
 
   return (
     <div className="relative">
@@ -60,7 +90,7 @@ const ExpenseTable = ({
                                     expense.ExpenseItems.length > 0;
                                     
               if (!hasExpenseItems) {
-                const expenseId = expense.id || `exp-${expenseIndex}`;
+                const expenseId = expense.id || expense.expenseId || `exp-${expenseIndex}`;
                 const expenseName = expense.name || '';
                 
                 let expensePurpose = expense.purpose || expense.expensePurpose || expense.description || 'N/A';
@@ -101,75 +131,37 @@ const ExpenseTable = ({
                       </span>
                     </td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                      {editingId === expenseId ? (
-                        <div className="flex justify-center space-x-1">
-                          <button 
-                            className="text-green-600 hover:text-green-800 focus:outline-none"
-                            onClick={() => handleSaveClick && handleSaveClick(expenseId)}
-                          >
-                            <Save size={16} className="md:w-5 md:h-5" />
-                          </button>
-                          <button 
-                            className="text-red-600 hover:text-red-800 focus:outline-none"
-                            onClick={handleCancelInlineEdit}
-                          >
-                            <X size={16} className="md:w-5 md:h-5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="relative flex justify-center">
-                          <button 
-                            className="text-gray-600 hover:text-green-600 focus:outline-none"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpenseMenu && toggleExpenseMenu(expenseId);
-                            }}
-                          >
-                            <MoreVertical size={16} className="md:w-5 md:h-5" />
-                          </button>
-                          
-                          {openMenuId === expenseId && (
-                            <div 
-                              className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                      <div className="relative">
+                        <button 
+                          type="button"
+                          className="text-gray-600 hover:text-green-600 focus:outline-none"
+                          onClick={(e) => toggleDropdown(expenseId, e)}
+                        >
+                          <MoreVertical size={16} className="md:w-5 md:h-5" />
+                        </button>
+                        
+                        {openDropdownId === expenseId && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
+                            <button
+                              onClick={(e) => handleEditFromDropdown(expense, e)}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                             >
-                              <button 
-                                className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
-                                onClick={() => handleEditClick && handleEditClick(expense)}
-                              >
-                                <span className="mr-2 inline-block">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                  </svg>
-                                </span>
-                                Edit
-                              </button>
-                              <button
-                                className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
-                                onClick={() => handleCancelClick && handleCancelClick(expenseId)}
-                              >
-                                <span className="mr-2 inline-block">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                  </svg>
-                                </span>
-                                Cancel
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                              <Edit size={16} className="mr-2" />
+                              Edit Expense
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )];
               }
               
+              const expenseId = expense.id || expense.expenseId || `exp-${expenseIndex}`;
+              
               return expense.ExpenseItems.map((expenseItem, itemIndex) => {
-                // Create a globally unique key using both the expense index and item index
-                const uniqueItemKey = `${expense.id || expenseIndex}-item-${itemIndex}`;
-                const expenseId = expense.id || `exp-${expenseIndex}`;
-                const expenseName = expense.name || '';
+                const uniqueItemKey = `${expenseId}-item-${itemIndex}`;
+                const expenseName = expense.name || ''; 
                 
                 let expensePurpose = expenseItem.purpose || expenseItem.description || 'N/A';
                 
@@ -209,44 +201,23 @@ const ExpenseTable = ({
                       </span>
                     </td>
                     <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
-                      <div className="relative flex justify-center">
+                      <div className="relative">
                         <button 
+                          type="button"
                           className="text-gray-600 hover:text-green-600 focus:outline-none"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpenseMenu && toggleExpenseMenu(uniqueItemKey);
-                          }}
+                          onClick={(e) => toggleDropdown(`${expenseId}-item-${itemIndex}`, e)}
                         >
                           <MoreVertical size={16} className="md:w-5 md:h-5" />
                         </button>
                         
-                        {openMenuId === uniqueItemKey && (
-                          <div 
-                            className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
-                          >
-                            <button 
-                              className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
-                              onClick={() => handleEditClick && handleEditClick(expense)}
-                            >
-                              <span className="mr-2 inline-block">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                              </span>
-                              Edit
-                            </button>
+                        {openDropdownId === `${expenseId}-item-${itemIndex}` && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
                             <button
-                              className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
-                              onClick={() => handleCancelClick && handleCancelClick(expenseId)}
+                              onClick={(e) => handleEditFromDropdown(expense, e)}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                             >
-                              <span className="mr-2 inline-block">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                              </span>
-                              Cancel
+                              <Edit size={16} className="mr-2" />
+                              Edit Expense
                             </button>
                           </div>
                         )}
@@ -291,5 +262,4 @@ const ExpenseTable = ({
   );
 };
 
-// Wrap the export with React.memo to prevent unnecessary re-renders
 export default React.memo(ExpenseTable);
