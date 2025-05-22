@@ -150,18 +150,18 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
   
   // Function to handle saving edited transaction
   const handleSaveClick = (transaction) => {
-    openTransactionSummary(transaction);
+    openTransactionSummary(transaction, true);
     setOpenMenuId(null);
   };
   
   // Toggle edit mode for a transaction
   const handleEditClick = (transaction) => {
-    openTransactionSummary(transaction);
+    openTransactionSummary(transaction, true);
     setOpenMenuId(null); // Close the dropdown
   };
 
   // Function to open transaction summary modal
-  const openTransactionSummary = (transaction) => {
+  const openTransactionSummary = (transaction, enableEditMode = false) => {
     const transactionId = transaction.originalTransaction.transactionId;
     
     const preservedInfo = {
@@ -192,6 +192,12 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           }
           
           setSelectedSummaryTransaction(freshTransaction);
+          if (enableEditMode) {
+            setTimeout(() => {
+              setEditedSummaryTransaction(JSON.parse(JSON.stringify(freshTransaction)));
+              setIsEditingSummary(true);
+            }, 0);
+          }
         } else {
           console.error("Unexpected response format:", response);
           // Use existing transaction with preserved referrer information
@@ -200,6 +206,18 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
             isLoading: false,
             referrer: preservedInfo.referrer
           });
+          
+          if (enableEditMode) {
+            setTimeout(() => {
+              setEditedSummaryTransaction(JSON.parse(JSON.stringify({
+                ...transaction, 
+                isLoading: false,
+                referrer: preservedInfo.referrer
+              })));
+              setIsEditingSummary(true);
+            }, 0);
+          }
+          
           toast.warning("Could not refresh transaction data. Using cached data instead.");
         }
       })
@@ -211,6 +229,18 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           isLoading: false,
           referrer: preservedInfo.referrer
         });
+        
+        if (enableEditMode) {
+          setTimeout(() => {
+            setEditedSummaryTransaction(JSON.parse(JSON.stringify({
+              ...transaction, 
+              isLoading: false,
+              referrer: preservedInfo.referrer
+            })));
+            setIsEditingSummary(true);
+          }, 0);
+        }
+        
         toast.warning("Could not refresh transaction data. Using cached data instead.");
       });
   };
