@@ -246,7 +246,7 @@ const AddExpenses = () => {
                   htmlFor="name"
                   className="block text-gray-700 font-semibold text-sm mb-1"
                 >
-                  Name
+                  Full Name
                 </label>
                 <input
                   type="text"
@@ -531,8 +531,8 @@ const AddExpenses = () => {
                     <table className="w-full text-sm border-collapse">
                       <tbody>
                         <tr className="border-b">
-                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Name</td>
-                          <td className="p-2">{name || 'Juan Ponce Enrile'}</td>
+                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Full Name</td>
+                          <td className="p-2">{name || 'N/A'}</td>
                         </tr>
                         <tr className="border-b">
                           <td className="p-2 pl-4 font-medium border-r border-green-700">Department</td>

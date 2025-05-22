@@ -306,6 +306,12 @@ export const expenseAPI = {
   },
   getExpenses: (params = {}) => {
     return apiClient.get('/expenses', { params });
+  },
+  updateExpense: (expenseId, updateData) => {
+    return apiClient.put(`/expenses/${expenseId}`, updateData);
+  },
+  getExpenseById: (expenseId) => {
+    return apiClient.get(`/expenses/${expenseId}`);
   }
 };
 
