@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Login from './pages/Login';
 import Register from './pages/Register'; 
 import Dashboard from './pages/Dashboard';
@@ -18,6 +20,7 @@ import DepartmentManagement from './pages/DepartmentManagement';
 import TestManagement from './pages/TestManagement';
 import ReferralManagement from './pages/ReferralManagement';
 import NotFound from './pages/NotFound';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const queryClient = new QueryClient()
 
@@ -25,24 +28,30 @@ function App() {
   return (
     <>
       <QueryClientProvider client={queryClient}>
+        <ToastContainer />
         <Routes>
           <Route index element={<Navigate to="/login" replace />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="transaction" element={<Transaction/>}/>
-          <Route path="add-expenses" element={<AddExpenses />} />
-          <Route path="add-income" element={<AddIncome />} />
-          <Route path="monthly-income" element={<MonthlyIncome />} />
-          <Route path="monthly-expenses" element={<MonthlyExpenses />} />
-          <Route path="referrals" element={<Referrals />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="view-accounts" element={<ViewAccounts />} />
-          <Route path="add-account" element={<AddAccount />} />
-          <Route path="activity-log" element={<ActivityLog />} />
-          <Route path="department-management" element={<DepartmentManagement />} />
-          <Route path="test-management" element={<TestManagement />} />
-          <Route path="referral-management" element={<ReferralManagement />} />
+          
+          {/* Routes accessible to all authenticated users */}
+          <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
+          <Route path="transaction" element={<ProtectedRoute component={Transaction} />} />
+          <Route path="add-income" element={<ProtectedRoute component={AddIncome} />} />
+          <Route path="referrals" element={<ProtectedRoute component={Referrals} />} />
+          <Route path="settings" element={<ProtectedRoute component={Settings} />} />
+          <Route path="add-expenses" element={<ProtectedRoute component={AddExpenses} />} />
+          <Route path="monthly-income" element={<ProtectedRoute component={MonthlyIncome} />} />
+          <Route path="monthly-expenses" element={<ProtectedRoute component={MonthlyExpenses} />} />
+          <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} restrictFromRole="receptionist" />} />
+          <Route path="add-account" element={<ProtectedRoute component={AddAccount} restrictFromRole="receptionist" />} />
+          
+          {/* Routes receptionists shouldn't access */}
+          <Route path="activity-log" element={<ProtectedRoute component={ActivityLog} restrictFromRole="receptionist" />} />
+          <Route path="department-management" element={<ProtectedRoute component={DepartmentManagement} restrictFromRole="receptionist" />} />
+          <Route path="test-management" element={<ProtectedRoute component={TestManagement} restrictFromRole="receptionist" />} />
+          <Route path="referral-management" element={<ProtectedRoute component={ReferralManagement} restrictFromRole="receptionist" />} />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </QueryClientProvider>
