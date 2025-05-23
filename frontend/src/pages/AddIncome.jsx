@@ -4,8 +4,9 @@ import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
-import { ToastContainer, toast } from 'react-toastify'
+import { handleDecimalKeyPress } from '../utils/decimalUtils'
 import { X, Plus } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
@@ -270,8 +271,7 @@ const AddIncome = () => {
   };
 
   const handleCashPaidChange = (value) => {
-    const cashValue = parseFloat(value) || 0;
-
+    const cashValue = value === '' ? 0 : parseFloat(value) || 0;
     if (cashValue + gCashPaid > discountedPrice) {
       const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - gCashPaid));
       setCashPaid(maxAllowed);
@@ -281,7 +281,7 @@ const AddIncome = () => {
 
       toast.info("Payment amount cannot exceed the price");
     } else {
-      setCashPaid(cashValue);
+      setCashPaid(value);
 
       const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashPaid));
       setBalance(newBalance);
@@ -290,8 +290,8 @@ const AddIncome = () => {
   };
 
   const handleGCashPaidChange = (value) => {
-    const gCashValue = parseFloat(value) || 0;
-
+    const gCashValue = value === '' ? 0 : parseFloat(value) || 0;
+    
     if (cashPaid + gCashValue > discountedPrice) {
       const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid));
       setGCashPaid(maxAllowed);
@@ -301,7 +301,7 @@ const AddIncome = () => {
 
       toast.info("Payment amount cannot exceed the price");
     } else {
-      setGCashPaid(gCashValue);
+      setGCashPaid(value);
 
       const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashValue));
       setBalance(newBalance);
@@ -312,7 +312,10 @@ const AddIncome = () => {
   const handleConfirmPayment = () => {
     if (!selectedModalTest) return;
 
-    if (cashPaid + gCashPaid > discountedPrice) {
+    const numCashPaid = parseFloat(cashPaid) || 0;
+    const numGCashPaid = parseFloat(gCashPaid) || 0;
+    
+    if (numCashPaid + numGCashPaid > discountedPrice) {
       toast.error("Total payment cannot exceed the price");
       return;
     }
@@ -320,8 +323,8 @@ const AddIncome = () => {
     const finalDiscount = discount;
     const finalDiscountedPrice = roundToTwoDecimals(discountedPrice);
 
-    let finalCash = roundToTwoDecimals(cashPaid);
-    let finalGCash = roundToTwoDecimals(gCashPaid);
+    let finalCash = roundToTwoDecimals(numCashPaid);
+    let finalGCash = roundToTwoDecimals(numGCashPaid);
     let finalBalance = roundToTwoDecimals(balance);
 
     if (finalCash === 0 && finalGCash === 0 && discount > 0) {
@@ -963,7 +966,7 @@ const AddIncome = () => {
                   <input
                     type="text"
                     value={formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || ''}
-                    maxLength={5}
+                    maxLength={25}
                     onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                     disabled={formData.id === "Regular"}
@@ -1293,8 +1296,10 @@ const AddIncome = () => {
                   <label className="block text-sm font-medium text-green-700 mb-1">Cash Paid</label>
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={cashPaid}
                     onChange={(e) => handleCashPaidChange(e.target.value)}
+                    onKeyPress={handleDecimalKeyPress}
                     className="w-full p-2 rounded border border-gray-300"
                     placeholder="0.00"
                   />
@@ -1303,8 +1308,10 @@ const AddIncome = () => {
                   <label className="block text-sm font-medium text-green-700 mb-1">GCash Paid</label>
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={gCashPaid}
                     onChange={(e) => handleGCashPaidChange(e.target.value)}
+                    onKeyPress={handleDecimalKeyPress}
                     className="w-full p-2 rounded border border-gray-300"
                     placeholder="0.00"
                   />
