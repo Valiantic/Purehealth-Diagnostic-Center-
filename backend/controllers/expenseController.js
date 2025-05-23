@@ -9,8 +9,8 @@ const createExpense = async (req, res) => {
   try {
     const { name, departmentId, date, expenses, userId } = req.body;
     
-    // Calculate total amount from expense items
-    const totalAmount = expenses.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    const totalAmount = expenses.reduce((sum, item) => 
+      sum + parseFloat(parseFloat(item.amount).toFixed(2)), 0).toFixed(2);
     
     // Create expense record
     const expense = await Expense.create({
@@ -21,14 +21,13 @@ const createExpense = async (req, res) => {
       userId
     }, { transaction });
     
-    // Create expense items
     const expenseItems = await Promise.all(
       expenses.map(item => 
         ExpenseItem.create({
           expenseId: expense.expenseId,
           paidTo: item.paidTo,
           purpose: item.purpose,
-          amount: parseFloat(item.amount)
+          amount: parseFloat(parseFloat(item.amount).toFixed(2))
         }, { transaction })
       )
     );
@@ -39,7 +38,7 @@ const createExpense = async (req, res) => {
       action: 'CREATE',
       resourceType: 'EXPENSE',
       resourceId: expense.expenseId,
-      details: `Created expense record for ${name} with total amount ${totalAmount}`,
+      details: `Created expense record for ${name} with total amount ${parseFloat(totalAmount).toFixed(2)}`,
       userInfo: {
         id: userId
       }
@@ -172,11 +171,14 @@ const updateExpense = async (req, res) => {
       formattedDate = new Date(); 
     }
     
+    // Ensure totalAmount has 2 decimal places
+    const formattedTotalAmount = parseFloat(parseFloat(totalAmount).toFixed(2));
+    
     await existingExpense.update({
       name,
       departmentId,
       date: formattedDate,
-      totalAmount,
+      totalAmount: formattedTotalAmount,
       userId
     }, { transaction });
     
@@ -187,14 +189,14 @@ const updateExpense = async (req, res) => {
         transaction
       });
       
-      // Create new expense items
+      // Create new expense items with 2 decimal places
       await Promise.all(
         ExpenseItems.map(item => 
           ExpenseItem.create({
             expenseId: id,
             paidTo: item.paidTo,
             purpose: item.purpose,
-            amount: parseFloat(item.amount),
+            amount: parseFloat(parseFloat(item.amount).toFixed(2)),
             status: item.status || 'active',
             id: item.id 
           }, { transaction })
@@ -202,13 +204,13 @@ const updateExpense = async (req, res) => {
       );
     }
     
-    // Log activity
+    // Log activity with formatted amount
     await ActivityLog.create({
       userId,
       action: 'UPDATE',
       resourceType: 'EXPENSE',
       resourceId: id,
-      details: `Updated expense record for ${name} with total amount ${totalAmount}`,
+      details: `Updated expense record for ${name} with total amount ${formattedTotalAmount.toFixed(2)}`,
       userInfo: {
         id: userId
       }

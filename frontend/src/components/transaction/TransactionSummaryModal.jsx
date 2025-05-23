@@ -224,7 +224,7 @@ const TransactionSummaryModal = ({
                       {isEditingSummary ? (
                         <input
                           type="text"
-                          maxLength={5}
+                          maxLength={25}
                           value={editedTransaction.originalTransaction.idNumber || ''}
                           onChange={(e) => handleSummaryInputChange(e, 'idNumber')}
                           className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
