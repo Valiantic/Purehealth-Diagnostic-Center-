@@ -430,14 +430,6 @@ const Transaction = () => {
                   <img src={Expense} className="w-7 h-7 md:w-10 md:h-10" alt="Income Icon"/>
                 </span>
               </h2>
-              {/* Add current expense date indicator */}
-              <span className="ml-3 text-sm text-gray-500">
-                {expenseDate.toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </span>
             </div>
             
             <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
