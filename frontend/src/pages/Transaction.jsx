@@ -7,8 +7,7 @@ import { Download } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import Loading from '../components/Loading';
 import { useQueryClient } from '@tanstack/react-query';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from 'react-toastify'; // Added toast import
 import { calculateRefundTotal } from '../utils/transactionUtils';
 import DateSelector from '../components/transaction/DateSelector';
 import IncomeTable from '../components/transaction/IncomeTable';
@@ -214,7 +213,7 @@ const Transaction = () => {
         refetchExpenseData(expenseDate);
       }, 500);
       
-      toast.success('Expense data refreshed successfully');
+      toast.success('Expense data has been updated');
     } catch (error) {
       console.error('Failed to refresh expense data:', error);
       toast.error('Failed to refresh expense data');

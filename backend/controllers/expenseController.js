@@ -155,7 +155,6 @@ const updateExpense = async (req, res) => {
         if (typeof date === 'string') {
           formattedDate = new Date(date);
           if (isNaN(formattedDate.getTime())) {
-          
             formattedDate = new Date();
           }
         } else if (date instanceof Date) {
@@ -171,8 +170,13 @@ const updateExpense = async (req, res) => {
       formattedDate = new Date(); 
     }
     
-    // Ensure totalAmount has 2 decimal places
-    const formattedTotalAmount = parseFloat(parseFloat(totalAmount).toFixed(2));
+    const activeItems = ExpenseItems.filter(item => item.status !== 'refunded');
+    const activeTotal = activeItems.reduce(
+      (sum, item) => sum + parseFloat(parseFloat(item.amount || 0).toFixed(2)), 
+      0
+    ).toFixed(2);
+    
+    const formattedTotalAmount = parseFloat(activeTotal);
     
     await existingExpense.update({
       name,
@@ -182,35 +186,59 @@ const updateExpense = async (req, res) => {
       userId
     }, { transaction });
     
-    // Delete existing expense items and create new ones
-    if (ExpenseItems && Array.isArray(ExpenseItems)) {
-      await ExpenseItem.destroy({
-        where: { expenseId: id },
-        transaction
-      });
-      
-      // Create new expense items with 2 decimal places
-      await Promise.all(
-        ExpenseItems.map(item => 
-          ExpenseItem.create({
-            expenseId: id,
-            paidTo: item.paidTo,
-            purpose: item.purpose,
-            amount: parseFloat(parseFloat(item.amount).toFixed(2)),
-            status: item.status || 'active',
-            id: item.id 
-          }, { transaction })
-        )
-      );
-    }
+    const refundedItems = [];
+    const existingItems = await ExpenseItem.findAll({
+      where: { expenseId: id },
+      transaction
+    });
+
+    const existingItemMap = {};
+    existingItems.forEach(item => {
+      existingItemMap[item.id] = item.dataValues;
+    });
+
+    const newlyRefundedItems = [];
+    
+    await ExpenseItem.destroy({
+      where: { expenseId: id },
+      transaction
+    });
+    
+    // Create new expense items with 2 decimal places
+    await Promise.all(
+      ExpenseItems.map(item => {
+        const formattedAmount = parseFloat(parseFloat(item.amount || 0).toFixed(2));
+        
+
+        const validStatus = ['pending', 'paid', 'refunded'].includes(item.status) 
+          ? item.status 
+          : 'pending';
+        
+        return ExpenseItem.create({
+          expenseId: id,
+          paidTo: item.paidTo || '',
+          purpose: item.purpose || '',
+          amount: formattedAmount,
+          status: validStatus,
+          ...(item.id && !String(item.id).startsWith('temp-') ? { id: item.id } : {})
+        }, { transaction });
+      })
+    );
     
     // Log activity with formatted amount
+    let activityDetails = `Updated expense record for ${name} with total active amount ${formattedTotalAmount.toFixed(2)}`;
+    
+    if (newlyRefundedItems.length > 0) {
+      const refundTotal = newlyRefundedItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2);
+      activityDetails += `. Marked ${newlyRefundedItems.length} item(s) as refunded, total refund: ${refundTotal}`;
+    }
+    
     await ActivityLog.create({
       userId,
-      action: 'UPDATE',
+      action: newlyRefundedItems.length > 0 ? 'REFUND' : 'UPDATE',
       resourceType: 'EXPENSE',
       resourceId: id,
-      details: `Updated expense record for ${name} with total amount ${formattedTotalAmount.toFixed(2)}`,
+      details: activityDetails,
       userInfo: {
         id: userId
       }
@@ -237,7 +265,9 @@ const updateExpense = async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Expense updated successfully',
+      message: newlyRefundedItems.length > 0 
+        ? `Expense updated. ${newlyRefundedItems.length} item(s) marked as refunded.`
+        : 'Expense updated successfully',
       data: updatedExpense
     });
   } catch (error) {
