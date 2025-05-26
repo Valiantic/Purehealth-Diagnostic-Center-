@@ -4,8 +4,9 @@ import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
-import { ToastContainer, toast } from 'react-toastify'
+import { handleDecimalKeyPress } from '../utils/decimalUtils'
 import { X, Plus } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
@@ -270,8 +271,7 @@ const AddIncome = () => {
   };
 
   const handleCashPaidChange = (value) => {
-    const cashValue = parseFloat(value) || 0;
-
+    const cashValue = value === '' ? 0 : parseFloat(value) || 0;
     if (cashValue + gCashPaid > discountedPrice) {
       const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - gCashPaid));
       setCashPaid(maxAllowed);
@@ -281,7 +281,7 @@ const AddIncome = () => {
 
       toast.info("Payment amount cannot exceed the price");
     } else {
-      setCashPaid(cashValue);
+      setCashPaid(value);
 
       const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashPaid));
       setBalance(newBalance);
@@ -290,8 +290,8 @@ const AddIncome = () => {
   };
 
   const handleGCashPaidChange = (value) => {
-    const gCashValue = parseFloat(value) || 0;
-
+    const gCashValue = value === '' ? 0 : parseFloat(value) || 0;
+    
     if (cashPaid + gCashValue > discountedPrice) {
       const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid));
       setGCashPaid(maxAllowed);
@@ -301,7 +301,7 @@ const AddIncome = () => {
 
       toast.info("Payment amount cannot exceed the price");
     } else {
-      setGCashPaid(gCashValue);
+      setGCashPaid(value);
 
       const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashValue));
       setBalance(newBalance);
@@ -312,7 +312,10 @@ const AddIncome = () => {
   const handleConfirmPayment = () => {
     if (!selectedModalTest) return;
 
-    if (cashPaid + gCashPaid > discountedPrice) {
+    const numCashPaid = parseFloat(cashPaid) || 0;
+    const numGCashPaid = parseFloat(gCashPaid) || 0;
+    
+    if (numCashPaid + numGCashPaid > discountedPrice) {
       toast.error("Total payment cannot exceed the price");
       return;
     }
@@ -320,8 +323,8 @@ const AddIncome = () => {
     const finalDiscount = discount;
     const finalDiscountedPrice = roundToTwoDecimals(discountedPrice);
 
-    let finalCash = roundToTwoDecimals(cashPaid);
-    let finalGCash = roundToTwoDecimals(gCashPaid);
+    let finalCash = roundToTwoDecimals(numCashPaid);
+    let finalGCash = roundToTwoDecimals(numGCashPaid);
     let finalBalance = roundToTwoDecimals(balance);
 
     if (finalCash === 0 && finalGCash === 0 && discount > 0) {
@@ -722,13 +725,50 @@ const AddIncome = () => {
       const originalPrice = parseFloat(originalTest.price) || 0;
       
       const discountMultiplier = (100 - globalDiscount) / 100;
-      const newPrice = roundToTwoDecimals(originalPrice * discountMultiplier);
+      const newDiscountedPrice = roundToTwoDecimals(originalPrice * discountMultiplier);
+      
+      // Get current payment values
+      const currentCash = parseFloat(test.cash) || 0;
+      const currentGCash = parseFloat(test.gCash) || 0;
+      const currentBalance = parseFloat(test.bal) || 0;
+      const totalPayment = currentCash + currentGCash + currentBalance;
+      
+      // Calculate proportion of each payment method
+      const cashProportion = totalPayment > 0 ? currentCash / totalPayment : 0;
+      const gCashProportion = totalPayment > 0 ? currentGCash / totalPayment : 0;
+      const balProportion = totalPayment > 0 ? currentBalance / totalPayment : 1; // Default to balance if no payments
+      
+      // Apply discount proportionally to each payment method
+      let newCash, newGCash, newBalance;
+      
+      if (currentCash > 0 && currentGCash === 0 && currentBalance === 0) {
+        // If only cash payment exists
+        newCash = newDiscountedPrice;
+        newGCash = 0;
+        newBalance = 0;
+      } else if (currentCash === 0 && currentGCash > 0 && currentBalance === 0) {
+        // If only GCash payment exists
+        newCash = 0;
+        newGCash = newDiscountedPrice;
+        newBalance = 0;
+      } else if (currentCash === 0 && currentGCash === 0 && currentBalance > 0) {
+        // If only balance exists
+        newCash = 0;
+        newGCash = 0;
+        newBalance = newDiscountedPrice;
+      } else {
+        // If multiple payment methods exist, maintain proportions
+        newCash = roundToTwoDecimals(newDiscountedPrice * cashProportion);
+        newGCash = roundToTwoDecimals(newDiscountedPrice * gCashProportion);
+        newBalance = roundToTwoDecimals(newDiscountedPrice * balProportion);
+      }
       
       updatedTestsTable[index] = {
         ...test,
         disc: `${globalDiscount}%`,
-        cash: newPrice.toFixed(2),
-        bal: '0.00'
+        cash: newCash.toFixed(2),
+        gCash: newGCash.toFixed(2),
+        bal: newBalance.toFixed(2)
       };
       
       setTestsTable(updatedTestsTable);
@@ -738,11 +778,45 @@ const AddIncome = () => {
       const originalTest = selectedTests[index];
       const originalPrice = parseFloat(originalTest.price) || 0;
       
+      // Get payment method that was used originally (before any discount)
+      const originalCash = parseFloat(test.cash) || 0;
+      const originalGCash = parseFloat(test.gCash) || 0;
+      const originalBalance = parseFloat(test.bal) || 0;
+      
+      // Determine which payment method was primarily used
+      const hasCash = originalCash > 0;
+      const hasGCash = originalGCash > 0;
+      const hasBalance = originalBalance > 0;
+      
+      let restoredCash = '0.00';
+      let restoredGCash = '0.00';
+      let restoredBalance = '0.00';
+      
+      if (hasCash && !hasGCash && !hasBalance) {
+        // Only cash was used
+        restoredCash = originalPrice.toFixed(2);
+      } else if (!hasCash && hasGCash && !hasBalance) {
+        // Only GCash was used
+        restoredGCash = originalPrice.toFixed(2);
+      } else if (!hasCash && !hasGCash && hasBalance) {
+        restoredBalance = originalPrice.toFixed(2);
+      } else {
+        const totalPayment = originalCash + originalGCash + originalBalance;
+        const cashProportion = totalPayment > 0 ? originalCash / totalPayment : 0;
+        const gCashProportion = totalPayment > 0 ? originalGCash / totalPayment : 0;
+        const balProportion = totalPayment > 0 ? originalBalance / totalPayment : 1;
+        
+        restoredCash = (originalPrice * cashProportion).toFixed(2);
+        restoredGCash = (originalPrice * gCashProportion).toFixed(2);
+        restoredBalance = (originalPrice * balProportion).toFixed(2);
+      }
+      
       updatedTestsTable[index] = {
         ...test,
         disc: '0%',
-        cash: originalPrice.toFixed(2),
-        bal: '0.00'
+        cash: restoredCash,
+        gCash: restoredGCash,
+        bal: restoredBalance
       };
       
       setTestsTable(updatedTestsTable);
@@ -892,6 +966,7 @@ const AddIncome = () => {
                   <input
                     type="text"
                     value={formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || ''}
+                    maxLength={25}
                     onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
                     className="w-full border-2 border-green-800 rounded p-2"
                     disabled={formData.id === "Regular"}
@@ -1221,8 +1296,10 @@ const AddIncome = () => {
                   <label className="block text-sm font-medium text-green-700 mb-1">Cash Paid</label>
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={cashPaid}
                     onChange={(e) => handleCashPaidChange(e.target.value)}
+                    onKeyPress={handleDecimalKeyPress}
                     className="w-full p-2 rounded border border-gray-300"
                     placeholder="0.00"
                   />
@@ -1231,8 +1308,10 @@ const AddIncome = () => {
                   <label className="block text-sm font-medium text-green-700 mb-1">GCash Paid</label>
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={gCashPaid}
                     onChange={(e) => handleGCashPaidChange(e.target.value)}
+                    onKeyPress={handleDecimalKeyPress}
                     className="w-full p-2 rounded border border-gray-300"
                     placeholder="0.00"
                   />

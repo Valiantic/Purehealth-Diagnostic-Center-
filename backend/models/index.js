@@ -8,10 +8,14 @@ const Referrer = require('./Referrer')(sequelize);
 const Transaction = require('./Transaction')(sequelize);
 const TestDetails = require('./TestDetails')(sequelize);
 const DepartmentRevenue = require('./DepartmentRevenue')(sequelize);
+const Expense = require('./Expenses')(sequelize);
+const ExpenseItem = require('./ExpenseItems')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
 Authenticator.belongsTo(User, { foreignKey: 'userId' });
+Department.hasMany(Expense, { foreignKey: 'departmentId' });
+Expense.belongsTo(Department, { foreignKey: 'departmentId' });
 
 // User has many activity logs, but logs remain when users are deleted
 User.hasMany(ActivityLog, { 
@@ -109,6 +113,35 @@ DepartmentRevenue.belongsTo(TestDetails, {
   constraints: false
 });
 
+// Fix Expense relationships
+User.hasMany(Expense, { 
+  foreignKey: 'userId',
+  onDelete: 'RESTRICT'
+});
+
+Expense.belongsTo(User, {
+  foreignKey: 'userId',
+  onDelete: 'RESTRICT'
+});
+
+Department.hasMany(Expense, { 
+  foreignKey: 'departmentId',
+  onDelete: 'SET NULL'
+});
+
+Expense.belongsTo(Department, { 
+  foreignKey: 'departmentId',
+  onDelete: 'SET NULL'
+});
+
+Expense.hasMany(ExpenseItem, { 
+  foreignKey: 'expenseId', 
+  onDelete: 'CASCADE' 
+});
+ExpenseItem.belongsTo(Expense, { 
+  foreignKey: 'expenseId' 
+});
+
 module.exports = {
   sequelize,
   User,
@@ -119,5 +152,7 @@ module.exports = {
   Referrer,
   Transaction,
   TestDetails,
-  DepartmentRevenue
+  DepartmentRevenue,
+  Expense,
+  ExpenseItem
 };

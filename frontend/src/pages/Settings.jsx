@@ -149,6 +149,11 @@ const Settings = () => {
     }
   }
 
+  const getAuthorizedTabs = (tabs, userRole) => {
+    if (!userRole) return tabs;
+    return tabs.filter(tab => tab.roles.includes(userRole));
+  }
+
   if (isAuthenticating) {
     return null;
   }
@@ -158,7 +163,8 @@ const Settings = () => {
   }
 
   const currentPath = location.pathname;
-  const activeTab = tabsConfig.find(tab => 
+  const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
+  const activeTab = filteredTabs.find(tab => 
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Account';
 
@@ -173,7 +179,7 @@ const Settings = () => {
       <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
         
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
-          <TabNavigation tabsConfig={tabsConfig} />
+          <TabNavigation tabsConfig={filteredTabs} />
           
           {/* Content */}
           <div className="p-4 md:p-6">
@@ -273,10 +279,12 @@ const Settings = () => {
                         Change Passkey
                       </button>
                       
-                      <button onClick={handleViewAccounts} className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
+                     {user.role !== 'receptionist' && (
+                       <button onClick={handleViewAccounts} className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
                         <Users className="w-4 h-4 mr-2" />
                         View Accounts
                       </button>
+                     )}
                     </>
                   )}
                 </div>

@@ -15,7 +15,7 @@ exports.getRevenueByDepartment = async (req, res) => {
       };
     }
 
-    // Exclude cancelled or refunded transactions if requested
+    // Exclude cancelled or refunded transactions 
     if (excludeCancelled === 'true') {
       whereClause.status = 'active';
     }
@@ -45,7 +45,6 @@ exports.getRevenueByDepartment = async (req, res) => {
     // Get refunded amounts by department to provide complete information
     const refundWhereClause = { status: { [Op.in]: ['refunded', 'cancelled'] } };
     
-    // Apply the same date filter for refunds
     if (startDate && endDate) {
       refundWhereClause.revenueDate = {
         [Op.between]: [new Date(startDate), new Date(endDate)]
@@ -104,7 +103,7 @@ exports.getRevenueTrend = async (req, res) => {
       whereClause.departmentId = departmentId;
     }
     
-    // Exclude cancelled or refunded transactions if requested
+    // Exclude cancelled or refunded transactions 
     if (excludeCancelled === 'true') {
       whereClause.status = 'active';
     }

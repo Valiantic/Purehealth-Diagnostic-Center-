@@ -141,3 +141,36 @@ CREATE INDEX "idx_dept_revenue" ON "DepartmentRevenues" ("departmentId");
 CREATE INDEX "idx_trans_revenue" ON "DepartmentRevenues" ("transactionId");
 CREATE INDEX "idx_testdetail_revenue" ON "DepartmentRevenues" ("testDetailId");
 CREATE INDEX "idx_revenue_date" ON "DepartmentRevenues" ("revenueDate");
+
+-- Create Expenses table
+CREATE TABLE `Expenses` (
+  `expenseId` INT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `departmentId` INT,
+  `date` DATE NOT NULL DEFAULT CURRENT_DATE,
+  `totalAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `userId` INT NOT NULL,
+  `status` VARCHAR(255) NOT NULL DEFAULT 'active',
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  PRIMARY KEY (`expenseId`),
+  INDEX `idx_expense_department` (`departmentId`),
+  INDEX `idx_expense_user` (`userId`),
+  CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`departmentId`) REFERENCES `Department` (`departmentId`) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Create ExpenseItems table
+CREATE TABLE `ExpenseItems` (
+  `expenseItemId` INT NOT NULL AUTO_INCREMENT,
+  `expenseId` INT NOT NULL,
+  `paidTo` VARCHAR(255) NOT NULL,
+  `purpose` VARCHAR(255) NOT NULL,
+  `amount` DECIMAL(10, 2) NOT NULL,
+  `status` enum('pending','paid','refunded') NOT NULL DEFAULT 'pending',
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  PRIMARY KEY (`expenseItemId`),
+  INDEX `idx_expense_item_expense` (`expenseId`),
+  CONSTRAINT `expenseitems_ibfk_1` FOREIGN KEY (`expenseId`) REFERENCES `Expenses` (`expenseId`) ON DELETE CASCADE ON UPDATE CASCADE
+);
