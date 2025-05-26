@@ -18,9 +18,16 @@ const ExpenseSummaryModalNew = ({
   // Initialize expense state
   useEffect(() => {
     if (expense) {
+      const expenseItemsWithIds = expense.ExpenseItems ? 
+        expense.ExpenseItems.map(item => ({
+          ...item,
+          id: item.id || `temp-${Math.random().toString(36).substr(2, 9)}`,
+          status: item.status || 'pending'
+        })) : [];
+
       setEditedExpense({
         ...expense,
-        ExpenseItems: expense.ExpenseItems ? [...expense.ExpenseItems] : []
+        ExpenseItems: expenseItemsWithIds
       });
     }
   }, [expense]);
@@ -45,7 +52,6 @@ const ExpenseSummaryModalNew = ({
     try {
       setIsSaving(true);
       
-      // Calculate total from expense items
       const totalAmount = editedExpense.ExpenseItems.reduce(
         (sum, item) => sum + parseFloat(item.amount || 0), 0
       );
@@ -71,7 +77,6 @@ const ExpenseSummaryModalNew = ({
         formattedDate = new Date().toDateString();
       }
 
-      // Update status for items
       const updatedItems = editedExpense.ExpenseItems.map(item => {
         return {
           ...item,
@@ -79,9 +84,13 @@ const ExpenseSummaryModalNew = ({
           paidTo: item.paidTo || '',
           purpose: item.purpose || '',
           amount: parseFloat(item.amount || 0),
-          status: item.status || 'active'
+          status: item.status || 'pending'
         };
       });
+
+      const refundedCount = updatedItems.filter(item => item.status === 'refunded').length;
+      const paidCount = updatedItems.filter(item => item.status === 'paid').length;
+      const pendingCount = updatedItems.filter(item => item.status === 'pending').length;
 
       // Prepare data for API with correct field types
       const updateData = {
@@ -93,12 +102,17 @@ const ExpenseSummaryModalNew = ({
         userId: editedExpense.userId || editedExpense.User?.userId || 1
       };
       
-  
-      
       const response = await expenseAPI.updateExpense(expenseId, updateData);
       
-      toast.success('Expense updated successfully');
-      
+      let message = 'Expense updated successfully';
+      if (refundedCount > 0 || paidCount > 0 || pendingCount > 0) {
+        message += `:`;
+        if (refundedCount > 0) message += ` ${refundedCount} refunded,`;
+        if (paidCount > 0) message += ` ${paidCount} paid,`;
+        if (pendingCount > 0) message += ` ${pendingCount} pending`;
+        message = message.replace(/,$/g, '');
+      }
+            
       const updatedExpenseData = {
         ...response.data?.data || editedExpense,
         ExpenseItems: response.data?.data?.ExpenseItems || updatedItems,
@@ -192,6 +206,30 @@ const ExpenseSummaryModalNew = ({
     }
   };
 
+  const getStatusStyles = (status) => {
+    switch(status) {
+      case 'refunded':
+        return {
+          rowClass: 'bg-gray-200 text-gray-500',
+          textClass: 'line-through text-gray-500',
+          badgeClass: 'bg-red-100 text-red-800 border-red-200'
+        };
+      case 'paid':
+        return {
+          rowClass: 'bg-green-50',
+          textClass: 'text-green-800',
+          badgeClass: 'bg-green-100 text-green-800 border-green-200'
+        };
+      case 'pending':
+      default:
+        return {
+          rowClass: '',
+          textClass: '',
+          badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
       <div className="bg-white rounded-md w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] flex flex-col overflow-hidden">
@@ -279,56 +317,96 @@ const ExpenseSummaryModalNew = ({
                         <th className="p-1 md:px-4 md:py-2 text-left text-gray-700 border border-gray-200">Paid To</th>
                         <th className="p-1 md:px-4 md:py-2 text-left text-gray-700 border border-gray-200">Purpose</th>
                         <th className="p-1 md:px-4 md:py-2 text-right text-gray-700 border border-gray-200">Amount</th>
+                        <th className="p-1 md:px-4 md:py-2 text-center text-gray-700 border border-gray-200">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {editedExpense?.ExpenseItems?.map((item, index) => (
-                        <tr key={item.id || index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                          <td className="p-1 md:px-4 md:py-2 border border-gray-200">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={item.paidTo || ''}
-                                onChange={(e) => handleExpenseItemChange(index, 'paidTo', e.target.value)}
-                                className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                              />
-                            ) : (
-                              <span className="line-clamp-2">{item.paidTo || 'N/A'}</span>
-                            )}
-                          </td>
-                          <td className="p-1 md:px-4 md:py-2 border border-gray-200">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={item.purpose || ''}
-                                onChange={(e) => handleExpenseItemChange(index, 'purpose', e.target.value)}
-                                className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                              />
-                            ) : (
-                              <span className="line-clamp-2">{item.purpose || 'N/A'}</span>
-                            )}
-                          </td>
-                          <td className="p-1 md:px-4 md:py-2 text-right border border-gray-200">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={item.amount || ''}
-                                onChange={(e) => handleExpenseItemChange(index, 'amount', e.target.value)}
-                                className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-right text-xs md:text-sm"
-                              />
-                            ) : (
-                              parseFloat(item.amount || 0).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {editedExpense?.ExpenseItems?.map((item, index) => {
+                        const { rowClass, textClass, badgeClass } = getStatusStyles(item.status);
+                        
+                        return (
+                          <tr 
+                            key={item.id || index} 
+                            className={`
+                              ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                              ${rowClass}
+                              border-b border-gray-200 hover:bg-gray-50 text-xs md:text-sm
+                            `}
+                          >
+                            <td className="p-1 md:px-4 md:py-2 border border-gray-200">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={item.paidTo || ''}
+                                  onChange={(e) => handleExpenseItemChange(index, 'paidTo', e.target.value)}
+                                  className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                                />
+                              ) : (
+                                <span className={`line-clamp-2 ${textClass}`}>
+                                  {item.paidTo || 'N/A'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-1 md:px-4 md:py-2 border border-gray-200">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={item.purpose || ''}
+                                  onChange={(e) => handleExpenseItemChange(index, 'purpose', e.target.value)}
+                                  className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                                />
+                              ) : (
+                                <span className={`line-clamp-2 ${textClass}`}>
+                                  {item.purpose || 'N/A'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-1 md:px-4 md:py-2 text-right border border-gray-200">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={item.amount || ''}
+                                  onChange={(e) => handleExpenseItemChange(index, 'amount', e.target.value)}
+                                  className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-right text-xs md:text-sm"
+                                />
+                              ) : (
+                                <div>
+                                  <span className={textClass}>
+                                    {parseFloat(item.amount || 0).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    })}
+                                  </span>
+                                  {item.status === 'refunded' && (
+                                    <span className="ml-1 text-xs text-red-500">→ 0.00</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-1 md:px-4 md:py-2 text-center border border-gray-200">
+                              {isEditing ? (
+                                <select 
+                                  value={item.status || 'pending'}
+                                  onChange={(e) => handleExpenseItemChange(index, 'status', e.target.value)}
+                                  className="w-full px-1 md:px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="paid">Paid</option>
+                                  <option value="refunded">Refunded</option>
+                                </select>
+                              ) : (
+                                <span className={`px-2 py-1 rounded-full text-xs capitalize border ${badgeClass}`}>
+                                  {item.status || 'pending'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {(!editedExpense?.ExpenseItems || editedExpense.ExpenseItems.length === 0) && (
                         <tr>
-                          <td colSpan={3} className="px-4 py-4 text-center text-gray-500 border border-gray-200">
+                          <td colSpan={4} className="px-4 py-4 text-center text-gray-500 border border-gray-200">
                             No expense items found
                           </td>
                         </tr>
@@ -339,10 +417,20 @@ const ExpenseSummaryModalNew = ({
                         <tr className="bg-green-100">
                           <td colSpan={2} className="px-4 py-2 font-bold text-green-800 border border-gray-200">Total</td>
                           <td className="px-4 py-2 text-right font-bold text-green-800 border border-gray-200">
-                            {editedExpense.ExpenseItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
+                            {editedExpense.ExpenseItems
+                              .filter(item => item.status !== 'refunded')
+                              .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0)
+                              .toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                          </td>
+                          <td className="px-4 py-2 text-center border border-gray-200">
+                            <div className="text-xs text-gray-600">
+                              {editedExpense.ExpenseItems.filter(item => item.status === 'paid').length} paid,
+                              {' '}{editedExpense.ExpenseItems.filter(item => item.status === 'pending').length} pending,
+                              {' '}{editedExpense.ExpenseItems.filter(item => item.status === 'refunded').length} refunded
+                            </div>
                           </td>
                         </tr>
                       </tfoot>
@@ -363,12 +451,13 @@ const ExpenseSummaryModalNew = ({
                   >
                     Cancel
                   </button>
+                  
                   <button
                     className="bg-green-800 text-white px-2 md:px-8 py-1 md:py-2 rounded text-xs md:text-base hover:bg-green-700 focus:outline-none"
                     onClick={handleSaveChanges}
                     disabled={isSaving}
                   >
-                    {isSaving ? 'Saving...' : 'Save'}
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
                 </>
               ) : (
