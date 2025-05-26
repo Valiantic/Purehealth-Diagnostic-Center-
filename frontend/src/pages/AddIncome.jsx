@@ -246,8 +246,8 @@ const AddIncome = () => {
     setDiscount(0);
     setDiscountedPrice(roundedPrice);
     setBalance(roundedPrice);
-    setCashPaid(0);
-    setGCashPaid(0);
+    setCashPaid('0');  
+    setGCashPaid('0'); 
 
     setIsModalOpen(true);
     setActiveDropdownId(null);
@@ -260,50 +260,121 @@ const AddIncome = () => {
 
   const handleDiscountChange = (value) => {
     const discountValue = parseInt(value) || 0;
+    
+    if (discountValue < 0) {
+      toast.error("Discount cannot be negative");
+      return;
+    }
+    
+    if (discountValue > 100) {
+      toast.error("Discount cannot exceed 100%");
+      return;
+    }
+
     setDiscount(discountValue);
 
     const discounted = roundToTwoDecimals(basePrice * (1 - discountValue / 100));
     setDiscountedPrice(discounted);
-
-    const newBalance = roundToTwoDecimals(Math.max(0, discounted - cashPaid - gCashPaid));
-    setBalance(newBalance);
-    setPrice(newBalance);
+    
+    const cashValue = parseFloat(cashPaid) || 0;
+    const gCashValue = parseFloat(gCashPaid) || 0;
+    const totalPayment = cashValue + gCashValue;
+    
+    if (discounted < totalPayment) {
+      toast.info("Discount would make the price less than the payment amount. Adjusting payment.");
+      
+      if (totalPayment > 0) {
+        const cashRatio = cashValue / totalPayment;
+        const gCashRatio = gCashValue / totalPayment;
+        
+        const newCash = roundToTwoDecimals(discounted * cashRatio);
+        const newGCash = roundToTwoDecimals(discounted * gCashRatio);
+        
+        setCashPaid(newCash === 0 ? '0' : newCash.toString());
+        setGCashPaid(newGCash === 0 ? '0' : newGCash.toString());
+        setBalance(0);
+        setPrice(0);
+      } else {
+        setBalance(discounted);
+        setPrice(discounted);
+      }
+    } else {
+      const newBalance = roundToTwoDecimals(Math.max(0, discounted - cashValue - gCashValue));
+      setBalance(newBalance);
+      setPrice(newBalance);
+    }
   };
 
-  const handleCashPaidChange = (value) => {
-    const cashValue = value === '' ? 0 : parseFloat(value) || 0;
-    if (cashValue + gCashPaid > discountedPrice) {
-      const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - gCashPaid));
-      setCashPaid(maxAllowed);
+  const [cashFieldFocused, setCashFieldFocused] = useState(false);
+  const [gCashFieldFocused, setGCashFieldFocused] = useState(false);
 
+  const handleCashPaidChange = (value) => {
+    const parsedValue = parseFloat(value) || 0;
+    if (parsedValue > discountedPrice) {
+      setCashPaid(discountedPrice.toString());
+      setGCashPaid('0');
       setBalance(0);
       setPrice(0);
+      toast.info("Cash payment cannot exceed the price");
+      return;
+    }
 
-      toast.info("Payment amount cannot exceed the price");
+    setCashPaid(value);
+    
+    if (value !== '') {
+      const cashValue = parseFloat(value) || 0;
+      const gCashValue = parseFloat(gCashPaid) || 0;
+      
+      if (cashValue + gCashValue > discountedPrice) {
+        const newGCash = Math.max(0, discountedPrice - cashValue);
+        setGCashPaid(newGCash === 0 ? '0' : newGCash.toString());
+        setBalance(0);
+        setPrice(0);
+        toast.info("Total payment adjusted to match the price");
+      } else {
+        const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashValue));
+        setBalance(newBalance);
+        setPrice(newBalance);
+      }
     } else {
-      setCashPaid(value);
-
-      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashPaid));
+      const gCashValue = parseFloat(gCashPaid) || 0;
+      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - gCashValue));
       setBalance(newBalance);
       setPrice(newBalance);
     }
   };
 
   const handleGCashPaidChange = (value) => {
-    const gCashValue = value === '' ? 0 : parseFloat(value) || 0;
-    
-    if (cashPaid + gCashValue > discountedPrice) {
-      const maxAllowed = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid));
-      setGCashPaid(maxAllowed);
-
+    const parsedValue = parseFloat(value) || 0;
+    if (parsedValue > discountedPrice) {
+      setGCashPaid(discountedPrice.toString());
+      setCashPaid('0');
       setBalance(0);
       setPrice(0);
+      toast.info("GCash payment cannot exceed the price");
+      return;
+    }
 
-      toast.info("Payment amount cannot exceed the price");
+    setGCashPaid(value);
+    
+    if (value !== '') {
+      const gCashValue = parseFloat(value) || 0;
+      const cashValue = parseFloat(cashPaid) || 0;
+      
+      if (cashValue + gCashValue > discountedPrice) {
+        const newCash = Math.max(0, discountedPrice - gCashValue);
+        setCashPaid(newCash === 0 ? '0' : newCash.toString());
+        setBalance(0);
+        setPrice(0);
+        toast.info("Total payment adjusted to match the price");
+      } else {
+        const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue - gCashValue));
+        setBalance(newBalance);
+        setPrice(newBalance);
+      }
     } else {
-      setGCashPaid(value);
-
-      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashPaid - gCashValue));
+      const cashValue = parseFloat(cashPaid) || 0;
+      const newBalance = roundToTwoDecimals(Math.max(0, discountedPrice - cashValue));
       setBalance(newBalance);
       setPrice(newBalance);
     }
@@ -315,8 +386,8 @@ const AddIncome = () => {
     const numCashPaid = parseFloat(cashPaid) || 0;
     const numGCashPaid = parseFloat(gCashPaid) || 0;
     
-    if (numCashPaid + numGCashPaid > discountedPrice) {
-      toast.error("Total payment cannot exceed the price");
+    if (numCashPaid + numGCashPaid > discountedPrice + 0.01) {
+      toast.error("Total payment cannot exceed the price. Please adjust your payment amounts.");
       return;
     }
 
@@ -325,12 +396,12 @@ const AddIncome = () => {
 
     let finalCash = roundToTwoDecimals(numCashPaid);
     let finalGCash = roundToTwoDecimals(numGCashPaid);
-    let finalBalance = roundToTwoDecimals(balance);
-
-    if (finalCash === 0 && finalGCash === 0 && discount > 0) {
-      finalCash = finalDiscountedPrice;
-      finalBalance = 0;
+    
+    if (finalCash + finalGCash > finalDiscountedPrice) {
+      finalCash = roundToTwoDecimals(finalDiscountedPrice - finalGCash);
     }
+    
+    let finalBalance = roundToTwoDecimals(Math.max(0, finalDiscountedPrice - finalCash - finalGCash));
 
     const testIndex = selectedTests.findIndex(t => t.testId === selectedModalTest.testId);
 
@@ -1297,8 +1368,10 @@ const AddIncome = () => {
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={cashPaid}
+                    value={cashFieldFocused ? cashPaid === '0' ? '' : cashPaid : cashPaid}
                     onChange={(e) => handleCashPaidChange(e.target.value)}
+                    onFocus={() => setCashFieldFocused(true)}
+                    onBlur={() => setCashFieldFocused(false)}
                     onKeyPress={handleDecimalKeyPress}
                     className="w-full p-2 rounded border border-gray-300"
                     placeholder="0.00"
@@ -1309,8 +1382,10 @@ const AddIncome = () => {
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={gCashPaid}
+                    value={gCashFieldFocused ? gCashPaid === '0' ? '' : gCashPaid : gCashPaid}
                     onChange={(e) => handleGCashPaidChange(e.target.value)}
+                    onFocus={() => setGCashFieldFocused(true)}
+                    onBlur={() => setGCashFieldFocused(false)}
                     onKeyPress={handleDecimalKeyPress}
                     className="w-full p-2 rounded border border-gray-300"
                     placeholder="0.00"
@@ -1675,10 +1750,10 @@ const AddIncome = () => {
                           {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     )}
@@ -1753,6 +1828,7 @@ const AddIncome = () => {
                     value={discountFieldFocused ? globalDiscount || '' : globalDiscount}
                     onChange={(e) => setGlobalDiscount(parseInt(e.target.value) || 0)}
                     onFocus={() => setDiscountFieldFocused(true)}
+                    onBlur={() => setDiscountFieldFocused(false)}
                     className="w-full p-2 rounded border border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder="Enter discount percentage"
                   />
@@ -1762,7 +1838,7 @@ const AddIncome = () => {
                   After setting the discount, you will be able to select which tests to apply it to.
                 </p>
               </div>
-              
+                            
               <div className="flex justify-center gap-3 mt-4">
                 <button
                   className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 focus:outline-none"
