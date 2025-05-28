@@ -3,18 +3,29 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
+import AddCollectibleIncomeModal from '../components/monthly/AddCollectiblesIncomeModals'
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
   const [currentMonth, setCurrentMonth] = useState('MAR-2025');
   const navigate = useNavigate()
+  const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
+  const [collectibles, setCollectibles] = useState([]);
 
   const handleAddIncome = () => {
     navigate('/add-income')
   }
 
-  const handleAddExpense = () => {
-    navigate('/add-expenses')
+  const handleAddCollectibles = () => {
+    setIsCollectibleModalOpen(true);
+  }
+
+  const handleCollectibleSubmit = (data) => {
+    setCollectibles(prev => [...prev, { 
+      ...data, 
+      id: Date.now(),
+      totalIncome: parseFloat(data.totalIncome).toFixed(2)
+    }]);
   }
 
   const GoToMonthlyExpenses = () => {
@@ -138,7 +149,7 @@ const Monthly = () => {
             <div className="md:w-1/2">
               <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
                 <span>Collectible Income</span>
-                <button onClick={handleAddExpense} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                <button onClick={handleAddCollectibles} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
                   <CirclePlus/>
                 </button>
               </div>
@@ -155,20 +166,37 @@ const Monthly = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...Array(7)].map((_, index) => (
-                        <tr key={`collectible-row-${index}`} className="border-b border-green-200">
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1"></td>
-                        </tr>
-                      ))}
+                      {collectibles.length > 0 ? (
+                        collectibles.map((item, index) => (
+                          <tr key={`collectible-row-${item.id}`} className="border-b border-green-200">
+                            <td className="p-1 border-r border-green-200">{item.companyName}</td>
+                            <td className="p-1 border-r border-green-200">{item.coordinatorName}</td>
+                            <td className="p-1 border-r border-green-200">{item.date}</td>
+                            <td className="p-1 border-r border-green-200 text-right">{parseFloat(item.totalIncome).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-1 text-center">
+                              <button className="text-blue-600 hover:text-blue-800 mx-1">Edit</button>
+                              <button className="text-red-600 hover:text-red-800 mx-1">Delete</button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        [...Array(7)].map((_, index) => (
+                          <tr key={`empty-collectible-row-${index}`} className="border-b border-green-200">
+                            <td className="p-1 border-r border-green-200"></td>
+                            <td className="p-1 border-r border-green-200"></td>
+                            <td className="p-1 border-r border-green-200"></td>
+                            <td className="p-1 border-r border-green-200"></td>
+                            <td className="p-1"></td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
                 <div className="p-1 border-t bg-green-100 border-green-800 font-bold text-green-800">
-                  TOTAL:
+                  TOTAL: {collectibles.length > 0 ? 
+                    collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome), 0)
+                      .toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                 </div>
               </div>
             </div>
@@ -185,6 +213,12 @@ const Monthly = () => {
           </div>
         </div>
       </div>
+
+      <AddCollectibleIncomeModal
+        isOpen={isCollectibleModalOpen}
+        onClose={() => setIsCollectibleModalOpen(false)}
+        onSubmit={handleCollectibleSubmit}
+      />
     </div>
   )
 }

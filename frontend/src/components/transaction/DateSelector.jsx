@@ -5,7 +5,8 @@ const DateSelector = ({
   date, 
   onDateChange, 
   inputRef, 
-  className = "relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer"
+  className = "relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer",
+  customStyles = {}
 }) => {
 
   const openDatePicker = () => {
@@ -32,6 +33,10 @@ const DateSelector = ({
     return `${year}-${month}-${day}`;
   };
 
+  const wrapperStyles = customStyles.wrapper || "px-1 md:px-2 py-1 flex-grow";
+  const textStyles = customStyles.text || "";
+  const iconStyles = customStyles.icon || "mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800";
+
   return (
     <div 
       className={className}
@@ -44,16 +49,12 @@ const DateSelector = ({
         onChange={onDateChange}
         value={formatDateForInput(date)}
       />
-      <span className="px-1 md:px-2 py-1 flex-grow">
-        {formatDateToDisplay(date)}
-      </span>
-      <Calendar 
-        className="mx-1 h-4 w-4 md:h-5 md:w-5 text-green-800" 
-        onClick={(e) => {
-          e.stopPropagation();
-          openDatePicker();
-        }}
-      />
+      <div className={`${wrapperStyles} flex w-full items-center justify-between`}>
+        <span className={textStyles}>
+          {formatDateToDisplay(date)}
+        </span>
+        <Calendar className={iconStyles} />
+      </div>
     </div>
   );
 };
