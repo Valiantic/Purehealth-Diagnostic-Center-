@@ -14,6 +14,7 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const departmentRevenueRoutes = require('./routes/departmentRevenueRoutes');
 const testDetailsRoutes = require('./routes/testDetailsRoute');
 const expenseRoutes = require('./routes/expenseRoutes');
+const collectibleIncomeRoutes = require('./routes/collectibleIncomeRoute');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -39,6 +40,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/department-revenue', departmentRevenueRoutes);
 app.use('/api/test-details', testDetailsRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/collectible-incomes', collectibleIncomeRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

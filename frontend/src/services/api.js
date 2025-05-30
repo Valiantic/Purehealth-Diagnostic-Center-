@@ -315,3 +315,12 @@ export const expenseAPI = {
   }
 };
 
+export const collectibleIncomeAPI = {
+  getAllCollectibleIncome: (params = {}) => {
+    return apiClient.get('/collectible-incomes', { params });
+  },
+  createCollectibleIncome: (incomeData) => {
+    return apiClient.post('/collectible-incomes', incomeData);
+  },
+};
+

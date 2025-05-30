@@ -19,7 +19,7 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
       [name]: value
     }));
   };
-
+  
   const handleDateChange = (e) => {
     const newDate = e.target.value;
     setFormData(prev => ({
@@ -82,7 +82,7 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
               name="companyName"
               value={formData.companyName}
               onChange={handleInputChange}
-              placeholder="Mang Kepweng's Nipa Hut"
+              placeholder="Company Name"
               className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
               required
             />
@@ -99,7 +99,7 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
               name="coordinatorName"
               value={formData.coordinatorName}
               onChange={handleInputChange}
-              placeholder="Kepweng, Anak ni Kopwang"
+              placeholder="Coordinator Name"
               className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
               required
             />
@@ -112,21 +112,28 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
                 Total Income
               </label>
               <input
-                type="text"
-                inputMode="decimal"
+                type="number"
+                step="0.01"
+                min="0"
                 id="totalIncome"
                 name="totalIncome"
                 value={formData.totalIncome}
                 onChange={handleInputChange}
-                placeholder="15,550.00"
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
-                style={{
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'textfield',
-                  appearance: 'textfield'
-                }}
+                placeholder="0.00"
+                className="no-spinner w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
                 required
               />
+              <style>{`
+                /* Remove spinner buttons from number inputs */
+                .no-spinner {
+                  -moz-appearance: textfield;
+                }
+                .no-spinner::-webkit-outer-spin-button,
+                .no-spinner::-webkit-inner-spin-button {
+                  -webkit-appearance: none;
+                  margin: 0;
+                }
+              `}</style>
             </div>
 
             {/* Date */}
