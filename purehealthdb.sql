@@ -174,3 +174,13 @@ CREATE TABLE `ExpenseItems` (
   INDEX `idx_expense_item_expense` (`expenseId`),
   CONSTRAINT `expenseitems_ibfk_1` FOREIGN KEY (`expenseId`) REFERENCES `Expenses` (`expenseId`) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE TABLE `CollectibleIncome` (
+  `companyId` INTEGER NOT NULL auto_increment,
+  `companyName` VARCHAR(255) NOT NULL,
+  `coordinatorName` VARCHAR(255) NOT NULL,
+  `totalIncome` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  PRIMARY KEY (`companyId`)
+) 

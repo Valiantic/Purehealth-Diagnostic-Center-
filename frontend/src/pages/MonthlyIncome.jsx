@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CirclePlus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import AddCollectibleIncomeModal from '../components/monthly/AddCollectiblesIncomeModals'
+import { collectibleIncomeAPI } from '../services/api'
+import { toast } from 'react-toastify';
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
@@ -11,6 +13,56 @@ const Monthly = () => {
   const navigate = useNavigate()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
   const [collectibles, setCollectibles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 5;
+
+  useEffect(() => {
+    fetchCollectibles();
+  }, [currentMonth, currentPage]);
+
+  const fetchCollectibles = async () => {
+    setLoading(true);
+    try {
+    
+      const response = await collectibleIncomeAPI.getAllCollectibleIncome();
+      
+    
+      if (response && response.data && response.data.success) {
+        
+        const allCollectibles = response.data.data || [];
+        setTotalPages(Math.ceil(allCollectibles.length / itemsPerPage));
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const paginatedCollectibles = allCollectibles.slice(startIndex, startIndex + itemsPerPage);
+        setCollectibles(paginatedCollectibles);
+      } else {
+        console.error("Failed response:", response);
+        toast.error(`Failed to fetch collectible income data`);
+        setCollectibles([]);
+      }
+    } catch (error) {
+      console.error('Error details:', error);
+      toast.error(`Error loading collectible income: ${error.message}`);
+      setCollectibles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   const handleAddIncome = () => {
     navigate('/add-income')
@@ -20,13 +72,50 @@ const Monthly = () => {
     setIsCollectibleModalOpen(true);
   }
 
-  const handleCollectibleSubmit = (data) => {
-    setCollectibles(prev => [...prev, { 
-      ...data, 
-      id: Date.now(),
-      totalIncome: parseFloat(data.totalIncome).toFixed(2)
-    }]);
+  const handleCollectibleSubmit = async (data) => {
+    setLoading(true);
+    try {
+      const collectibleData = {
+        ...data,
+        currentUserId: user?.id
+      };
+
+      const response = await collectibleIncomeAPI.createCollectibleIncome(collectibleData);
+       
+      if (response?.data?.success) {
+        toast.success('Collectible income added successfully');
+        await fetchCollectibles();
+      } else {
+        toast.error(response?.data?.message || 'Failed to add collectible income');
+      }
+    } catch (error) {
+      console.error('Error adding collectible income:', error);
+      toast.error(`Error: ${error.message || 'An unknown error occurred'}`);
+    } finally {
+      setLoading(false);
+      setIsCollectibleModalOpen(false);
+    }
   }
+
+  const handleDeleteCollectible = async (id) => {
+    try {
+      const response = await collectibleIncomeAPI.deleteCollectibleIncome(id);
+      if (response && response.success) {
+        toast.success('Collectible income deleted successfully');
+        await fetchCollectibles();
+      } else {
+        toast.error(response?.message || 'Failed to delete collectible income');
+      }
+    } catch (error) {
+      console.error('Error deleting collectible income:', error);
+      toast.error('An error occurred while deleting collectible income');
+    }
+    setActiveMenu(null);
+  }
+
+  const toggleMenu = (id) => {
+    setActiveMenu(activeMenu === id ? null : id);
+  };
 
   const GoToMonthlyExpenses = () => {
     navigate('/monthly-expenses')
@@ -40,12 +129,10 @@ const Monthly = () => {
     setCurrentMonth('APR-2025');
   }
 
-  // Return nothing while authenticating to prevent flash of protected content
   if (isAuthenticating) {
     return null;
   }
 
-  // If user is null after authentication check, the hook will handle redirect
   if (!user) {
     return null;
   }
@@ -166,37 +253,98 @@ const Monthly = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {collectibles.length > 0 ? (
-                        collectibles.map((item, index) => (
-                          <tr key={`collectible-row-${item.id}`} className="border-b border-green-200">
-                            <td className="p-1 border-r border-green-200">{item.companyName}</td>
-                            <td className="p-1 border-r border-green-200">{item.coordinatorName}</td>
-                            <td className="p-1 border-r border-green-200">{item.date}</td>
-                            <td className="p-1 border-r border-green-200 text-right">{parseFloat(item.totalIncome).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-1 text-center">
-                              <button className="text-blue-600 hover:text-blue-800 mx-1">Edit</button>
-                              <button className="text-red-600 hover:text-red-800 mx-1">Delete</button>
+                      {loading ? (
+                        <tr>
+                          <td colSpan="5" className="p-2 text-center">Loading...</td>
+                        </tr>
+                      ) : collectibles.length > 0 ? (
+                        collectibles.map((item) => (
+                          <tr key={`collectible-row-${item.companyId}`} className="border-b border-green-200">
+                            <td className="p-1 border-r border-green-200 text-center">{item.companyName}</td>
+                            <td className="p-1 border-r border-green-200 text-center">{item.coordinatorName}</td>
+                            <td className="p-1 border-r border-green-200 text-center">{new Date(item.createdAt).toLocaleDateString()}</td>
+                            <td className="p-1 border-r border-green-200 text-center">
+                              {parseFloat(item.totalIncome).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="p-1 text-center relative">
+                              <button 
+                                className="text-green-800 hover:text-green-600" 
+                                onClick={() => toggleMenu(item.companyId)}
+                              >
+                                <MoreVertical size={16} />
+                              </button>
+                              
+                              {activeMenu === item.companyId && (
+                                <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                                  <ul className="py-1">
+                                    <li>
+                                      <button 
+                                        onClick={() => handleEditCollectible(item.companyId)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      >
+                                        Edit
+                                      </button>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))
                       ) : (
-                        [...Array(7)].map((_, index) => (
-                          <tr key={`empty-collectible-row-${index}`} className="border-b border-green-200">
-                            <td className="p-1 border-r border-green-200"></td>
-                            <td className="p-1 border-r border-green-200"></td>
-                            <td className="p-1 border-r border-green-200"></td>
-                            <td className="p-1 border-r border-green-200"></td>
+                        <tr>
+                          <td colSpan="5" className="p-2 text-center text-gray-500">No collectible income records found</td>
+                        </tr>
+                      )}
+                      
+                      {!loading && collectibles.length < 5 && 
+                        [...Array(5 - collectibles.length)].map((_, index) => (
+                          <tr key={`empty-collectible-row-${index}`} className={collectibles.length === 0 ? "" : "border-b border-green-200"}>
+                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
+                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
+                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
+                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
                             <td className="p-1"></td>
                           </tr>
                         ))
-                      )}
+                      }
                     </tbody>
                   </table>
                 </div>
-                <div className="p-1 border-t bg-green-100 border-green-800 font-bold text-green-800">
-                  TOTAL: {collectibles.length > 0 ? 
-                    collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome), 0)
-                      .toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+                
+                {/* Pagination Controls */}
+                <div className="flex justify-between items-center p-2 border-t border-green-800 bg-green-100">
+                  <div className="p-1 font-bold text-green-800">
+                    TOTAL: {collectibles.length > 0 ? 
+                      collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome), 0)
+                        .toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <button 
+                      onClick={goToPreviousPage} 
+                      disabled={currentPage === 1}
+                      className={`h-8 w-8 flex items-center justify-center rounded-l border border-green-800 ${
+                        currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
+                      }`}
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="h-8 min-w-[3rem] px-2 flex items-center justify-center bg-white border-t border-b border-green-800 text-green-800 font-medium">
+                      {currentPage} / {totalPages || 1}
+                    </span>
+                    <button 
+                      onClick={goToNextPage} 
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      className={`h-8 w-8 flex items-center justify-center rounded-r border border-green-800 ${
+                        currentPage === totalPages || totalPages === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
+                      }`}
+                      aria-label="Next page"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -219,6 +367,13 @@ const Monthly = () => {
         onClose={() => setIsCollectibleModalOpen(false)}
         onSubmit={handleCollectibleSubmit}
       />
+      
+      {activeMenu && (
+        <div 
+          className="fixed inset-0 h-full w-full z-0"
+          onClick={() => setActiveMenu(null)}
+        />
+      )}
     </div>
   )
 }
