@@ -324,3 +324,13 @@ export const collectibleIncomeAPI = {
   },
 };
 
+// Monthly Income API
+export const monthlyIncomeAPI = {
+  getMonthlyIncome: (month, year) => {
+    return apiClient.get(`/monthly-income`, { params: { month, year } });
+  },
+  getMonthlyIncomeSummary: (month, year) => {
+    return apiClient.get(`/monthly-income/summary`, { params: { month, year } });
+  }
+};
+

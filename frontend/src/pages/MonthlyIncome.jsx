@@ -4,12 +4,11 @@ import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-reac
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import AddCollectibleIncomeModal from '../components/monthly/AddCollectiblesIncomeModals'
-import { collectibleIncomeAPI } from '../services/api'
+import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
 import { toast } from 'react-toastify';
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
-  const [currentMonth, setCurrentMonth] = useState('MAR-2025');
   const navigate = useNavigate()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
   const [collectibles, setCollectibles] = useState([]);
@@ -18,20 +17,49 @@ const Monthly = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 5;
-
+  
+  // Monthly income state
+  const [monthlyData, setMonthlyData] = useState({
+    departments: [],
+    dailyIncome: []
+  });
+  const [monthlySummary, setMonthlySummary] = useState({
+    totalGross: 0,
+    totalGCash: 0,
+    totalCash: 0,
+    departmentTotals: {},
+    departments: []
+  });
+  const [dataLoading, setDataLoading] = useState(false);
+  
+  // Current month/year state
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date();
+    return {
+      month: now.getMonth() + 1, // 1-12
+      year: now.getFullYear()
+    };
+  });
+  
+  // Format current month for display
+  const [currentMonth, setCurrentMonth] = useState('');
+  
   useEffect(() => {
+    // Format the current month for display
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    setCurrentMonth(`${monthNames[currentDate.month - 1]}-${currentDate.year}`);
+    
+    // Load data when month/year changes
+    fetchMonthlyIncomeData();
     fetchCollectibles();
-  }, [currentMonth, currentPage]);
+  }, [currentDate.month, currentDate.year, currentPage]);
 
   const fetchCollectibles = async () => {
     setLoading(true);
-    try {
-    
+    try {``
       const response = await collectibleIncomeAPI.getAllCollectibleIncome();
       
-    
       if (response && response.data && response.data.success) {
-        
         const allCollectibles = response.data.data || [];
         setTotalPages(Math.ceil(allCollectibles.length / itemsPerPage));
         
@@ -49,6 +77,48 @@ const Monthly = () => {
       setCollectibles([]);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const fetchMonthlyIncomeData = async () => {
+    setDataLoading(true);
+    try {
+      // Get monthly income data
+      const incomeResponse = await monthlyIncomeAPI.getMonthlyIncome(
+        currentDate.month,
+        currentDate.year
+      );
+      
+      if (incomeResponse && incomeResponse.data && incomeResponse.data.success) {
+        setMonthlyData(incomeResponse.data.data);
+      } else {
+        toast.error('Failed to fetch monthly income data');
+        setMonthlyData({ departments: [], dailyIncome: [] });
+      }
+      
+      // Get summary data
+      const summaryResponse = await monthlyIncomeAPI.getMonthlyIncomeSummary(
+        currentDate.month,
+        currentDate.year
+      );
+      
+      if (summaryResponse && summaryResponse.data && summaryResponse.data.success) {
+        setMonthlySummary(summaryResponse.data.data);
+      } else {
+        toast.error('Failed to fetch monthly summary data');
+        setMonthlySummary({
+          totalGross: 0,
+          totalGCash: 0, 
+          totalCash: 0,
+          departmentTotals: {},
+          departments: []
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
+      toast.error(`Error: ${error.message || 'Failed to load monthly data'}`);
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -122,12 +192,37 @@ const Monthly = () => {
   }
 
   const handlePrevMonth = () => {
-    setCurrentMonth('FEB-2025');
+    setCurrentDate(prev => {
+      const newMonth = prev.month === 1 ? 12 : prev.month - 1;
+      const newYear = prev.month === 1 ? prev.year - 1 : prev.year;
+      return { month: newMonth, year: newYear };
+    });
   }
 
   const handleNextMonth = () => {
-    setCurrentMonth('APR-2025');
+    setCurrentDate(prev => {
+      const newMonth = prev.month === 12 ? 1 : prev.month + 1;
+      const newYear = prev.month === 12 ? prev.year + 1 : prev.year;
+      return { month: newMonth, year: newYear };
+    });
   }
+
+  // Format currency values
+  const formatCurrency = (value) => {
+    return parseFloat(value || 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  // Format dates in DD-MM-YY format
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}-${month}-${year}`;
+  };
 
   if (isAuthenticating) {
     return null;
@@ -136,6 +231,9 @@ const Monthly = () => {
   if (!user) {
     return null;
   }
+
+  // Get the number of days in the current month
+  const daysInMonth = new Date(currentDate.year, currentDate.month, 0).getDate();
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-cream-50">
@@ -147,18 +245,17 @@ const Monthly = () => {
       {/* Main content area with improved spacing */}
       <div className="flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64">
         
-        <div className="bg-cream-50  border-green-800 rounded">
+        <div className="bg-cream-50 border-green-800 rounded">
           
           <div className='flex justify-end mb-2'>
-            <button  onClick={GoToMonthlyExpenses} 
-    className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
+            <button onClick={GoToMonthlyExpenses} 
+              className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
               Monthly Expenses <ChevronRight size={16} className="ml-1" />
             </button>
           </div>
           
-          {/* Month navigation */}
-             {/* Month navigation - improved to match design */}
-             <div className="flex justify-center items-center py-2">
+          {/* Month navigation - improved to match design */}
+          <div className="flex justify-center items-center py-2">
             <div className="flex border border-green-800 rounded overflow-hidden">
               <button 
                 onClick={handlePrevMonth}
@@ -181,8 +278,8 @@ const Monthly = () => {
             <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
               Monthly Income
               <button onClick={handleAddIncome} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                  <CirclePlus/>
-                </button>
+                <CirclePlus/>
+              </button>
             </div>
             <div className="border border-green-800 rounded-b">
               <div className="overflow-x-auto">
@@ -191,47 +288,93 @@ const Monthly = () => {
                     <tr className="border-b border-green-800 bg-green-100">
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Day</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">UTZ</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Lab</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">DT</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">PE</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">ECG</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">X-Ray</th>
+                      {monthlyData.departments.map(dept => (
+                        <th key={dept.id} className="p-1 border-r border-green-800 text-sm font-medium">
+                          {dept.name}
+                        </th>
+                      ))}
                       <th className="p-1 border-r border-green-800 text-sm font-medium">GCash</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">SO</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                      <th className="p-1 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Empty rows for data input */}
-                    {[...Array(10)].map((_, index) => (
-                      <tr key={`income-row-${index}`} className="border-b border-green-100">
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1 border-r border-green-200"></td>
-                        <td className="p-1"></td>
+                    {dataLoading ? (
+                      <tr>
+                        <td colSpan={monthlyData.departments.length + 4} className="p-2 text-center">
+                          Loading data...
+                        </td>
                       </tr>
-                    ))}
+                    ) : monthlyData.dailyIncome.length > 0 ? (
+                      monthlyData.dailyIncome.map((day) => (
+                        <tr key={day.date} className="border-b border-green-100">
+                          <td className="p-1 border-r border-green-200 text-center">{formatDate(day.date)}</td>
+                          <td className="p-1 border-r border-green-200 text-right">{formatCurrency(day.grossAmount)}</td>
+                          {monthlyData.departments.map(dept => (
+                            <td key={`${day.date}-${dept.id}`} className="p-1 border-r border-green-200 text-right">
+                              {formatCurrency(day.departments[dept.id])}
+                            </td>
+                          ))}
+                          <td className="p-1 border-r border-green-200 text-right">{formatCurrency(day.gCashAmount)}</td>
+                          <td className="p-1 text-center relative">
+                            <button 
+                              className="text-green-800 hover:text-green-600" 
+                              onClick={() => toggleMenu(`day-${day.date}`)}
+                              aria-label="Transaction menu"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            
+                            {activeMenu === `day-${day.date}` && (
+                              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                                 {/* TO ADD ACTION HERE SOON */}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={monthlyData.departments.length + 4} className="p-2 text-center text-gray-500">
+                          No income data available for this month
+                        </td>
+                      </tr>
+                    )}
+                    
+                    {/* Empty rows to fill space if needed */}
+                    {!dataLoading && monthlyData.dailyIncome.length < 10 && 
+                      [...Array(10 - monthlyData.dailyIncome.length)].map((_, index) => (
+                        <tr key={`empty-row-${index}`} className="border-b border-green-100">
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200"></td>
+                          {monthlyData.departments.map(dept => (
+                            <td key={`empty-${index}-${dept.id}`} className="p-1 border-r border-green-200"></td>
+                          ))}
+                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1"></td>
+                        </tr>
+                      ))
+                    }
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t border-green-800 bg-green-100 font-bold">
+                      <td className="p-1 border-r border-green-800 text-center">TOTAL:</td>
+                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(monthlySummary.totalGross)}</td>
+                      {monthlyData.departments.map(dept => (
+                        <td key={`total-${dept.id}`} className="p-1 border-r border-green-800 text-right">
+                          {formatCurrency(monthlySummary.departmentTotals[dept.id])}
+                        </td>
+                      ))}
+                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(monthlySummary.totalGCash)}</td>
+                      <td className="p-1"></td>
+                    </tr>
+                  </tfoot>
                 </table>
-              </div>
-              <div className="p-1 border-t border-green-800 font-bold bg-green-100 text-green-800">
-                TOTAL:
               </div>
             </div>
           </div>
 
-          {/* Monthly Expense and Collectible Income Sections (side by side on larger screens) */}
+          {/* Collectible Income Section */}
           <div className="md:flex p-2 gap-2">
-         
-
             {/* Collectible Income */}
             <div className="md:w-1/2">
               <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
@@ -263,8 +406,8 @@ const Monthly = () => {
                             <td className="p-1 border-r border-green-200 text-center">{item.companyName}</td>
                             <td className="p-1 border-r border-green-200 text-center">{item.coordinatorName}</td>
                             <td className="p-1 border-r border-green-200 text-center">{new Date(item.createdAt).toLocaleDateString()}</td>
-                            <td className="p-1 border-r border-green-200 text-center">
-                              {parseFloat(item.totalIncome).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            <td className="p-1 border-r border-green-200 text-right">
+                              {formatCurrency(item.totalIncome)}
                             </td>
                             <td className="p-1 text-center relative">
                               <button 
@@ -279,10 +422,10 @@ const Monthly = () => {
                                   <ul className="py-1">
                                     <li>
                                       <button 
-                                        onClick={() => handleEditCollectible(item.companyId)}
-                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        onClick={() => handleDeleteCollectible(item.companyId)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
                                       >
-                                        Edit
+                                        Delete
                                       </button>
                                     </li>
                                   </ul>
@@ -315,9 +458,7 @@ const Monthly = () => {
                 {/* Pagination Controls */}
                 <div className="flex justify-between items-center p-2 border-t border-green-800 bg-green-100">
                   <div className="p-1 font-bold text-green-800">
-                    TOTAL: {collectibles.length > 0 ? 
-                      collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome), 0)
-                        .toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+                    TOTAL: {formatCurrency(collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome || 0), 0))}
                   </div>
                   
                   <div className="flex items-center">
@@ -368,6 +509,7 @@ const Monthly = () => {
         onSubmit={handleCollectibleSubmit}
       />
       
+      {/* Close dropdown menus when clicking outside */}
       {activeMenu && (
         <div 
           className="fixed inset-0 h-full w-full z-0"
