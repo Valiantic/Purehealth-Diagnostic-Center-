@@ -315,3 +315,60 @@ export const expenseAPI = {
   }
 };
 
+export const collectibleIncomeAPI = {
+  getAllCollectibleIncome: (params = {}) => {
+    return apiClient.get('/collectible-incomes', { params });
+  },
+  createCollectibleIncome: (incomeData) => {
+    return apiClient.post('/collectible-incomes', incomeData);
+  },
+};
+
+export const monthlyIncomeAPI = {
+  getMonthlyIncome: (month, year) => {
+    const timestamp = new Date().getTime();
+    return apiClient.get(`/monthly-income`, { 
+      params: { 
+        month, 
+        year, 
+        _t: timestamp 
+      }
+    });
+  },
+  getMonthlyIncomeSummary: (month, year) => {
+    const timestamp = new Date().getTime();
+    return apiClient.get(`/monthly-income/summary`, { 
+      params: { 
+        month, 
+        year, 
+        _t: timestamp 
+      }
+    });
+  }
+};
+
+export const monthlyExpenseAPI = {
+  getMonthlyExpenses: (month, year, departmentId = null) => {
+    const params = { month, year };
+    if (departmentId) {
+      params.departmentId = departmentId;
+    }
+    
+    const timestamp = new Date().getTime();
+    params._t = timestamp; 
+    
+    return apiClient.get(`/monthly-expenses`, { params });
+  },
+  getMonthlyExpensesSummary: (month, year, departmentId = null) => {
+    const params = { month, year };
+    if (departmentId) {
+      params.departmentId = departmentId;
+    }
+
+    const timestamp = new Date().getTime();
+    params._t = timestamp; 
+    
+    return apiClient.get(`/monthly-expenses/summary`, { params });
+  }
+};
+

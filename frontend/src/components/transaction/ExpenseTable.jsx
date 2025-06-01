@@ -72,10 +72,10 @@ const ExpenseTable = ({
   const activeTotalExpense = filteredExpenses.reduce((total, expense) => {
     if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
       return total + expense.ExpenseItems
-        .filter(item => item.status !== 'refunded')
+        .filter(item => item.status !== 'refunded' && item.status !== 'paid')
         .reduce((itemTotal, item) => itemTotal + parseFloat(item.amount || 0), 0);
     }
-    return expense.status !== 'refunded' ? total + parseFloat(expense.amount || 0) : total;
+    return expense.status !== 'refunded' && expense.status !== 'paid' ? total + parseFloat(expense.amount || 0) : total;
   }, 0);
 
   const refundedTotalExpense = filteredExpenses.reduce((total, expense) => {
@@ -295,7 +295,7 @@ const ExpenseTable = ({
 
             {/* Active expenses total row */}
             <tr className="bg-green-100">
-              <td colSpan="3" className="py-1 md:py-2 px-2 md:px-3 font-bold border border-green-200 text-green-800 text-left">TOTAL ACTIVE:</td>
+              <td colSpan="3" className="py-1 md:py-2 px-2 md:px-3 font-bold border border-green-200 text-green-800 text-left">TOTAL:</td>
               <td className="py-1 md:py-2 px-2 md:px-3 text-right font-bold border border-green-200 text-green-800">
                 {activeTotalExpense.toLocaleString(undefined, {
                   minimumFractionDigits: 2,

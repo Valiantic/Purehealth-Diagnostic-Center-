@@ -317,26 +317,45 @@ export const useTransactionData = (selectedDate, expenseDate) => {
 
   // Calculate total values
   const calculateTotalValues = (filteredTransactions) => {
-    const totalGross = Object.values(departmentTotals).reduce((sum, amount) => {
-      return sum + Math.max(0, amount);
+
+    const totalGross = filteredTransactions.reduce((sum, transaction) => {
+      if (transaction.status === 'cancelled') {
+        return sum;
+      }
+
+      if (transaction.originalTransaction?.TestDetails?.length > 0) {
+        const transactionTotal = transaction.originalTransaction.TestDetails
+          .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
+          .reduce((testSum, test) => {
+            const price = parseFloat(test.discountedPrice || 0);
+            const balance = parseFloat(test.balanceAmount || 0);
+            return testSum + (price - balance);
+          }, 0);
+        
+        return sum + transactionTotal;
+      }
+      
+      if (typeof transaction.grossDeposit === 'number') {
+        return sum + transaction.grossDeposit;
+      }
+      
+      return sum + parseFloat(transaction.originalTransaction?.totalAmount || 0);
     }, 0);
 
     const totalGCash = filteredTransactions.reduce((sum, transaction) => {
       if (transaction.status === 'cancelled') {
-        return sum; 
+        return sum;
+      }
+
+      if (transaction.originalTransaction?.TestDetails?.length > 0) {
+        const gCashTotal = transaction.originalTransaction.TestDetails
+          .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
+          .reduce((testSum, test) => testSum + parseFloat(test.gCashAmount || 0), 0);
+        
+        return sum + gCashTotal;
       }
       
-      let gCashAmount = 0;
-      if (transaction.originalTransaction?.TestDetails) {
-        transaction.originalTransaction.TestDetails.forEach(test => {
-          if (test.status !== 'refunded') {
-            gCashAmount += parseFloat(test.gCashAmount) || 0;
-          }
-        });
-        return sum + gCashAmount;
-      }
-      
-      return sum + parseFloat(transaction.originalTransaction.totalGCashAmount || 0);
+      return sum + parseFloat(transaction.originalTransaction?.totalGCashAmount || 0);
     }, 0);
 
     return { totalGross, totalGCash };

@@ -10,6 +10,7 @@ const TestDetails = require('./TestDetails')(sequelize);
 const DepartmentRevenue = require('./DepartmentRevenue')(sequelize);
 const Expense = require('./Expenses')(sequelize);
 const ExpenseItem = require('./ExpenseItems')(sequelize);
+const CollectibleIncome = require('./CollectibleIncome')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
@@ -154,5 +155,6 @@ module.exports = {
   TestDetails,
   DepartmentRevenue,
   Expense,
-  ExpenseItem
+  ExpenseItem, 
+  CollectibleIncome
 };

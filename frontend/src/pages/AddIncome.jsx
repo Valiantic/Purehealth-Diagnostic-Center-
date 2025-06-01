@@ -443,6 +443,7 @@ const AddIncome = () => {
       setIsReferrerModalOpen(true);
       return;
     }
+    // Fix: Set empty string for "Out Patient" to ensure it's properly handled
     setFormData({ ...formData, referrer: value });
   };
 
@@ -700,13 +701,17 @@ const AddIncome = () => {
         };
       });
 
+      const referrerId = formData.referrer === "" || formData.referrer === "Out Patient" 
+                       ? null 
+                       : formData.referrer;
+
       const transactionData = {
         mcNo: generatedMcNo, 
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         idType: formData.id,
         idNumber: formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || '',  
-        referrerId: formData.referrer || null,
+        referrerId: referrerId,  
         birthDate: formData.birthDate || null,
         sex: formData.sex,
         items: items,
@@ -995,6 +1000,7 @@ const AddIncome = () => {
                       onChange={handleReferrerChange}
                       className="w-full border-2 border-green-800 rounded p-2"
                     >
+                      {/* Fix: Use empty string value for Out Patient option */}
                       <option value="">Out Patient</option>
                       {isLoadingReferrers ? (
                         <option value="">Loading referrers...</option>
