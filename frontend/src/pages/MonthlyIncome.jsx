@@ -147,8 +147,10 @@ const Monthly = () => {
     try {
       const collectibleData = {
         ...data,
-        currentUserId: user?.id
+        currentUserId: user?.userId || user?.id 
       };
+
+      console.log("Submitting collectible with user ID:", collectibleData.currentUserId);
 
       const response = await collectibleIncomeAPI.createCollectibleIncome(collectibleData);
        
@@ -507,6 +509,7 @@ const Monthly = () => {
         isOpen={isCollectibleModalOpen}
         onClose={() => setIsCollectibleModalOpen(false)}
         onSubmit={handleCollectibleSubmit}
+        userId={user?.userId || user?.id} // Pass user ID explicitly to the modal
       />
       
       {/* Close dropdown menus when clicking outside */}

@@ -4,7 +4,6 @@ const { Op } = require('sequelize');
 // Get all monthly income data
 exports.getMonthlyIncome = async (req, res) => {
   try {
-    // Extract query parameters
     const { month, year } = req.query;
     
     if (!month || !year) {
@@ -14,7 +13,6 @@ exports.getMonthlyIncome = async (req, res) => {
       });
     }
 
-    // Parse month and year to integers
     const monthInt = parseInt(month);
     const yearInt = parseInt(year);
 
@@ -36,86 +34,121 @@ exports.getMonthlyIncome = async (req, res) => {
 
     // Calculate start and end dates for the given month
     const startDate = new Date(yearInt, monthInt - 1, 1);
-    const endDate = new Date(yearInt, monthInt, 0); // Last day of the month
+    const endDate = new Date(yearInt, monthInt, 0);
     endDate.setHours(23, 59, 59, 999);
-
-    // Group data by day
-    const dailyIncomeData = await Transaction.findAll({
+    
+    // Find all days in the month that have non-cancelled transactions
+    const daysWithTransactions = await Transaction.findAll({
       where: {
         transactionDate: {
           [Op.between]: [startDate, endDate]
         },
         status: {
-          [Op.not]: 'cancelled'
+          [Op.ne]: 'cancelled' 
         }
       },
       attributes: [
-        [sequelize.fn('DATE', sequelize.col('transactionDate')), 'date'],
-        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'grossAmount'],
-        [sequelize.fn('SUM', sequelize.col('totalGCashAmount')), 'gCashAmount']
+        [sequelize.fn('DATE', sequelize.col('transactionDate')), 'date']
       ],
       group: [sequelize.fn('DATE', sequelize.col('transactionDate'))],
       order: [[sequelize.fn('DATE', sequelize.col('transactionDate')), 'ASC']],
       raw: true
     });
-
-    // For each day, get department-specific data
+    
+    // Get all unique dates
+    const uniqueDates = daysWithTransactions.map(d => d.date);
+    
     const result = [];
     
-    // Process each day's data
-    for (const dayData of dailyIncomeData) {
-      const dailyDate = new Date(dayData.date);
+    for (const dateString of uniqueDates) {
+      const currentDate = new Date(dateString);
       
-      // Get all test details for this day
-      const dailyTestDetails = await TestDetails.findAll({
-        include: [{
-          model: Transaction,
-          where: {
-            transactionDate: {
-              [Op.gte]: new Date(dailyDate.setHours(0, 0, 0, 0)),
-              [Op.lte]: new Date(dailyDate.setHours(23, 59, 59, 999))
-            },
-            status: {
-              [Op.not]: 'cancelled'
-            }
-          },
-          attributes: []
-        }],
+      const dayStart = new Date(currentDate);
+      dayStart.setHours(0, 0, 0, 0);
+      
+      const dayEnd = new Date(currentDate);
+      dayEnd.setHours(23, 59, 59, 999);
+      
+      // Get only non-cancelled transactions for this day
+      const activeTransactions = await Transaction.findAll({
         where: {
+          transactionDate: {
+            [Op.between]: [dayStart, dayEnd]
+          },
           status: {
-            [Op.notIn]: ['cancelled', 'refunded']
+            [Op.notIn]: ['cancelled']
           }
         },
-        attributes: [
-          'departmentId',
-          [sequelize.fn('SUM', sequelize.col('discountedPrice')), 'departmentRevenue']
-        ],
-        group: ['departmentId'],
+        attributes: ['transactionId', 'totalGCashAmount'],
         raw: true
       });
       
-      // Create a map of department revenues
-      const departmentRevenues = {};
-      dailyTestDetails.forEach(detail => {
-        departmentRevenues[detail.departmentId] = parseFloat(detail.departmentRevenue || 0);
+      const transactionIds = activeTransactions.map(t => t.transactionId);
+      
+      // Get only valid test details (not cancelled, not refunded, no balance)
+      const validTestDetails = await TestDetails.findAll({
+        where: {
+          transactionId: {
+            [Op.in]: transactionIds
+          },
+          status: {
+            [Op.notIn]: ['cancelled', 'refunded']
+          },
+          balanceAmount: 0
+        },
+        attributes: [
+          'departmentId',
+          'discountedPrice'
+        ],
+        raw: true
       });
       
-      // Format the result with department-specific data
+      // Calculate department-specific revenues
+      const departmentRevenues = {};
+      departments.forEach(dept => {
+        departmentRevenues[dept.departmentId] = 0; 
+      });
+      
+      // Sum up revenues by department (using only valid tests)
+      validTestDetails.forEach(detail => {
+        const deptId = detail.departmentId;
+        const amount = parseFloat(detail.discountedPrice || 0);
+        
+        // Add to department total
+        if (departmentRevenues[deptId] !== undefined) {
+          departmentRevenues[deptId] += amount;
+        } else {
+          departmentRevenues[deptId] = amount;
+        }
+      });
+      
+      // Calculate gross amount ONLY from valid test details
+      const dailyGrossAmount = validTestDetails.reduce((sum, detail) => {
+        return sum + parseFloat(detail.discountedPrice || 0);
+      }, 0);
+      
+      let dailyGCashAmount = activeTransactions.reduce((sum, transaction) => {
+        return sum + parseFloat(transaction.totalGCashAmount || 0);
+      }, 0);
+      
+      // Format the date to YYYY-MM-DD for consistent sorting
+      const formattedDate = currentDate.toISOString().split('T')[0];
+      
+      // Create the result object for this day
       const dayResult = {
-        date: dayData.date,
-        day: new Date(dayData.date).getDate(),
-        grossAmount: parseFloat(dayData.grossAmount || 0),
-        gCashAmount: parseFloat(dayData.gCashAmount || 0),
-        departments: {}
+        date: formattedDate,
+        day: currentDate.getDate(),
+        grossAmount: dailyGrossAmount,
+        gCashAmount: dailyGCashAmount,
+        departments: { ...departmentRevenues } 
       };
       
-      // Add department-specific revenues
-      departments.forEach(dept => {
-        dayResult.departments[dept.departmentId] = departmentRevenues[dept.departmentId] || 0;
-      });
-      
+      // Add to results array
       result.push(dayResult);
     }
+    
+    // Sort the result by date
+    result.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     return res.status(200).json({
       success: true,
@@ -154,73 +187,114 @@ exports.getMonthlyIncomeSummary = async (req, res) => {
     const endDate = new Date(yearInt, monthInt, 0); // Last day of the month
     endDate.setHours(23, 59, 59, 999);
 
-    // Get total amounts
-    const totalAmounts = await Transaction.findOne({
+    const activeTransactionIds = await Transaction.findAll({
       where: {
         transactionDate: {
           [Op.between]: [startDate, endDate]
         },
         status: {
-          [Op.not]: 'cancelled'
+          [Op.notIn]: ['cancelled']  
         }
       },
-      attributes: [
-        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalGross'],
-        [sequelize.fn('SUM', sequelize.col('totalGCashAmount')), 'totalGCash'],
-        [sequelize.fn('SUM', sequelize.col('totalCashAmount')), 'totalCash']
-      ],
+      attributes: ['transactionId'],
       raw: true
-    });
-
-    // Get department totals
-    const departments = await Department.findAll({
+    }).then(results => results.map(t => t.transactionId));
+    
+    console.log(`Found ${activeTransactionIds.length} active transaction IDs`);
+    
+    if (activeTransactionIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalGross: 0,
+          totalGCash: 0,
+          totalCash: 0,
+          departmentTotals: {},
+          departments: await Department.findAll({
+            where: { status: 'active' },
+            attributes: ['departmentId', 'departmentName'],
+            raw: true
+          }),
+          debug: { transactionCount: 0, testDetailCount: 0 }
+        }
+      });
+    }
+    
+    const activeTestDetails = await TestDetails.findAll({
       where: {
-        status: 'active'
-      },
-      attributes: ['departmentId', 'departmentName'],
-      raw: true
-    });
-
-    const departmentTotals = await TestDetails.findAll({
-      include: [{
-        model: Transaction,
-        where: {
-          transactionDate: {
-            [Op.between]: [startDate, endDate]
-          },
-          status: {
-            [Op.not]: 'cancelled'
-          }
+        transactionId: {
+          [Op.in]: activeTransactionIds
         },
-        attributes: []
-      }],
-      where: {
         status: {
           [Op.notIn]: ['cancelled', 'refunded']
-        }
+        },
+        balanceAmount: 0
       },
       attributes: [
         'departmentId',
-        [sequelize.fn('SUM', sequelize.col('discountedPrice')), 'totalRevenue']
+        'discountedPrice'
       ],
-      group: ['departmentId'],
       raw: true
     });
 
-    // Map department totals
+    const totalGross = activeTestDetails.reduce((sum, detail) => {
+      return sum + parseFloat(detail.discountedPrice || 0);
+    }, 0);
+    
+    const activeTransactions = await Transaction.findAll({
+      where: {
+        transactionId: {
+          [Op.in]: activeTransactionIds
+        }
+      },
+      attributes: ['transactionId', 'totalGCashAmount', 'totalCashAmount'],
+      raw: true
+    });
+    
+    let totalGCash = activeTransactions.reduce((sum, transaction) => {
+      return sum + parseFloat(transaction.totalGCashAmount || 0);
+    }, 0);
+    
+    let totalCash = activeTransactions.reduce((sum, transaction) => {
+      return sum + parseFloat(transaction.totalCashAmount || 0);
+    }, 0);
+    
+    const departments = await Department.findAll({
+      where: { status: 'active' },
+      attributes: ['departmentId', 'departmentName'],
+      raw: true
+    });
+    
     const departmentSummary = {};
-    departmentTotals.forEach(dept => {
-      departmentSummary[dept.departmentId] = parseFloat(dept.totalRevenue || 0);
+    departments.forEach(dept => {
+      departmentSummary[dept.departmentId] = 0;
+    });
+    
+    activeTestDetails.forEach(detail => {
+      const deptId = detail.departmentId;
+      const amount = parseFloat(detail.discountedPrice || 0);
+      
+      if (departmentSummary[deptId] !== undefined) {
+        departmentSummary[deptId] += amount;
+      } else {
+        departmentSummary[deptId] = amount;
+      }
     });
 
+    console.log(`Monthly Summary: Total Gross: ${totalGross.toFixed(2)}`);
+    
     return res.status(200).json({
       success: true,
       data: {
-        totalGross: parseFloat(totalAmounts.totalGross || 0),
-        totalGCash: parseFloat(totalAmounts.totalGCash || 0),
-        totalCash: parseFloat(totalAmounts.totalCash || 0),
+        totalGross: totalGross,
+        totalGCash: totalGCash,
+        totalCash: totalCash,
         departmentTotals: departmentSummary,
-        departments: departments
+        departments: departments,
+        debug: {
+          transactionCount: activeTransactions.length,
+          testDetailCount: activeTestDetails.length
+        }
       }
     });
   } catch (error) {

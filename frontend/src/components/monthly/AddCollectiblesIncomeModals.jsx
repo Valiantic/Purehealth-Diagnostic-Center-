@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X } from 'lucide-react';
 import DateSelector from '../transaction/DateSelector';
 
-const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
+const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
   const [formData, setFormData] = useState({
     companyName: '',
     coordinatorName: '',
@@ -21,6 +21,8 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
   };
   
   const handleDateChange = (e) => {
+    if (e.preventDefault) e.preventDefault();
+    
     const newDate = e.target.value;
     setFormData(prev => ({
       ...prev,
@@ -28,12 +30,20 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
     }));
   };
 
+  const handleButtonClick = (e) => {
+    e.stopPropagation();
+  };
+
   const handleSubmit = () => {
     if (!formData.companyName || !formData.coordinatorName || !formData.totalIncome || !formData.date) {
       return; 
     }
     
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      currentUserId: userId 
+    });
+
     setFormData({
       companyName: '',
       coordinatorName: '',
@@ -56,8 +66,8 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-md mx-auto shadow-xl">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={handleButtonClick}>
+      <div className="bg-white rounded-lg w-full max-w-md mx-auto shadow-xl" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-green-800 text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
           <h2 className="text-lg font-semibold">Add Collectible Income</h2>
@@ -158,7 +168,10 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit }) => {
           {/* Confirm Button */}
           <div className="pt-4">
             <button
-              onClick={handleSubmit}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSubmit();
+              }}
               className="w-full bg-green-800 text-white py-3 px-4 rounded-md font-semibold hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             >
               Confirm

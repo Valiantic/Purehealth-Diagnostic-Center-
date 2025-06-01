@@ -3,7 +3,7 @@ const { logActivity } = require('../utils/activityLogger');
 
 const createCollectibleIncome = async (req, res) => {
     try {
-        const { companyName, coordinatorName, totalIncome, currentUserId } = req.body;
+        const { companyName, coordinatorName, totalIncome, date, currentUserId } = req.body;
 
         if (!companyName || !coordinatorName || totalIncome === undefined) {
             return res.status(400).json({ success: false, message: 'All fields are required' });
@@ -12,7 +12,8 @@ const createCollectibleIncome = async (req, res) => {
         const collectibleIncome = await CollectibleIncome.create({
             companyName,
             coordinatorName,
-            totalIncome: parseFloat(totalIncome).toFixed(2)
+            totalIncome: parseFloat(totalIncome).toFixed(2),
+            createdAt: date ? new Date(date) : new Date() 
         });
 
         res.status(201).json({
@@ -22,20 +23,20 @@ const createCollectibleIncome = async (req, res) => {
         });
 
         try {
-            const userId = currentUserId ? currentUserId : null;
+            const userId = currentUserId || req.userId;
             
             await logActivity({
                 userId: userId,
                 action: 'ADD_COLLECTIBLE_INCOME',
                 resourceType: 'COLLECTIBLE_INCOME',
-                resourceId: collectibleIncome.id,
+                resourceId: collectibleIncome.id || collectibleIncome.companyId,
                 details: `Added collectible income for ${companyName} with total income ${parseFloat(totalIncome).toFixed(2)}`,
-                ipAddress: req.ip,
+                ipAddress: req.ip || '0.0.0.0',
                 metadata: {
                     companyName,
                     coordinatorName,
                     totalIncome: parseFloat(totalIncome).toFixed(2),
-                    dateAdded: new Date().toISOString()
+                    dateAdded: date || new Date().toISOString()
                 }
             });
         } catch (logError) {

@@ -324,13 +324,26 @@ export const collectibleIncomeAPI = {
   },
 };
 
-// Monthly Income API
 export const monthlyIncomeAPI = {
   getMonthlyIncome: (month, year) => {
-    return apiClient.get(`/monthly-income`, { params: { month, year } });
+    const timestamp = new Date().getTime();
+    return apiClient.get(`/monthly-income`, { 
+      params: { 
+        month, 
+        year, 
+        _t: timestamp 
+      }
+    });
   },
   getMonthlyIncomeSummary: (month, year) => {
-    return apiClient.get(`/monthly-income/summary`, { params: { month, year } });
+    const timestamp = new Date().getTime();
+    return apiClient.get(`/monthly-income/summary`, { 
+      params: { 
+        month, 
+        year, 
+        _t: timestamp 
+      }
+    });
   }
 };
 
