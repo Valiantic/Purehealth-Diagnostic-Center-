@@ -302,22 +302,22 @@ const Monthly = () => {
                   <tbody>
                     {dataLoading ? (
                       <tr>
-                        <td colSpan={monthlyData.departments.length + 4} className="p-2 text-center">
+                        <td colSpan={monthlyData.departments.length + 4} className="p-2 text-center bg-white">
                           Loading data...
                         </td>
                       </tr>
                     ) : monthlyData.dailyIncome.length > 0 ? (
                       monthlyData.dailyIncome.map((day) => (
                         <tr key={day.date} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-200 text-center">{formatDate(day.date)}</td>
-                          <td className="p-1 border-r border-green-200 text-right">{formatCurrency(day.grossAmount)}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(day.date)}</td>
+                          <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(day.grossAmount)}</td>
                           {monthlyData.departments.map(dept => (
-                            <td key={`${day.date}-${dept.id}`} className="p-1 border-r border-green-200 text-right">
+                            <td key={`${day.date}-${dept.id}`} className="p-1 border-r border-green-200 text-right bg-white">
                               {formatCurrency(day.departments[dept.id])}
                             </td>
                           ))}
-                          <td className="p-1 border-r border-green-200 text-right">{formatCurrency(day.gCashAmount)}</td>
-                          <td className="p-1 text-center relative">
+                          <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(day.gCashAmount)}</td>
+                          <td className="p-1 text-center relative bg-white">
                             <button 
                               className="text-green-800 hover:text-green-600" 
                               onClick={() => toggleMenu(`day-${day.date}`)}
@@ -336,7 +336,7 @@ const Monthly = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={monthlyData.departments.length + 4} className="p-2 text-center text-gray-500">
+                        <td colSpan={monthlyData.departments.length + 4} className="p-2 text-center text-gray-500 bg-white">
                           No income data available for this month
                         </td>
                       </tr>
@@ -346,13 +346,13 @@ const Monthly = () => {
                     {!dataLoading && monthlyData.dailyIncome.length < 10 && 
                       [...Array(10 - monthlyData.dailyIncome.length)].map((_, index) => (
                         <tr key={`empty-row-${index}`} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
                           {monthlyData.departments.map(dept => (
-                            <td key={`empty-${index}-${dept.id}`} className="p-1 border-r border-green-200"></td>
+                            <td key={`empty-${index}-${dept.id}`} className="p-1 border-r border-green-200 bg-white"></td>
                           ))}
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 bg-white"></td>
                         </tr>
                       ))
                     }
@@ -400,18 +400,18 @@ const Monthly = () => {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan="5" className="p-2 text-center">Loading...</td>
+                          <td colSpan="5" className="p-2 text-center bg-white">Loading...</td>
                         </tr>
                       ) : collectibles.length > 0 ? (
                         collectibles.map((item) => (
                           <tr key={`collectible-row-${item.companyId}`} className="border-b border-green-200">
-                            <td className="p-1 border-r border-green-200 text-center">{item.companyName}</td>
-                            <td className="p-1 border-r border-green-200 text-center">{item.coordinatorName}</td>
-                            <td className="p-1 border-r border-green-200 text-center">{new Date(item.createdAt).toLocaleDateString()}</td>
-                            <td className="p-1 border-r border-green-200 text-right">
+                            <td className="p-1 border-r border-green-200 text-center bg-white">{item.companyName}</td>
+                            <td className="p-1 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
+                            <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.createdAt).toLocaleDateString()}</td>
+                            <td className="p-1 border-r border-green-200 text-right bg-white">
                               {formatCurrency(item.totalIncome)}
                             </td>
-                            <td className="p-1 text-center relative">
+                            <td className="p-1 text-center relative bg-white">
                               <button 
                                 className="text-green-800 hover:text-green-600" 
                                 onClick={() => toggleMenu(item.companyId)}
@@ -438,18 +438,18 @@ const Monthly = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" className="p-2 text-center text-gray-500">No collectible income records found</td>
+                          <td colSpan="5" className="p-2 text-center text-gray-500 bg-white">No collectible income records found</td>
                         </tr>
                       )}
                       
                       {!loading && collectibles.length < 5 && 
                         [...Array(5 - collectibles.length)].map((_, index) => (
                           <tr key={`empty-collectible-row-${index}`} className={collectibles.length === 0 ? "" : "border-b border-green-200"}>
-                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
-                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
-                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
-                            <td className={collectibles.length === 0 ? "p-1" : "p-1 border-r border-green-200"}></td>
-                            <td className="p-1"></td>
+                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
+                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
+                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
+                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
+                            <td className="p-1 bg-white"></td>
                           </tr>
                         ))
                       }
