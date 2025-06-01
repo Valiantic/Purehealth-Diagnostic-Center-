@@ -311,19 +311,19 @@ const MonthlyExpenses = () => {
                   <tbody>
                     {dataLoading ? (
                       <tr>
-                        <td colSpan={6} className="p-2 text-center">
+                        <td colSpan={6} className="p-2 text-center bg-white">
                           Loading data...
                         </td>
                       </tr>
                     ) : expenseItemsToDisplay.length > 0 ? (
                       expenseItemsToDisplay.map((item, index) => (
                         <tr key={item.id || `expense-item-${index}`} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-200 text-center">{formatDate(item.date)}</td>
-                          <td className="p-1 border-r border-green-200">{item.department}</td>
-                          <td className="p-1 border-r border-green-200">{item.paidTo || '-'}</td>
-                          <td className="p-1 border-r border-green-200">{item.purpose || '-'}</td>
-                          <td className="p-1 border-r border-green-200 text-right">{formatCurrency(item.amount)}</td>
-                          <td className="p-1 text-center">
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(item.date)}</td>
+                          <td className="p-1 border-r border-green-200 bg-white">{item.department}</td>
+                          <td className="p-1 border-r border-green-200 bg-white">{item.paidTo || '-'}</td>
+                          <td className="p-1 border-r border-green-200 bg-white">{item.purpose || '-'}</td>
+                          <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(item.amount)}</td>
+                          <td className="p-1 text-center bg-white">
                             <button 
                               className="text-green-800 hover:text-green-600" 
                               onClick={() => toggleMenu(`expense-${item.id}`)}
@@ -346,7 +346,7 @@ const MonthlyExpenses = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="p-2 text-center text-gray-500">
+                        <td colSpan={6} className="p-2 text-center text-gray-500 bg-white">
                           No expense data available for {selectedDepartmentName} in this month
                         </td>
                       </tr>
@@ -356,12 +356,12 @@ const MonthlyExpenses = () => {
                     {!dataLoading && expenseItemsToDisplay.length < 10 && 
                       [...Array(10 - expenseItemsToDisplay.length)].map((_, index) => (
                         <tr key={`empty-row-${index}`} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1 border-r border-green-200"></td>
-                          <td className="p-1"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-1 bg-white"></td>
                         </tr>
                       ))
                     }

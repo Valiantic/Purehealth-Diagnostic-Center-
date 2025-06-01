@@ -30,11 +30,21 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
     }));
   };
 
-  const handleButtonClick = (e) => {
+  
+
+  const handleCreateCollectibles = (e) => {
+    e.preventDefault();
     e.stopPropagation();
+    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+    handleSubmit();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e) => {
+    if (e) {
+      e.preventDefault(); 
+      e.stopPropagation(); 
+    }
+    
     if (!formData.companyName || !formData.coordinatorName || !formData.totalIncome || !formData.date) {
       return; 
     }
@@ -66,7 +76,7 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={handleButtonClick}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div className="bg-white rounded-lg w-full max-w-md mx-auto shadow-xl" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-green-800 text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
@@ -151,27 +161,29 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
               <label className="block text-green-700 font-medium mb-2">
                 Date
               </label>
-              <DateSelector 
-                date={new Date(formData.date)}
-                onDateChange={handleDateChange}
-                inputRef={dateInputRef}
-                className="w-full border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
-                customStyles={{
-                  wrapper: "px-3 py-2 flex items-center justify-between",
-                  text: "text-sm",
-                  icon: "w-4 h-4 text-green-600 ml-auto"
-                }}
-              />
+              <div 
+                onClick={e => e.stopPropagation()} 
+                className="relative"
+              >
+                <DateSelector 
+                  date={new Date(formData.date)}
+                  onDateChange={handleDateChange}
+                  inputRef={dateInputRef}
+                  className="w-full border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors px-3 py-2"
+                  wrapperClassName="flex items-center justify-between"
+                  textClassName="text-sm"
+                  iconClassName="w-4 h-4 text-green-600 ml-auto"
+                />
+              </div>
             </div>
           </div>
+          
+          <div style={{ height: '1px', margin: '10px 0', clear: 'both' }}></div>
 
-          {/* Confirm Button */}
           <div className="pt-4">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSubmit();
-              }}
+              type="button" 
+              onClick={handleCreateCollectibles}
               className="w-full bg-green-800 text-white py-3 px-4 rounded-md font-semibold hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             >
               Confirm
