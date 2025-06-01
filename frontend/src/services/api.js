@@ -347,3 +347,28 @@ export const monthlyIncomeAPI = {
   }
 };
 
+export const monthlyExpenseAPI = {
+  getMonthlyExpenses: (month, year, departmentId = null) => {
+    const params = { month, year };
+    if (departmentId) {
+      params.departmentId = departmentId;
+    }
+    
+    const timestamp = new Date().getTime();
+    params._t = timestamp; 
+    
+    return apiClient.get(`/monthly-expenses`, { params });
+  },
+  getMonthlyExpensesSummary: (month, year, departmentId = null) => {
+    const params = { month, year };
+    if (departmentId) {
+      params.departmentId = departmentId;
+    }
+
+    const timestamp = new Date().getTime();
+    params._t = timestamp; 
+    
+    return apiClient.get(`/monthly-expenses/summary`, { params });
+  }
+};
+
