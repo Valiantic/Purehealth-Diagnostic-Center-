@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const { sequelize } = require('./models');
 
 // Routes
@@ -30,6 +31,9 @@ app.use(cors({
 
 // Middleware
 app.use(express.json());
+
+// Security headers
+app.use(helmet());
 
 // Routes
 app.use('/api/users', userRoutes);
