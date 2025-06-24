@@ -13,10 +13,16 @@ export async function registerUser(userData) {
     const optionsResponse = await webauthnAPI.getTempRegistrationOptions(userData);
     const { options, tempRegistrationId } = optionsResponse.data;
     
-    // Step 2: Start registration with the browser WebAuthn API
+    // Step 2: Fix the RP ID if we're on a deployed site
+    if (window.location.hostname !== 'localhost' && options.rp && options.rp.id === 'localhost') {
+      console.log('Overriding RP ID from localhost to', window.location.hostname);
+      options.rp.id = window.location.hostname;
+    }
+    
+    // Step 3: Start registration with the browser WebAuthn API
     const attResp = await startRegistration(options);
     
-    // Step 3: Verify registration with the server and create the user
+    // Step 4: Verify registration with the server and create the user
     const verificationResponse = await webauthnAPI.verifyTempRegistration(tempRegistrationId, attResp, userData);
     
     return {
@@ -91,7 +97,13 @@ export async function authenticateUser(email) {
     const optionsResponse = await webauthnAPI.getAuthenticationOptions(email);
     const { options, userId } = optionsResponse.data;
     
-    // Step 2: Start authentication with the browser WebAuthn API
+    // Step 2: Fix the RP ID if we're on a deployed site
+    if (window.location.hostname !== 'localhost' && options.rpId === 'localhost') {
+      console.log('Overriding RP ID from localhost to', window.location.hostname);
+      options.rpId = window.location.hostname;
+    }
+    
+    // Step 3: Start authentication with the browser WebAuthn API
     const authResp = await startAuthentication(options);
     
     // Step 3: Verify authentication with the server
