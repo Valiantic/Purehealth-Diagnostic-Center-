@@ -1,7 +1,8 @@
 const { hostname } = require('os');
 
 const rpName = 'Purehealth Revenue Management System';
-const productionDomain = process.env.DOMAIN || 'https://purehealth-diagnostic-center.vercel.app';
+
+const productionDomain = process.env.DOMAIN || 'purehealth-diagnostic-center.vercel.app';
 
 const rpID = process.env.NODE_ENV === 'production' 
   ? productionDomain 
