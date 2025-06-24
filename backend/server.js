@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 5000;
 
 // Configure CORS more explicitly
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'https://purehealth-diagnostic-center.vercel.app/',
+  origin: process.env.CORS_ORIGIN || 'https://purehealth-diagnostic-center.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
