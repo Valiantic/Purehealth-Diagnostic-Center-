@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "env": {
+    "NODE_ENV": "production",
+    "DOMAIN": "purehealthsystem.vercel.app",
+    "RP_ID": "purehealthsystem.vercel.app",
+    "ORIGIN": "https://purehealthsystem.vercel.app"
+  },
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ]
+}
