@@ -1,12 +1,16 @@
 const { hostname } = require('os');
 
-const rpName = 'Purehealth Profit Management System';
-// Always use 'localhost' for development environment
-const rpID = process.env.NODE_ENV === 'production';
-const origin = process.env.NODE_ENV === 'production';
+const rpName = 'Purehealth Revenue Management System';
+const productionDomain = process.env.DOMAIN || 'https://purehealth-diagnostic-center.vercel.app';
 
-// Server-side origin check adjustment
-// In production, set RP_ID to your actual domain
+const rpID = process.env.NODE_ENV === 'production' 
+  ? productionDomain 
+  : 'localhost';
+
+const origin = process.env.NODE_ENV === 'production'
+  ? `https://${productionDomain}`
+  : 'http://localhost:3000';
+
 const expectedOrigin = process.env.NODE_ENV === 'production' 
   ? [origin]
   : ['http://localhost:3000']; 
