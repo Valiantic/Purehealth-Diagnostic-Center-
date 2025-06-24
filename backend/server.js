@@ -4,6 +4,16 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { sequelize } = require('./models');
 
+// Log environment variables for WebAuthn debugging
+console.log('WebAuthn Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DOMAIN: process.env.DOMAIN,
+  RP_ID: process.env.RP_ID,
+  ORIGIN: process.env.ORIGIN,
+  VERCEL: process.env.VERCEL,
+  VERCEL_URL: process.env.VERCEL_URL
+});
+
 // Routes
 const userRoutes = require('./routes/userRoutes');
 const webauthnRoutes = require('./routes/webauthnRoutes');
