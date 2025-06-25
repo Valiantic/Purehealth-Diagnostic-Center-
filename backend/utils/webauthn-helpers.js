@@ -62,7 +62,7 @@ async function generateRegOptions(user, isPrimary = true) {
 /**
  * Verify registration response from client
  */
-async function verifyRegResponse(user, response, isPrimary = true) {
+async function verifyRegResponse(user, response, isPrimary = true, clientOrigin = null) {
   try {
     const expectedChallenge = user.currentChallenge;
     
@@ -70,12 +70,14 @@ async function verifyRegResponse(user, response, isPrimary = true) {
       throw new Error('Challenge not found for user');
     }
     
+    const originToUse = clientOrigin ? [clientOrigin] : expectedOrigin;
+    
     let verification;
     try {
       verification = await verifyRegistrationResponse({
         response,
         expectedChallenge,
-        expectedOrigin,
+        expectedOrigin: originToUse,
         expectedRPID: rpID
       });
     } catch (error) {
@@ -171,7 +173,7 @@ async function generateAuthOptions(user) {
 /**
  * Verify authentication response from client
  */
-async function verifyAuthResponse(user, response) {
+async function verifyAuthResponse(user, response, clientOrigin = null) {
   // Get the authenticator from the database
   const authenticator = await Authenticator.findOne({
     where: {
@@ -185,13 +187,15 @@ async function verifyAuthResponse(user, response) {
   }
 
   const expectedChallenge = user.currentChallenge;
+  
+  const originToUse = clientOrigin ? [clientOrigin] : expectedOrigin;
 
   let verification;
   try {
     verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge,
-      expectedOrigin,
+      expectedOrigin: originToUse,
       expectedRPID: rpID,
       authenticator: {
         credentialID: Buffer.from(authenticator.credentialId, 'base64url'),
