@@ -55,10 +55,10 @@ export const webauthnAPI = {
       clientOrigin 
     });
   },
-  
-  // Registration
+    // Registration
   getRegistrationOptions: (userId, isPrimary = true) => {
     const clientOrigin = window.location.origin;
+    console.log('Registration options clientOrigin:', clientOrigin);
     return apiClient.post('/webauthn/registration/options', { 
       userId, 
       isPrimary,
@@ -67,6 +67,7 @@ export const webauthnAPI = {
   },
   verifyRegistration: (userId, response, isPrimary = true) => {
     const clientOrigin = window.location.origin;
+    console.log('Registration verify clientOrigin:', clientOrigin);
     return apiClient.post('/webauthn/registration/verify', { 
       userId, 
       response, 
@@ -74,10 +75,10 @@ export const webauthnAPI = {
       clientOrigin
     });
   },
-  
-  // Authentication
+    // Authentication
   getAuthenticationOptions: (email) => {
     const clientOrigin = window.location.origin;
+    console.log('Authentication options clientOrigin:', clientOrigin);
     return apiClient.post('/webauthn/authentication/options', { 
       email,
       clientOrigin
@@ -85,6 +86,7 @@ export const webauthnAPI = {
   },
   verifyAuthentication: (userId, response) => {
     const clientOrigin = window.location.origin;
+    console.log('Authentication verify clientOrigin:', clientOrigin);
     return apiClient.post('/webauthn/authentication/verify', { 
       userId, 
       response,

@@ -70,6 +70,18 @@ async function verifyRegResponse(user, response, isPrimary = true, clientOrigin 
       throw new Error('Challenge not found for user');
     }
     
+    let clientRpId = null;
+    if (clientOrigin) {
+      try {
+        const url = new URL(clientOrigin);
+        clientRpId = url.hostname;
+      } catch (error) {
+        console.error('Error extracting hostname from client origin:', error);
+      }
+    }
+
+    const rpIdToUse = clientRpId || rpID;
+    
     const originToUse = clientOrigin ? [clientOrigin] : expectedOrigin;
     
     let verification;
@@ -78,7 +90,7 @@ async function verifyRegResponse(user, response, isPrimary = true, clientOrigin 
         response,
         expectedChallenge,
         expectedOrigin: originToUse,
-        expectedRPID: rpID
+        expectedRPID: rpIdToUse
       });
     } catch (error) {
       console.error('Verification error details:', error);
@@ -188,6 +200,19 @@ async function verifyAuthResponse(user, response, clientOrigin = null) {
 
   const expectedChallenge = user.currentChallenge;
   
+  let clientRpId = null;
+  if (clientOrigin) {
+    try {
+      const url = new URL(clientOrigin);
+      clientRpId = url.hostname;
+    } catch (error) {
+      console.error('Error extracting hostname from client origin:', error);
+    }
+  }
+
+  const rpIdToUse = clientRpId || rpID;
+
+  
   const originToUse = clientOrigin ? [clientOrigin] : expectedOrigin;
 
   let verification;
@@ -196,7 +221,7 @@ async function verifyAuthResponse(user, response, clientOrigin = null) {
       response,
       expectedChallenge,
       expectedOrigin: originToUse,
-      expectedRPID: rpID,
+      expectedRPID: rpIdToUse,
       authenticator: {
         credentialID: Buffer.from(authenticator.credentialId, 'base64url'),
         credentialPublicKey: authenticator.credentialPublicKey,
