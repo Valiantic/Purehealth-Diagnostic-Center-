@@ -34,32 +34,62 @@ export const userAPI = {
 
 // WebAuthn API
 export const webauthnAPI = {
+  getCurrentOrigin: () => {
+    return window.location.origin;
+  },
+  
   // Temporary Registration (user not yet created)
   getTempRegistrationOptions: (userData) => {
-    return apiClient.post('/webauthn/registration/temp/options', userData);
+    const clientOrigin = window.location.origin;
+    return apiClient.post('/webauthn/registration/temp/options', { 
+      ...userData, 
+      clientOrigin 
+    });
   },
   verifyTempRegistration: (tempRegistrationId, response, userData) => {
+    const clientOrigin = window.location.origin;
     return apiClient.post('/webauthn/registration/temp/verify', { 
       tempRegistrationId, 
       response, 
-      userData 
+      userData,
+      clientOrigin 
     });
   },
   
   // Registration
   getRegistrationOptions: (userId, isPrimary = true) => {
-    return apiClient.post('/webauthn/registration/options', { userId, isPrimary });
+    const clientOrigin = window.location.origin;
+    return apiClient.post('/webauthn/registration/options', { 
+      userId, 
+      isPrimary,
+      clientOrigin
+    });
   },
   verifyRegistration: (userId, response, isPrimary = true) => {
-    return apiClient.post('/webauthn/registration/verify', { userId, response, isPrimary });
+    const clientOrigin = window.location.origin;
+    return apiClient.post('/webauthn/registration/verify', { 
+      userId, 
+      response, 
+      isPrimary,
+      clientOrigin
+    });
   },
   
   // Authentication
   getAuthenticationOptions: (email) => {
-    return apiClient.post('/webauthn/authentication/options', { email });
+    const clientOrigin = window.location.origin;
+    return apiClient.post('/webauthn/authentication/options', { 
+      email,
+      clientOrigin
+    });
   },
   verifyAuthentication: (userId, response) => {
-    return apiClient.post('/webauthn/authentication/verify', { userId, response });
+    const clientOrigin = window.location.origin;
+    return apiClient.post('/webauthn/authentication/verify', { 
+      userId, 
+      response,
+      clientOrigin
+    });
   }
 };
 
