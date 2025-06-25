@@ -13,9 +13,7 @@ export async function registerUser(userData) {
     const optionsResponse = await webauthnAPI.getTempRegistrationOptions(userData);
     const { options, tempRegistrationId } = optionsResponse.data;
     
-    // Step 2: Fix the RP ID if we're on a deployed site
-    if (window.location.hostname !== 'localhost' && options.rp && options.rp.id === 'localhost') {
-      console.log('Overriding RP ID from localhost to', window.location.hostname);
+    if (options.rp) {
       options.rp.id = window.location.hostname;
     }
     
@@ -96,12 +94,10 @@ export async function authenticateUser(email) {
     // Step 1: Get authentication options from the server
     const optionsResponse = await webauthnAPI.getAuthenticationOptions(email);
     const { options, userId } = optionsResponse.data;
-    
-    // Step 2: Fix the RP ID if we're on a deployed site
-    if (window.location.hostname !== 'localhost' && options.rpId === 'localhost') {
-      console.log('Overriding RP ID from localhost to', window.location.hostname);
-      options.rpId = window.location.hostname;
-    }
+
+    // Step 2: Always set the RP ID to match the current hostname
+    // This fixes issues where backend config might not match the actual frontend origin
+    options.rpId = window.location.hostname;
     
     // Step 3: Start authentication with the browser WebAuthn API
     const authResp = await startAuthentication(options);
