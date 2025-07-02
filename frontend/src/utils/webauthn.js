@@ -12,7 +12,7 @@ export async function registerUser(userData) {
     // Step 1: Get registration options for a temporary user
     const optionsResponse = await webauthnAPI.getTempRegistrationOptions(userData);
     const { options, tempRegistrationId } = optionsResponse.data;
-      // Always ensure we're using the correct RP ID
+    // Step 2: Always ensure we're using the correct RP ID
     if (options.rp) {
       console.log('Registration: Changing RP ID from', options.rp.id, 'to', window.location.hostname);
       options.rp.id = window.location.hostname;
@@ -70,10 +70,18 @@ export async function registerBackupPasskey(userId) {
     const optionsResponse = await webauthnAPI.getRegistrationOptions(userId, false);
     const options = optionsResponse.data.options;
     
-    // Step 2: Start registration with the browser WebAuthn API
+    // Step 2: Always ensure we're using the correct RP ID
+    if (options.rp) {
+      console.log('Backup registration: Changing RP ID from', options.rp.id, 'to', window.location.hostname);
+      options.rp.id = window.location.hostname;
+    } else {
+      console.error('Backup registration options missing rp object:', options);
+    }
+    
+    // Step 3: Start registration with the browser WebAuthn API
     const attResp = await startRegistration(options);
     
-    // Step 3: Verify registration with the server
+    // Step 4: Verify registration with the server
     const verificationResponse = await webauthnAPI.verifyRegistration(userId, attResp, false);
     
     return {
