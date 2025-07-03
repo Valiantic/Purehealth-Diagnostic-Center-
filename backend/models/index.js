@@ -13,11 +13,11 @@ Authenticator.belongsTo(User, { foreignKey: 'userId' });
 // User has many activity logs, but logs remain when users are deleted
 User.hasMany(ActivityLog, { 
   foreignKey: 'userId',
-  onDelete: 'SET NULL' // Changed from CASCADE to SET NULL
+  onDelete: 'SET NULL' 
 });
 ActivityLog.belongsTo(User, { 
   foreignKey: 'userId', 
-  onDelete: 'SET NULL' // Changed from CASCADE to SET NULL
+  onDelete: 'SET NULL' 
 });
 
 // Department has many tests
