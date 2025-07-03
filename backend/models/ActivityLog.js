@@ -9,7 +9,7 @@ module.exports = (sequelize) => {
     },
     userId: {
       type: DataTypes.INTEGER,
-      allowNull: true, // Allow NULL for deleted users
+      allowNull: true, 
       references: {
         model: 'Users',
         key: 'userId'
@@ -18,7 +18,7 @@ module.exports = (sequelize) => {
     action: {
       type: DataTypes.STRING,
       allowNull: false,
-      index: true // Add index for faster searches
+      index: true 
     },
     resourceType: {
       type: DataTypes.STRING,
@@ -37,7 +37,6 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(45),
       allowNull: true
     },
-    // Store user information as JSON in case the user gets deleted
     userInfo: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -53,7 +52,6 @@ module.exports = (sequelize) => {
     tableName: 'ActivityLogs',
     timestamps: true,
     indexes: [
-      // Add indexes for faster searching
       {
         name: 'activity_log_user_id',
         fields: ['userId']

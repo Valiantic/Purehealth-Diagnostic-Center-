@@ -1,11 +1,11 @@
 const { User, Authenticator } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
 
-async function registerUserDetails(req, res) {
+// Register user details
+exports.registerUserDetails = async (req, res) => {
   try {
     const { email, firstName, middleName, lastName } = req.body;
 
-    // Validate input
     if (!email || !firstName || !lastName) {
       return res.status(400).json({
         success: false,
@@ -13,7 +13,6 @@ async function registerUserDetails(req, res) {
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(409).json({
@@ -22,7 +21,6 @@ async function registerUserDetails(req, res) {
       });
     }
 
-    // Create new user
     const user = await User.create({
       email,
       firstName,
@@ -51,7 +49,8 @@ async function registerUserDetails(req, res) {
   }
 }
 
-async function findUserByEmail(req, res) {
+// Find user by email
+exports.findUserByEmail = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -62,7 +61,6 @@ async function findUserByEmail(req, res) {
       });
     }
 
-    // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({
@@ -71,7 +69,6 @@ async function findUserByEmail(req, res) {
       });
     }
 
-    // Check if user has authenticators
     const authenticators = await Authenticator.findAll({
       where: { userId: user.userId }
     });
@@ -105,9 +102,9 @@ async function findUserByEmail(req, res) {
   }
 }
 
-async function getAllUsers(req, res) {
+// Get all users
+exports.getAllUsers = async (req, res) => {
   try {
-    // Get all users with role and status included in attributes
     const users = await User.findAll({
       attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role', 'status', 'createdAt'],
       order: [['createdAt', 'DESC']]
@@ -135,12 +132,11 @@ async function getAllUsers(req, res) {
   }
 }
 
-async function updateUserStatus(req, res) {
+exports.updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
     const { status, currentUserId } = req.body;
 
-    // Validate input
     if (!userId || !status) {
       return res.status(400).json({
         success: false,
@@ -148,7 +144,6 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Validate status value
     if (!['active', 'inactive'].includes(status)) {
       return res.status(400).json({
         success: false,
@@ -156,7 +151,6 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
@@ -165,10 +159,8 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Update user status
     await user.update({ status });
 
-    // After updating user status
     await logActivity({
       userId: currentUserId || userId, 
       action: status === 'active' ? 'ACTIVATE_ACCOUNT' : 'DEACTIVATE_ACCOUNT',
@@ -197,7 +189,8 @@ async function updateUserStatus(req, res) {
   }
 }
 
-async function updateUserDetails(req, res) {
+// update user details
+exports.updateUserDetails = async (req, res) => {
   try {
     const { userId } = req.params;
     const { 
@@ -230,7 +223,6 @@ async function updateUserDetails(req, res) {
       });
     }
     
-    // Save original values for logging
     const oldValues = {
       firstName: user.firstName,
       middleName: user.middleName,
@@ -239,7 +231,6 @@ async function updateUserDetails(req, res) {
       status: user.status
     };
     
-    // Fetch the editor (user making the changes) to include their email in the log
     let editorEmail = user.email; 
     let editorId = currentUserId || userId; 
     
@@ -262,7 +253,6 @@ async function updateUserDetails(req, res) {
     
     const updatedStatus = status !== undefined ? status : user.status;
     
-    // Update user with new values
     await user.update({
       firstName,
       middleName,
@@ -292,12 +282,9 @@ async function updateUserDetails(req, res) {
       try {
         let detailsMessage;
         
-        // Check if email changed
         if (oldValues.email !== email) {
-          // Email changed - show both old and new
           detailsMessage = `User email updated for ${oldValues.email} (old email) to ${email} (new email) by ${editorEmail}`;
         } else {
-          // Only name fields changed - simpler message
           detailsMessage = `User details updated: ${email}`;
         }
 
@@ -334,7 +321,6 @@ async function updateUserDetails(req, res) {
     }
         const hasStatusChanged = oldValues.status !== updatedStatus && updatedStatus !== undefined;
     
-    // INDEPENDENT OF STATUS LOG CHANGE
     if (hasStatusChanged) {
       console.log('Detected status change, logging status update');
       
@@ -385,7 +371,8 @@ async function updateUserDetails(req, res) {
   }
 }
 
-async function getUserById(req, res) {
+// Get user by ID
+exports.getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -425,12 +412,3 @@ async function getUserById(req, res) {
     });
   }
 }
-
-module.exports = {
-  registerUserDetails,
-  findUserByEmail,
-  getAllUsers,
-  updateUserStatus,
-  updateUserDetails,
-  getUserById
-};

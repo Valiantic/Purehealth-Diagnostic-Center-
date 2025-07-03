@@ -54,7 +54,6 @@ exports.createReferrer = async (req, res) => {
             dateAdded: new Date()
         });
 
-        // Log activity upon adding a referrer
         await logActivity({
             userId: currentUserId,
             action: 'ADD_REFERRER',
@@ -87,7 +86,7 @@ exports.updateReferrer = async (req, res) => {
         const {
             firstName, lastName, birthday, sex, contactNo,
             clinicName, clinicAddress, status, currentUserId,
-            statusOnly = false // Add a flag to indicate status-only update
+            statusOnly = false 
         } = req.body;
 
         const referrer = await Referrer.findByPk(id);
@@ -99,7 +98,6 @@ exports.updateReferrer = async (req, res) => {
             });
         }
 
-        // Store old values for activity log
         const oldValues = {
             firstName: referrer.firstName,
             lastName: referrer.lastName,
@@ -111,10 +109,8 @@ exports.updateReferrer = async (req, res) => {
             status: referrer.status
         };
 
-        // Determine if status is changing
         const statusChanged = oldValues.status !== status;
         
-        // Only check for details changes if this is not a status-only update
         const detailsChanged = !statusOnly && (
             oldValues.firstName !== firstName ||
             oldValues.lastName !== lastName ||
@@ -125,7 +121,6 @@ exports.updateReferrer = async (req, res) => {
             oldValues.clinicAddress !== clinicAddress
         );
 
-        // Update the referrer with all fields or just status if statusOnly is true
         if (statusOnly) {
             await referrer.update({ status });
         } else {
@@ -141,9 +136,8 @@ exports.updateReferrer = async (req, res) => {
             });
         }
 
-        // Log status change if status changed
         if (statusChanged) {
-            const statusText = status === 'active' ? 'activated' : 'deactivated';
+              const statusText = status === 'active' ? 'Unarchived' : 'Archived';
             const explicitActionType = status === 'active' ? 'ACTIVATE_REFERRER' : 'DEACTIVATE_REFERRER';
             
             await logActivity({
@@ -151,8 +145,7 @@ exports.updateReferrer = async (req, res) => {
                 action: explicitActionType,
                 resourceType: 'REFERRER',
                 resourceId: referrer.referrerId,
-                details: `Referrer ${statusText}: ${firstName} ${lastName}`,
-                ipAddress: req.ip,
+                details: `${statusText} referrer: ${firstName} ${lastName}`,                ipAddress: req.ip,
                 metadata: {
                     oldStatus: oldValues.status,
                     newStatus: status
@@ -160,7 +153,6 @@ exports.updateReferrer = async (req, res) => {
             });
         }
         
-        // Log details change only if details changed
         if (detailsChanged) {
             await logActivity({
                 userId: currentUserId,
@@ -222,7 +214,6 @@ exports.updateReferrerStatus = async (req, res) => {
         });
       }
 
-      // Validate status value
       if (status !== 'active' && status !== 'inactive') {
         return res.status(400).json({
             success: false,
@@ -232,10 +223,8 @@ exports.updateReferrerStatus = async (req, res) => {
 
       const oldStatus = referrer.status;
       
-      // Update the status 
       await referrer.update({ status });
 
-      // Log activity with status change details
       const statusText = status === 'active' ? 'activated' : 'deactivated';
       await logActivity({
         userId: currentUserId,
@@ -273,7 +262,6 @@ exports.searchReferrer = async (req, res) => {
         let whereClause = {};
         
         if (search) {
-            // Use sequelize.fn and sequelize.literal for date formatting
             const sequelize = require('../models').sequelize;
             const { Op, fn, col, literal } = require('sequelize');
             
@@ -283,7 +271,6 @@ exports.searchReferrer = async (req, res) => {
                 { clinicName: { [Op.like]: `%${search}%` } },
                 { clinicAddress: { [Op.like]: `%${search}%` } },
                 
-                // Birthday search with LIKE operator - use date format similar to toLocaleDateString
                 sequelize.where(
                     fn('DATE_FORMAT', col('birthday'), '%c/%e/%Y'),
                     { [Op.like]: `%${search}%` }
@@ -297,7 +284,6 @@ exports.searchReferrer = async (req, res) => {
                     { [Op.like]: `%${search}%` }
                 ),
                 
-                // CreatedAt search with LIKE operator - match frontend display format
                 sequelize.where(
                     fn('DATE_FORMAT', col('createdAt'), '%c/%e/%Y'),
                     { [Op.like]: `%${search}%` }
@@ -312,11 +298,10 @@ exports.searchReferrer = async (req, res) => {
                 )
             ];
             
-            // Add direct day/month search if the search term is a number
             if (!isNaN(search)) {
                 const numSearch = parseInt(search);
                 if (numSearch > 0) {
-                    // Day of month search
+
                     whereClause[Op.or].push(
                         sequelize.where(
                             fn('DAY', col('birthday')),
@@ -336,7 +321,6 @@ exports.searchReferrer = async (req, res) => {
                         )
                     );
                     
-                    // Year search
                     if (numSearch > 1000) {
                         whereClause[Op.or].push(
                             sequelize.where(

@@ -3,36 +3,31 @@ const Sequelize = require('sequelize');
 const { Op } = Sequelize;
 
 // Get all activity logs with pagination, filtering, and search
-const getActivityLogs = async (req, res) => {
+exports.getActivityLogs = async (req, res) => {
   try {
     const { page = 1, limit = 50, sort = 'createdAt', order = 'DESC', search, date } = req.query;
     
     const offset = (page - 1) * limit;
     let whereClause = {};
     
-    // Apply search filter 
     if (search) {
       whereClause = {
         [Op.or]: [
-          // Search in the action field
+
           { action: { [Op.like]: `%${search}%` } },
           
-          // Search in details field
           { details: { [Op.like]: `%${search}%` } },
           
-          // Search by date (in created date) - simpler approach to avoid MySQL functions
           Sequelize.where(
             Sequelize.fn('DATE', Sequelize.col('ActivityLog.createdAt')),
             { [Op.like]: `%${search}%` }
           ),
           
-          // Use simpler approach for userInfo search
           { userInfo: { [Op.like]: `%${search}%` } }
         ]
       };
     }
     
-    // DATE FILTERING 
     if (date) {
       const formattedDate = new Date(date).toISOString().split('T')[0];
     
@@ -47,14 +42,13 @@ const getActivityLogs = async (req, res) => {
       };
     }
     
-    // Get activity logs with user information
     const logs = await ActivityLog.findAndCountAll({
       where: whereClause,
       include: [
         {
           model: User,
           attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role'],
-          required: false, // Use LEFT JOIN to include logs even if user is deleted
+          required: false, 
           where: search ? {
             [Op.or]: [
               { firstName: { [Op.like]: `%${search}%` } },
@@ -71,11 +65,9 @@ const getActivityLogs = async (req, res) => {
       distinct: true 
     });
     
-       // Format response data 
       const formattedLogs = logs.rows.map(log => {
       const plainLog = log.get({ plain: true });
       
-      // FIXED: Always use stored userInfo if it exists - this preserves historical data
       const userData = plainLog.userInfo ? plainLog.userInfo : 
                        plainLog.User ? {
                          id: plainLog.User.userId,
@@ -120,8 +112,4 @@ const getActivityLogs = async (req, res) => {
       error: error.message
     });
   }
-};
-
-module.exports = {
-  getActivityLogs
 };

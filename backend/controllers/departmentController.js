@@ -1,12 +1,14 @@
-const { Department } = require('../models');
+const { response } = require('express');
+const { Department, Test } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
 const sequelize = require('../models').sequelize;
 const { Op } = require('sequelize'); 
+const { test } = require('../config/config');
 
 // Get all departments
-const getAllDepartments = async (req, res) => {
+exports.getAllDepartments = async (req, res) => {
   try {
-    // Use Sequelize include to get fresh test counts directly from the database
+   
     const departments = await Department.findAll({
       include: [
         {
@@ -28,7 +30,6 @@ const getAllDepartments = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Format the response to match the expected structure
     const formattedDepartments = departments.map(dept => {
       const plainDept = dept.get({ plain: true });
       return {
@@ -45,7 +46,7 @@ const getAllDepartments = async (req, res) => {
 };
 
 // Create a new department
-const createDepartment = async (req, res) => {
+exports.createDepartment = async (req, res) => {
   try {
     const { departmentName, currentUserId } = req.body;
     
@@ -53,23 +54,20 @@ const createDepartment = async (req, res) => {
       return res.status(400).json({ message: 'Department name is required' });
     }
 
-    // Check if department already exists
     const existingDepartment = await Department.findOne({ where: { departmentName } });
     if (existingDepartment) {
       return res.status(400).json({ message: 'Department already exists' });
     }
 
-    // Create department explicitly WITHOUT specifying departmentId
     const department = await Department.create({
       departmentName,
       testQuantity: 0,
       status: 'active'
     }, {
       returning: true,
-      fields: ['departmentName', 'testQuantity', 'status'] // Explicitly exclude departmentId
+      fields: ['departmentName', 'testQuantity', 'status']
     });
     
-    // Fetch the complete record to ensure we have the auto-generated ID
     const createdDepartment = await Department.findOne({
       where: { departmentName }
     });
@@ -77,7 +75,6 @@ const createDepartment = async (req, res) => {
     console.log('Department created:', createdDepartment.toJSON());
     res.status(201).json(createdDepartment);
 
-    // Log department creation
     await logActivity({
       userId: currentUserId,
       action: 'ADD_DEPARTMENT',
@@ -92,8 +89,8 @@ const createDepartment = async (req, res) => {
   }
 };
 
-// Update department status
-const updateDepartmentStatus = async (req, res) => {
+// Update department status (archive/unarchive)
+exports.updateDepartmentStatus = async (req, res) => {
   try {
     const { departmentId } = req.params;
     const { status, currentUserId } = req.body;
@@ -107,8 +104,20 @@ const updateDepartmentStatus = async (req, res) => {
     }
     
     const oldStatus = department.status;
+
+    if (oldStatus === status) {
+     return res.json(department);
+    }
+
     department.status = status;
     await department.save();
+
+    const testUpdated = await Test.update(
+      {status: status},
+      {where: { departmentId: departmentId}}
+    );
+
+    const testsCount = testUpdated[0];
     
     res.json(department);
 
@@ -117,11 +126,12 @@ const updateDepartmentStatus = async (req, res) => {
       action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
       resourceType: 'DEPARTMENT',
       resourceId: department.departmentId, 
-      details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${department.departmentName}`,
+      details: `Department ${status === 'active' ? 'Unarchived' : 'Archived'}: ${department.departmentName} along with ${testsCount} test(s)`,
       ipAddress: req.ip,
       metadata: {
         oldStatus: oldStatus,
-        newStatus: status
+        newStatus: status,
+        affectedTests: testsCount
       }
     });
   } catch (error) {
@@ -130,7 +140,8 @@ const updateDepartmentStatus = async (req, res) => {
   }
 };
 
-const updateDepartment = async (req, res) => {
+// Update department details
+exports.updateDepartment = async (req, res) => {
   try {
     const { departmentId } = req.params;
     const { departmentName, dateCreated, status, currentUserId } = req.body;
@@ -162,10 +173,8 @@ const updateDepartment = async (req, res) => {
       status: department.status
     };
     
-    // CHECK ACTUAL CHANGES ON DEPARTMENT NAME
     const departmentNameChanged = department.departmentName !== departmentName;
     
-    // CHECK ACTUAL CHANGES ON DATE CREATED
     let dateChanged = false;
     if (dateCreated) {
       const oldDate = department.createdAt ? new Date(department.createdAt).toISOString().split('T')[0] : null;
@@ -181,10 +190,18 @@ const updateDepartment = async (req, res) => {
       createdAt: dateCreated || department.createdAt,
       status: status || department.status
     });
+
+    let testsCount = 0;
+    if (changingStatus) {
+      const testsUpdated = await Test.update (
+        { status: status },
+        { where: { departmentId: departmentId } }
+      );
+      testsCount = testsUpdated[0];
+    }
     
     res.json(department);
 
-    // SEPARATE LOGGING FOR DETAILS AND STATUS CHANGES
     if (changingDetails) {
       await logActivity({
         userId: currentUserId,
@@ -212,11 +229,12 @@ const updateDepartment = async (req, res) => {
         action: status === 'active' ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
         resourceType: 'DEPARTMENT',
         resourceId: department.departmentId,
-        details: `Department ${status === 'active' ? 'activated' : 'deactivated'}: ${departmentName}`,
+        details: `Department ${status === 'active' ? 'Unarchived' : 'Archived'}: ${department.departmentName} along with ${testsCount} test(s)`,
         ipAddress: req.ip,
         metadata: {
           oldStatus: oldValues.status,
-          newStatus: status
+          newStatus: status,
+          affectedTests: testsCount
         }
       });
     }
@@ -226,9 +244,3 @@ const updateDepartment = async (req, res) => {
   }
 };
 
-module.exports = {
-  getAllDepartments,
-  createDepartment,
-  updateDepartmentStatus,
-  updateDepartment
-};

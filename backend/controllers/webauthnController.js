@@ -8,10 +8,8 @@ const {
 } = require('../utils/webauthn-helpers');
 const { logActivity } = require('../utils/activityLogger');
 
-// Store temporary registrations with expiration (in a real app, use Redis or a database)
 const tempRegistrations = new Map();
 
-// Clean up expired temp registrations periodically
 setInterval(() => {
   const now = Date.now();
   for (const [id, reg] of tempRegistrations.entries()) {
@@ -19,14 +17,13 @@ setInterval(() => {
       tempRegistrations.delete(id);
     }
   }
-}, 60000); // Clean up every minute
+}, 60000); 
 
-// Generate temporary registration options (no user created yet)
-async function tempRegistrationOptions(req, res) {
+// Generate temporary registration options for new users
+exports.tempRegistrationOptions = async (req, res) => {
   try {
     const userData = req.body;
     
-    // Validate input
     if (!userData.email || !userData.firstName || !userData.lastName) {
       return res.status(400).json({
         success: false,
@@ -34,7 +31,6 @@ async function tempRegistrationOptions(req, res) {
       });
     }
     
-    // Check if user already exists
     const existingUser = await User.findOne({ where: { email: userData.email } });
     if (existingUser) {
       return res.status(409).json({
@@ -43,32 +39,26 @@ async function tempRegistrationOptions(req, res) {
       });
     }
     
-    // Create a temporary ID for this registration
     const tempRegistrationId = uuidv4();
     
-    // Create a temporary user object for WebAuthn registration
     const tempUser = {
       userId: tempRegistrationId,
       email: userData.email,
       firstName: userData.firstName,
       lastName: userData.lastName,
-      isTemporary: true  // Flag to indicate this is not a Sequelize model
+      isTemporary: true  
     };
     
-    // Generate registration options
     const optionsResult = await generateRegOptions(tempUser, true);
     const options = optionsResult;
     
-    // Store the temp registration with expiration (30 minutes)
     tempRegistrations.set(tempRegistrationId, {
       userData,
-      currentChallenge: options.challenge, // Store the challenge here
+      currentChallenge: options.challenge, 
       expiresAt: Date.now() + 30 * 60 * 1000
     });
     
-    // Remove the challenge from the options response for security
     const clientOptions = { ...options };
-    // Keep the challenge in the clientOptions because the client needs it
     
     res.json({
       success: true,
@@ -86,11 +76,10 @@ async function tempRegistrationOptions(req, res) {
 }
 
 // Verify temporary registration and create user
-async function tempRegistrationVerify(req, res) {
+exports.tempRegistrationVerify = async (req, res) => {
   try {
     const { tempRegistrationId, response, userData } = req.body;
     
-    // Check if temp registration exists
     if (!tempRegistrations.has(tempRegistrationId)) {
       return res.status(400).json({
         success: false,
@@ -100,18 +89,16 @@ async function tempRegistrationVerify(req, res) {
     
     const tempReg = tempRegistrations.get(tempRegistrationId);
     
-    // Create a temporary user object for verification with the stored challenge
     const tempUser = {
       userId: tempRegistrationId,
       email: userData.email,
       firstName: userData.firstName,
       lastName: userData.lastName,
       currentChallenge: tempReg.currentChallenge,
-      isTemporary: true  // Flag to indicate this is not a Sequelize model
+      isTemporary: true  
     };
     
     try {
-      // Verify registration response
       const verification = await verifyRegResponse(tempUser, response, true);
       
       if (!verification.verified) {
@@ -121,19 +108,16 @@ async function tempRegistrationVerify(req, res) {
         });
       }
       
-      // NOW create the user in the database after verification
-      const user = await User.create({
+       const user = await User.create({
         email: userData.email,
         firstName: userData.firstName,
         middleName: userData.middleName || null,
         lastName: userData.lastName,
-        role: userData.role || 'receptionist' // Use provided role or default to receptionist
+        role: userData.role || 'receptionist' 
       });
       
-      // Instead of updating the existing authenticator object, create a new one with the real user ID
       const authenticatorData = verification.authenticator.get({ plain: true });
       
-      // Create a new authenticator record with the real user ID
       await Authenticator.create({
         userId: user.userId,
         credentialId: authenticatorData.credentialId,
@@ -145,7 +129,6 @@ async function tempRegistrationVerify(req, res) {
         isPrimary: true
       });
       
-      // Log activity for account creation
       await logActivity({
         userId: user.userId,
         action: 'CREATE_ACCOUNT',
@@ -155,7 +138,6 @@ async function tempRegistrationVerify(req, res) {
         ipAddress: req.ip
       });
       
-      // Clean up the temporary registration
       tempRegistrations.delete(tempRegistrationId);
       
       res.json({
@@ -186,7 +168,7 @@ async function tempRegistrationVerify(req, res) {
 }
 
 // Generate registration options
-async function registrationOptions(req, res) {
+exports.registrationOptions = async (req, res) => {
   try {
     const { userId, isPrimary = true } = req.body;
 
@@ -197,7 +179,6 @@ async function registrationOptions(req, res) {
       });
     }
 
-    // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
@@ -206,7 +187,6 @@ async function registrationOptions(req, res) {
       });
     }
 
-    // Generate registration options
     const options = await generateRegOptions(user, isPrimary);
 
     res.json({
@@ -224,7 +204,7 @@ async function registrationOptions(req, res) {
 }
 
 // Verify registration response
-async function registrationVerify(req, res) {
+exports.registrationVerify = async (req, res) => {
   try {
     const { userId, response, isPrimary = true } = req.body;
 
@@ -235,7 +215,6 @@ async function registrationVerify(req, res) {
       });
     }
 
-    // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
@@ -244,7 +223,6 @@ async function registrationVerify(req, res) {
       });
     }
 
-    // Verify registration response
     const verification = await verifyRegResponse(user, response, isPrimary);
 
     if (!verification.verified) {
@@ -269,7 +247,7 @@ async function registrationVerify(req, res) {
 }
 
 // Generate authentication options
-async function authenticationOptions(req, res) {
+exports.authenticationOptions = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -280,7 +258,6 @@ async function authenticationOptions(req, res) {
       });
     }
 
-    // Find the user upon logging in 
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({
@@ -289,7 +266,6 @@ async function authenticationOptions(req, res) {
       });
     }
 
-    // Generate authentication options
     const options = await generateAuthOptions(user);
 
     res.json({
@@ -308,7 +284,7 @@ async function authenticationOptions(req, res) {
 }
 
 // Verify authentication response
-async function authenticationVerify(req, res) {
+exports.authenticationVerify = async (req, res) => {
   try {
     const { userId, response } = req.body;
 
@@ -319,7 +295,6 @@ async function authenticationVerify(req, res) {
       });
     }
 
-    // Find the user
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
@@ -328,7 +303,6 @@ async function authenticationVerify(req, res) {
       });
     }
 
-    // Verify authentication response
     const verification = await verifyAuthResponse(user, response);
 
     if (!verification.verified) {
@@ -357,12 +331,3 @@ async function authenticationVerify(req, res) {
     });
   }
 }
-
-module.exports = {
-  tempRegistrationOptions,
-  tempRegistrationVerify,
-  registrationOptions,
-  registrationVerify,
-  authenticationOptions,
-  authenticationVerify
-};

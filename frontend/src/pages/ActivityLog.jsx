@@ -193,7 +193,8 @@ const ActivityLog = () => {
                 </div>
                 <div className="border border-green-800 rounded-b">
                 
-                  <div className="overflow-x-auto w-full max-h-[calc(100vh-380px)]">
+                  {/* Desktop Table View - Hidden on mobile */}
+                  <div className="hidden md:block overflow-x-auto w-full max-h-[calc(100vh-380px)]">
                     <table className="min-w-[800px] w-full text-sm">
                       <thead className="sticky top-0 bg-green-100 z-10">
                         <tr className="border-b border-green-800">
@@ -252,6 +253,50 @@ const ActivityLog = () => {
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Card View - Visible only on mobile */}
+                  <div className="md:hidden max-h-[calc(100vh-380px)] overflow-y-auto">
+                    {isLoading ? (
+                      <div className="text-center p-4">Loading activity logs...</div>
+                    ) : isError ? (
+                      <div className="text-center p-4 text-red-500">Error: {error.message}</div>
+                    ) : !logsData?.logs?.length ? (
+                      <div className="text-center p-4">No activity logs found</div>
+                    ) : (
+                      <div className="space-y-3 p-3">
+                        {currentLogs.map(log => (
+                          <div key={log.logId} className="bg-gray-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm text-gray-900">
+                                  {log.user?.name || 'System'}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {log.date} • {log.time}
+                                </div>
+                              </div>
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  log.user?.role === 'admin'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-green-100 text-green-800'
+                                }`}
+                              >
+                                {log.user?.role
+                                  ? log.user.role === 'admin'
+                                    ? 'Admin'
+                                    : 'Receptionist'
+                                  : 'SYSTEM'}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-700 leading-relaxed">
+                              {log.details}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

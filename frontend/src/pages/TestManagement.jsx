@@ -28,6 +28,7 @@ const Test = () => {
   const [itemsPerPage] = useState(7);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState(null);
+  const [isDepartmentArchived, setIsDepartmentArchived] = useState(false);
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('all');
   const [showDepartmentFilter, setShowDepartmentFilter] = useState(false);
   const departmentFilterRef = useRef(null);
@@ -99,7 +100,7 @@ const Test = () => {
     mutationFn: ({ testId, newStatus, userId }) => 
       testAPI.updateTestStatus(testId, newStatus, userId),
     onSuccess: (_, variables) => {
-      toast.success(`Test ${variables.newStatus === 'active' ? 'Activated' : 'Deactivated'} successfully`);
+      toast.success(`Test ${variables.newStatus === 'active' ? 'Unarchived' : 'Archived'} successfully`);
       setActiveDropdown(null);
       queryClient.invalidateQueries({ queryKey: ['tests'] });
       queryClient.invalidateQueries({ queryKey: ['departments'] });
@@ -254,6 +255,10 @@ const Test = () => {
   };
 
   const openEditModal = (test) => {
+    // Find the department to check its status
+    const department = departments.find(d => d.departmentId === test.departmentId);
+    const isArchived = department?.status === 'inactive';
+    
     setEditingTest({
       testId: test.testId,
       testName: test.testName,
@@ -268,6 +273,7 @@ const Test = () => {
     setPrice(parseFloat(test.price).toFixed(2));
     setTestDate(test.dateCreated ? new Date(test.dateCreated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
     setUserSelectedDepartment(true);
+    setIsDepartmentArchived(isArchived);
     setEditModalOpen(true);
   };
 
@@ -487,7 +493,7 @@ const Test = () => {
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 <span className={`px-2 py-1 rounded text-xs ${test.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                  {test.status === 'active' ? 'Active' : 'Deactivated'}
+                                  {test.status === 'active' ? 'Unarchived' : 'Archived'}
                                 </span>
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
@@ -777,10 +783,11 @@ const Test = () => {
                               <select
                                 value={editingTest.status}
                                 onChange={(e) => setEditingTest({...editingTest, status: e.target.value})}
-                                className="w-full border border-gray-300 rounded p-2 appearance-none"
+                                className={`w-full border border-gray-300 rounded p-2 appearance-none ${isDepartmentArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                                disabled={isDepartmentArchived}
                               >
-                                <option value="active">Active</option>
-                                <option value="inactive">Deactivated</option>
+                                <option value="active">Unarchived</option>
+                                <option value="inactive">Archived</option>
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                                 <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
@@ -788,6 +795,11 @@ const Test = () => {
                                 </svg>
                               </div>
                             </div>
+                            {isDepartmentArchived && (
+                              <div className="mt-1 text-xs text-red-600">
+                                Note: Status cannot be changed because this test's department is archived.
+                              </div>
+                            )}
                           </div>
                         <div className="border-t border-gray-300 my-4"></div>
                         <div className="flex justify-center">
