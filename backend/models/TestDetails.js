@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     departmentId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false
     },
     originalPrice: {
