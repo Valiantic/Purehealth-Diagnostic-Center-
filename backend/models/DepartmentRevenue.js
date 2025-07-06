@@ -8,7 +8,7 @@ module.exports = (sequelize) => {
       primaryKey: true
     },
     departmentId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false
     },
     transactionId: {

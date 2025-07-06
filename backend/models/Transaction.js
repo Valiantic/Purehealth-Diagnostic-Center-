@@ -90,7 +90,7 @@ module.exports = (sequelize) => {
       defaultValue: 'active'
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: null // Disable automatic reference creation
     }
