@@ -95,6 +95,8 @@ CREATE TABLE "Transactions" (
   "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE "Transactions"
+
 -- Create indexes
 CREATE INDEX "idx_referrer" ON "Transactions" ("referrerId");
 CREATE INDEX "idx_user" ON "Transactions" ("userId");
