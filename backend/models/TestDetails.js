@@ -17,7 +17,7 @@ module.exports = (sequelize) => {
       references: null // Disable automatic reference creation
     },
     testId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false
     },
     testName: {
