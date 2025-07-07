@@ -177,9 +177,10 @@ const Test = () => {
     setTestName('');
     setTestDate(new Date().toISOString().split('T')[0]);
     setUserSelectedDepartment(false); 
-    if (departments.length > 0) {
-      setTestDepartment(departments[0].departmentName);
-      setDepartmentId(departments[0].departmentId);
+    const activeDepartments = departments.filter(dept => dept.status == 'active');
+    if (activeDepartments.length > 0) {
+      setTestDepartment(activeDepartments[0].departmentName);
+      setDepartmentId(activeDepartments[0].departmentId);
     }
     setPrice('');
     setIsOpen(true);
@@ -661,7 +662,9 @@ const Test = () => {
                                 className="w-full border border-gray-300 rounded p-2 appearance-none"
                                 required
                               >
-                                {Array.isArray(departments) ? departments.map(dept => (
+                               {Array.isArray(departments) ? departments
+                                  .filter(dept => dept.status === 'active') 
+                                  .map(dept => (
                                   <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
                                 )) : <option value="">No departments available</option>}
                                 <option value="add-department">+ Add Department</option>
