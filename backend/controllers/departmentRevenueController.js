@@ -185,12 +185,63 @@ exports.getRefundsByDepartment = async (req, res) => {
       };
     }
     
+    // First, do a quick check to see if there are any refunds at all
+    const hasAnyRefunds = await DepartmentRevenue.count({
+      where: {
+        ...whereClause,
+        [Op.or]: [
+          { status: 'refunded' },
+          { status: 'cancelled' }
+        ]
+      }
+    });
+    
+    // Also check for refunded test details
+    const testDetailCheckWhereClause = { status: 'refunded' };
+    if (startDate && endDate) {
+      testDetailCheckWhereClause.updatedAt = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+    } else if (date) {
+      const targetDate = new Date(date);
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      testDetailCheckWhereClause.updatedAt = {
+        [Op.gte]: targetDate,
+        [Op.lt]: nextDay
+      };
+    }
+    
+    const hasAnyTestRefunds = await TestDetails.count({
+      where: testDetailCheckWhereClause
+    });
+    
+    // If there are no refunds at all, return empty result early
+    if (hasAnyRefunds === 0 && hasAnyTestRefunds === 0) {
+      return res.json({
+        success: true,
+        data: {
+          departmentRefunds: [],
+          totalRefund: 0,
+          departmentCancellations: [],
+          totalCancelled: 0,
+          refundDetails: {
+            deptRevenueTotalRefund: 0,
+            rawTotalRefund: 0,
+            metadataRefundTotal: 0,
+            totalTestRefunds: 0
+          }
+        }
+      });
+    }
+    
     // First query: Get only actual refunds (status is 'refunded' OR has metadata.isRefunded = true)
     const refundWhereClause = {
       ...whereClause,
       [Op.or]: [
         { status: 'refunded' },
-        sequelize.literal("JSON_EXTRACT(metadata, '$.isRefunded') = 'true'")
+        sequelize.literal("(metadata::json->>'isRefunded')::boolean = true")
       ]
     };
 
@@ -199,7 +250,7 @@ exports.getRefundsByDepartment = async (req, res) => {
       ...whereClause,
       [Op.and]: [
         { status: 'cancelled' }, 
-        sequelize.literal("JSON_EXTRACT(metadata, '$.isCancellation') = 'true'")
+        sequelize.literal("(metadata::json->>'isCancellation')::boolean = true")
       ]
     };
 
@@ -212,8 +263,8 @@ exports.getRefundsByDepartment = async (req, res) => {
         [
           sequelize.literal(`
             SUM(
-              CASE WHEN JSON_VALID(metadata) AND JSON_EXTRACT(metadata, '$.refundAmount') IS NOT NULL 
-              THEN CAST(JSON_EXTRACT(metadata, '$.refundAmount') AS DECIMAL(10,2))
+              CASE WHEN metadata IS NOT NULL AND (metadata::json->>'refundAmount') IS NOT NULL 
+              THEN (metadata::json->>'refundAmount')::decimal(10,2)
               ELSE 0 
               END
             )
@@ -260,8 +311,8 @@ exports.getRefundsByDepartment = async (req, res) => {
         [
           sequelize.literal(`
             SUM(
-              CASE WHEN JSON_VALID(metadata) AND JSON_EXTRACT(metadata, '$.refundAmount') IS NOT NULL 
-              THEN CAST(JSON_EXTRACT(metadata, '$.refundAmount') AS DECIMAL(10,2))
+              CASE WHEN metadata IS NOT NULL AND (metadata::json->>'refundAmount') IS NOT NULL 
+              THEN (metadata::json->>'refundAmount')::decimal(10,2)
               ELSE 0 
               END
             )
