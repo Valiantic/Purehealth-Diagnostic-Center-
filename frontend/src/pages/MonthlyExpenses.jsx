@@ -226,6 +226,10 @@ const MonthlyExpenses = () => {
     return allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
+  const GoToMonthlyIncome = () => {
+    navigate('/monthly-income');
+  }
+
   if (isAuthenticating) {
     return null;
   }
@@ -247,8 +251,16 @@ const MonthlyExpenses = () => {
       
       {/* Main content area with improved spacing */}
       <div className="flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64">
-        
+
         <div className="bg-cream-50 border-green-800 rounded">
+
+          <div className='flex justify-start mb-2'>
+              <button onClick={GoToMonthlyIncome} 
+                        className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
+                        Monthly Income <ChevronLeft size={16} className="ml-1" />
+              </button>
+          </div>
+
           {/* Month navigation */}
           <div className="flex justify-center items-center py-2">
             <div className="flex border border-green-800 rounded overflow-hidden">
