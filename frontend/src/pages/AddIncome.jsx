@@ -951,7 +951,7 @@ const AddIncome = () => {
                 </div>
 
                 <div className="flex-1">
-                  <label className="block text-green-800 font-medium mb-1">MC#</label>
+                  <label className="block text-green-800 font-medium mb-1">OR#</label>
                   <input
                     type="text"
                     value={generatedMcNo}

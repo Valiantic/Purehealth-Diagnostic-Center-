@@ -141,7 +141,7 @@ const TransactionSummaryModal = ({
                       )}
                     </div>
 
-                    <div className="font-bold text-green-800">MC #:</div>
+                    <div className="font-bold text-green-800">OR#:</div>
                     <div className="col-span-2 text-green-700">
                       {isEditingSummary ? (
                         <div>
