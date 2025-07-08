@@ -155,7 +155,7 @@ const TransactionRow = ({
             
             {openMenuId === transaction.id && !editingId && (
               <div 
-                className="absolute right-0 top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20"
+                className="absolute top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20 -right-2 sm:right-0"
                 onClick={handleDropdownClick}
               >
                 <button 
@@ -207,12 +207,15 @@ const IncomeTable = ({
 }) => {
   return (
     <div className="relative">
-      <div className="md:hidden text-sm text-gray-500 italic mb-2 flex items-center">
-        <span>Swipe horizontally to view more</span>
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
+      
+      {filteredTransactions.length > 0 && (
+        <div className="md:hidden text-sm text-gray-500 italic mb-2 flex items-center">
+          <span>Swipe horizontally to view more</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      )}
       
       <div className="overflow-x-auto pb-2 relative">
         {filteredTransactions.length === 0 ? (
@@ -225,7 +228,7 @@ const IncomeTable = ({
             <table className="min-w-full border-collapse text-sm md:text-base">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-green-800 text-white">
-                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-20">MC#</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-20">OR#</th>
                   <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Patient Name</th>
                   
                   {/* Department columns */}
