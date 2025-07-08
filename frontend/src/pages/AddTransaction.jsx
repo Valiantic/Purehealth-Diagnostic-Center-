@@ -912,6 +912,16 @@ const AddIncome = () => {
     };
   }, [optionsButtonRef]);
 
+  // Return nothing while authenticating to prevent flash of protected content
+  if (isAuthenticating) {
+    return null;
+  }
+
+  // If user is null after authentication check, the hook will handle redirect
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col w-full bg-gray-100 min-h-screen p-4">
       <Sidebar />

@@ -502,7 +502,7 @@ const ReferralManagement = () => {
                   ) : (
                     currentReferrers.map((referrer) => (
                       <tr key={referrer.referrerId} className="border-b border-green-200">
-                        <td className="p-1 border-r border-green-200 text-left">{referrer.firstName} {referrer.lastName}</td>
+                        <td className="p-1 pl-5 border-r border-green-200 text-left">{referrer.firstName} {referrer.lastName}</td>
                         <td className="p-1 border-r border-green-200 text-center">{referrer.clinicName}</td>
                         <td className="p-1 border-r border-green-200 text-center">{referrer.clinicAddress}</td>
                         <td className="p-1 border-r border-green-200 text-center">
