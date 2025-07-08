@@ -150,7 +150,7 @@ const Transaction = () => {
   };
   
   const handleNewExpenses = () => navigate('/add-expenses');
-  const handleNewIncome = () => navigate('/add-income');
+  const handleNewIncome = () => navigate('/add-transaction');
 
   const [localExpenseMenuId, setLocalExpenseMenuId] = useState(null);
 
