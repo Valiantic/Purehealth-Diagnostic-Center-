@@ -274,10 +274,11 @@ const AddExpenses = () => {
                   {isLoading ? (
                     <option value="" disabled>Loading departments...</option>
                   ) : (
-                    departments.map((dept) => (
-                      <option 
-                        key={dept.departmentId} 
-                        value={dept.departmentId}
+                    departments.filter(dept => dept.status === 'active')
+                    .map((dept) => (
+                      <option
+                      key={dept.departmentId}
+                      value={dept.departmentId}
                       >
                         {dept.departmentName}
                       </option>
