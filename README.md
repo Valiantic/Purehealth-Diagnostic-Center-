@@ -1,7 +1,7 @@
 # 🔐 Revenue Management System with FIDO2 Passwordless Authentication  
 
 ## 📌 Description  
-This project is a **Revenue Management System** that integrates **FIDO2 passwordless authentication**, leveraging **built-in authenticators** such as biometric sensors and **external security keys for passkeys** 🔒. Built with **ReactJS, ExpressJS, NodeJS, Sequelize, and MySQL**, the system ensures **secure financial management**, **real-time tracking**, and **role-based access control** for better revenue accuracy.  
+This project is a **Revenue Management System** that integrates **FIDO2 passwordless authentication**, leveraging **built-in authenticators** such as biometric sensors and **external security keys for passkeys** 🔒. Built with **Vite + ReactJS, TailwinCSS for Modern UI Responsive Design, ExpressJS, NodeJS, Sequelize, and MySQL**, the system ensures **secure financial management**, **real-time tracking**, and **role-based access control** for better revenue accuracy.  
 
 ## 🚀 Features  
 - **FIDO2 Authentication** – Passwordless login using built-in biometrics or external passkeys.  
