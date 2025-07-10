@@ -259,7 +259,7 @@ const Dashboard = () => {
           {/* Monthly Expenses by Department Chart */}
           <div className="bg-white p-4 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-medium text-gray-700">Monthly Expenses by Department</h3>
+              <h3 className="text-sm font-medium text-gray-700">Monthly Expenses Breakdown by Department</h3>
               <div 
                 className="w-5 h-5 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative"
                 onMouseEnter={() => setShowExpensesTooltip(true)}

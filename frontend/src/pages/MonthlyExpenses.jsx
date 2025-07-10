@@ -331,10 +331,10 @@ const MonthlyExpenses = () => {
                       expenseItemsToDisplay.map((item, index) => (
                         <tr key={item.id || `expense-item-${index}`} className="border-b border-green-100">
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(item.date)}</td>
-                          <td className="p-1 border-r border-green-200 bg-white">{item.department}</td>
-                          <td className="p-1 border-r border-green-200 bg-white">{item.paidTo || '-'}</td>
-                          <td className="p-1 border-r border-green-200 bg-white">{item.purpose || '-'}</td>
-                          <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(item.amount)}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.department}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.paidTo || '-'}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.purpose || '-'}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(item.amount)}</td>
                           <td className="p-1 text-center bg-white">
                             <button 
                               className="text-green-800 hover:text-green-600" 
@@ -380,9 +380,9 @@ const MonthlyExpenses = () => {
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-green-800 bg-green-100 font-bold">
-                      <td className="p-1 border-r border-green-800">TOTAL:</td>
+                      <td className="p-1 text-center border-r border-green-800">TOTAL:</td>
                       <td colSpan={3} className="p-1 border-r border-green-800"></td>
-                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(
+                      <td className="p-1 border-r border-green-800 text-center">{formatCurrency(
                         selectedDepartment === 'all' 
                           ? monthlySummary.totalExpense 
                           : monthlySummary.departmentTotals[selectedDepartment]?.amount || 0

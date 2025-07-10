@@ -14,6 +14,9 @@ router.get('/check-mcno', transactionController.checkMcNoExists);
 // Search transactions - MUST come before /:id route
 router.get('/search', transactionController.searchTransactions);
 
+// Get transactions by referrer ID - MUST come before /:id route
+router.get('/by-referrer', transactionController.getTransactionsByReferrerId);
+
 // Get transaction by ID
 router.get('/:id', transactionController.getTransactionById);
 

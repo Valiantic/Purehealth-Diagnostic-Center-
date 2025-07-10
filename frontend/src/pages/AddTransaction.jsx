@@ -453,11 +453,17 @@ const AddIncome = () => {
       navigate('/department-management');
       return;
     }
-    setTestDepartment(value);
-    const selected = departments.find(dep => dep.departmentName === value);
-    if (selected) {
-      setDepartmentId(selected.departmentId);
-      setUserSelectedDepartment(true);
+    if (value) {
+      setTestDepartment(value);
+      const selected = departments.find(dep => dep.departmentName === value);
+      if (selected) {
+        setDepartmentId(selected.departmentId);
+        setUserSelectedDepartment(true);
+      }
+    } else {
+      setTestDepartment('');
+      setDepartmentId('');
+      setUserSelectedDepartment(false);
     }
   };
 
@@ -1315,24 +1321,25 @@ const AddIncome = () => {
                   </table>
                 </div>
 
-                <div className="flex flex-wrap gap-2 justify-end mt-4">
-                  <button
-                    className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded"
-                    onClick={handleClearAll}
-                    disabled={testsTable.length === 0}
-                  >
-                    Clear
-                  </button>
-                  <button
-                    className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-4 rounded"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openTransactionSummary();
-                    }}
-                  >
-                    Process Transaction
-                  </button>
-                </div>
+                {testsTable.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-end mt-4">
+                    <button
+                      className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded"
+                      onClick={handleClearAll}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      className="bg-green-800 hover:bg-green-900 text-white font-medium py-2 px-4 rounded"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openTransactionSummary();
+                      }}
+                    >
+                      Process Transaction
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1470,11 +1477,12 @@ const AddIncome = () => {
                     className="w-full border border-gray-300 rounded p-2 appearance-none"
                     required
                   >
-                    {Array.isArray(departments) ? departments
+                    <option value="">Select department</option>
+                    {Array.isArray(departments) && departments
                       .filter(dept => dept.status === 'active')
                       .map(dept => (
                         <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                      )) : <option value="">No departments available</option>}
+                      ))}
                     <option value="add-department">+ Add Department</option>
                   </select>
                 </div>
