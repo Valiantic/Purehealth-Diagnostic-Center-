@@ -1,12 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import { referrerAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
+import DateSelector from '../components/transaction/DateSelector'
 
 const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [sortDirection, setSortDirection] = useState('asc'); 
+  
+  
 
   const { data: referrersData, isLoading, error } = useQuery({
     queryKey: ['referrers'],
@@ -42,6 +48,24 @@ const Referrals = () => {
     setSearchTerm(e.target.value)
   }
 
+  const incomeDateInputRef = useRef(null);
+  
+
+   const handleDateChange = (e) => {
+    const newDate = new Date(e.target.value);
+    if (!isNaN(newDate.getTime())) {
+      setSelectedDate(newDate);
+      setPendingRefundAmount(0);
+      setTimeout(() => refetchTransactionData(), 0);
+    }
+  };
+
+  const toggleSortDirection = () => {
+    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    // The query will be refetched automatically due to the queryKey dependency
+  };
+
+
   if (isAuthenticating) {
     return null;
   }
@@ -59,8 +83,41 @@ const Referrals = () => {
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
 
         {/* Search Bar - Now outside the table */}
-        <div className="flex justify-end mb-4 pr-2">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row justify-between items-center sm:items-center mb-4 gap-2 pr-2">
+
+           <button className="ml-2 bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
+            Generate Report
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </button>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+          
+          <div className="relative w-full sm:w-auto">
+            <button 
+            onClick={toggleSortDirection}
+            className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between hover:bg-green-50"
+          >
+            <span>Sort First Name {sortDirection === 'asc' ? 'A-Z' : 'Z-A'}</span>
+            {sortDirection === 'asc' ? (
+           <ArrowUp size={16} className="ml-2" />
+            ) : (
+           <ArrowDown size={16} className="ml-2" />
+           )}
+          </button>
+         </div>
+
+         <div className='relative w-full sm:w-auto'>
+            <DateSelector 
+            date={selectedDate}
+            onDateChange={handleDateChange}
+            inputRef={incomeDateInputRef}
+            className='border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1  text-sm md:text-base w-full sm:w-auto'
+            />
+         </div>
+
+          <div className="relative w-full sm:w-auto">
           <input
             type="text"
             placeholder="Search Doctor..."
@@ -72,7 +129,11 @@ const Referrals = () => {
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </div>
           </div>
+
+          </div>
         </div>
+      
+    
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -100,7 +161,7 @@ const Referrals = () => {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-green-800 bg-green-100">
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">MC#</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">OR#</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Patient Name</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">UTZ</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Lab</th>
@@ -109,14 +170,12 @@ const Referrals = () => {
                           <th className="p-1 border-r border-green-800 text-sm font-medium">ECG</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">X-Ray</th>
                           <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {/* Empty rows for data input */}
                         {[...Array(5)].map((_, index) => (
                           <tr key={`${referrer.referrerId}-row-${index}`} className="border-b border-green-200">
-                            <td className="p-1 border-r border-green-200 bg-white"></td>
                             <td className="p-1 border-r border-green-200 bg-white"></td>
                             <td className="p-1 border-r border-green-200 bg-white"></td>
                             <td className="p-1 border-r border-green-200 bg-white"></td>
@@ -132,7 +191,7 @@ const Referrals = () => {
                     </table>
                   </div>
                   <div className="p-1 border-t border-green-800 font-bold bg-green-100 text-green-800">
-                    TOTAL:
+                    TOTAL REBATES:
                   </div>
                 </div>
               </div>
@@ -140,15 +199,7 @@ const Referrals = () => {
           </div>
         )}
 
-        {/* Generate Report Button */}
-        <div className="flex justify-end p-2 mt-4">
-          <button className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
-            Generate Report
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </button>
-        </div>
+      
       </div>
     </div>
   )
