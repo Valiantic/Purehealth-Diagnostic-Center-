@@ -195,12 +195,45 @@ exports.createTransaction = async (req, res) => {
 // Get all transactions with pagination
 exports.getAllTransactions = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10, status, date, referrerId, includeDetails } = req.query;
     const offset = (page - 1) * limit;
     
     const whereClause = {};
     if (status) {
       whereClause.status = status;
+    }
+    
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      whereClause.transactionDate = {
+        [Op.between]: [startDate, endDate]
+      };
+    }
+    
+    if (referrerId) {
+      whereClause.referrerId = referrerId;
+    }
+
+    const includes = [];
+    
+    includes.push({
+      model: TestDetails,
+      attributes: ['testName', 'departmentId', 'originalPrice', 'discountPercentage', 
+                  'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount']
+    });
+    
+    if (includeDetails === 'true') {
+      includes.push({
+        model: DepartmentRevenue,
+        attributes: ['revenueId', 'departmentId', 'amount', 'status'],
+        where: { status: 'active' }, // Only include active revenues
+        required: false // Use LEFT JOIN so we still get transactions without revenues
+      });
     }
 
     const { count, rows } = await Transaction.findAndCountAll({
@@ -208,13 +241,7 @@ exports.getAllTransactions = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['createdAt', 'DESC']],
-      include: [
-        {
-          model: TestDetails,
-          attributes: ['testName', 'departmentId', 'originalPrice', 'discountPercentage', 
-                      'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount']
-        }
-      ]
+      include: includes
     });
 
     res.json({
@@ -686,6 +713,71 @@ exports.searchTransactions = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to search transactions',
+      error: error.message
+    });
+  }
+};
+
+// Get transactions by referrer ID
+exports.getTransactionsByReferrerId = async (req, res) => {
+  try {
+    const { referrerId, date } = req.query;
+    
+    if (!referrerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Referrer ID is required'
+      });
+    }
+    
+    const whereClause = {
+      referrerId: referrerId,
+      status: 'active' // Only include active transactions
+    };
+    
+    // Add date filter if provided
+    if (date) {
+      // Create a date range for the entire day
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      whereClause.transactionDate = {
+        [Op.between]: [startDate, endDate]
+      };
+    }
+    
+    const transactions = await Transaction.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: DepartmentRevenue,
+          attributes: ['revenueId', 'departmentId', 'amount', 'status'],
+          where: { status: 'active' }, // Only include active revenues
+          required: false
+        },
+        {
+          model: TestDetails,
+          attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 
+                       'discountPercentage', 'discountedPrice'],
+          where: { status: { [Op.ne]: 'deleted' } }, // Exclude deleted tests
+          required: false
+        }
+      ],
+      order: [['transactionDate', 'DESC']]
+    });
+    
+    res.json({
+      success: true,
+      data: transactions
+    });
+  } catch (error) {
+    console.error('Error getting transactions by referrer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve transactions by referrer',
       error: error.message
     });
   }

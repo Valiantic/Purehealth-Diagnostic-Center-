@@ -135,7 +135,7 @@ const Monthly = () => {
   };
 
   const handleAddIncome = () => {
-    navigate('/add-income')
+    navigate('/add-transaction')
   }
 
   const handleAddCollectibles = () => {
@@ -310,13 +310,13 @@ const Monthly = () => {
                       monthlyData.dailyIncome.map((day) => (
                         <tr key={day.date} className="border-b border-green-100">
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(day.date)}</td>
-                          <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(day.grossAmount)}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(day.grossAmount)}</td>
                           {monthlyData.departments.map(dept => (
-                            <td key={`${day.date}-${dept.id}`} className="p-1 border-r border-green-200 text-right bg-white">
+                            <td key={`${day.date}-${dept.id}`} className="p-1 border-r border-green-200 text-center bg-white">
                               {formatCurrency(day.departments[dept.id])}
                             </td>
                           ))}
-                          <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(day.gCashAmount)}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(day.gCashAmount)}</td>
                           <td className="p-1 text-center relative bg-white">
                             <button 
                               className="text-green-800 hover:text-green-600" 
@@ -360,13 +360,13 @@ const Monthly = () => {
                   <tfoot>
                     <tr className="border-t border-green-800 bg-green-100 font-bold">
                       <td className="p-1 border-r border-green-800 text-center">TOTAL:</td>
-                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(monthlySummary.totalGross)}</td>
+                      <td className="p-1 border-r border-green-800 text-center">{formatCurrency(monthlySummary.totalGross)}</td>
                       {monthlyData.departments.map(dept => (
-                        <td key={`total-${dept.id}`} className="p-1 border-r border-green-800 text-right">
+                        <td key={`total-${dept.id}`} className="p-1 border-r border-green-800 text-center">
                           {formatCurrency(monthlySummary.departmentTotals[dept.id])}
                         </td>
                       ))}
-                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(monthlySummary.totalGCash)}</td>
+                      <td className="p-1 border-r border-green-800 text-center">{formatCurrency(monthlySummary.totalGCash)}</td>
                       <td className="p-1"></td>
                     </tr>
                   </tfoot>
@@ -408,7 +408,7 @@ const Monthly = () => {
                             <td className="p-1 border-r border-green-200 text-center bg-white">{item.companyName}</td>
                             <td className="p-1 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
                             <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.createdAt).toLocaleDateString()}</td>
-                            <td className="p-1 border-r border-green-200 text-right bg-white">
+                            <td className="p-1 border-r border-green-200 text-center bg-white">
                               {formatCurrency(item.totalIncome)}
                             </td>
                             <td className="p-1 text-center relative bg-white">

@@ -165,6 +165,21 @@ export const referrerAPI = {
 
 // Transaction API
 export const transactionAPI = {
+  getTransactionsByReferrerId: async (referrerId, date = null) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (referrerId) queryParams.append('referrerId', referrerId);
+      if (date) queryParams.append('date', date);
+      
+      const response = await apiClient.get(`/transactions/by-referrer?${queryParams}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transactions by referrer:', error);
+      throw error;
+    }
+  },
+  
   getAllTransactions: (params = {}) => {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page);

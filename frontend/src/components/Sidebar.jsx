@@ -42,7 +42,7 @@ const Sidebar = () => {
     if (location.pathname === itemPath) return true;
     
     if (itemPath === '/transaction') {
-      return ['/add-income', '/add-expenses', '/transaction'].includes(location.pathname) || 
+      return ['/add-transaction', '/add-expenses', '/transaction'].includes(location.pathname) || 
              location.pathname.startsWith('/transaction/');
     }
     else if (itemPath === '/monthly-income') {
