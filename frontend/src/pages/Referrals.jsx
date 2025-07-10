@@ -55,7 +55,12 @@ const Referrals = () => {
   
   
   // Get transactions for all active referrers
-  const { data: allReferrerTransactions = {}, isLoading: isTransactionsLoading } = useQuery({
+  const { 
+    data: allReferrerTransactions = {}, 
+    isLoading: isTransactionsLoading, 
+    isFetching: isTransactionsFetching,
+    refetch: refetchTransactions 
+  } = useQuery({
     queryKey: ['referrerTransactions', formattedDate],
     queryFn: async () => {
       if (!referrers || referrers.length === 0) return {}
@@ -83,8 +88,11 @@ const Referrals = () => {
       return transactionsMap
     },
     enabled: !!user && referrers.length > 0,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false
+    staleTime: 10 * 1000, // Reduced to 10 seconds to keep data fresher
+    refetchOnWindowFocus: true, 
+    refetchOnMount: true,     
+    refetchInterval: 60 * 1000, 
+    refetchIntervalInBackground: false 
   })
   
 
@@ -470,7 +478,7 @@ const Referrals = () => {
                               </td>
                               {/* Empty cells for each department column to maintain table structure */}
                               {renderableDepartments.length > 0 ? renderableDepartments.map(dept => (
-                                <td key={`empty-${dept.departmentId}`} className="p-1 border-r border-green-200 bg-whitetext-center" style={{ minWidth: '100px' }}>
+                                <td key={`empty-${dept.departmentId}`} className="p-1 bg-white border-r border-green-200 bg-whitetext-center" style={{ minWidth: '100px' }}>
                                   {/* Use non-breaking space to maintain cell structure without showing boxes */}
                                   <span title={`Department: ${dept.departmentName} (${dept.departmentId})`}>&nbsp;</span>
                                 </td>
