@@ -7,7 +7,7 @@ import TabNavigation from '../components/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { activityLogAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
-import { formatTimeZome } from 'date-fns-tz'
+import { formatInTimeZone } from 'date-fns-tz'
 
 const ActivityLog = () => {
   const { user, isAuthenticating } = useAuth()
@@ -241,7 +241,7 @@ const ActivityLog = () => {
                                 </span>
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
-                                {log.created ? formatTimeZome(new Date(log.created), 'Asia/Manila', 'HH:mm:ss') : 'log.time'}
+                                {log.created ? formatInTimeZone(new Date(log.created), 'Asia/Manila', 'HH:mm:ss') : log.time}
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 {log.date}
