@@ -85,6 +85,15 @@ const getActivityLogs = async (req, res) => {
         email: 'deleted@user.com',
         role: 'unknown'
       };
+
+      // Format createdAt to Manila time
+      const manilaTime = new Date(plainLog.createdAt).toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Manila',
+        hour12: true,
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit'
+      });
       
       return {
         logId: plainLog.logId,
@@ -94,7 +103,7 @@ const getActivityLogs = async (req, res) => {
         resourceId: plainLog.resourceId,
         details: plainLog.details,
         createdAt: plainLog.createdAt,
-        time: new Date(plainLog.createdAt).toLocaleTimeString(),
+        time: manilaTime,
         date: new Date(plainLog.createdAt).toLocaleDateString()
       };
     });
