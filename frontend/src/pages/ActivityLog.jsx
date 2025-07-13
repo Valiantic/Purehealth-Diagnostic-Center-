@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Download, RefreshCw, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Download, RefreshCw, X, Calendar } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import TabNavigation from '../components/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { activityLogAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
-import { formatInTimeZone } from 'date-fns-tz'
 
 const ActivityLog = () => {
   const { user, isAuthenticating } = useAuth()
@@ -241,7 +240,7 @@ const ActivityLog = () => {
                                 </span>
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
-                                {log.created ? formatInTimeZone(new Date(log.created), 'Asia/Manila', 'HH:mm:ss') : log.time}
+                                {log.time}
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 {log.date}
