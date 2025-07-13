@@ -4,12 +4,14 @@ import { authenticateUser } from '../utils/webauthn';
 import { Shield } from 'lucide-react';
 import MicroscopeBg from '../assets/images/LoginCover.jpg';
 import PHDCILogo from '../assets/icons/purehealth_logo.png';
+import AuthModal from './AuthModal';
 
 const LoginForm = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleUsernameChange = (e) => {
     setUsername(e.target.value);
@@ -29,17 +31,21 @@ const LoginForm = () => {
     
     setLoading(true);
     setError('');
+    setShowAuthModal(true);
     
     try {
       const result = await authenticateUser(username);
       
       if (result.success) {
         localStorage.setItem('user', JSON.stringify(result.user));
+        setShowAuthModal(false);
         navigate('/dashboard');
       } else {
+        setShowAuthModal(false);
         setError(result.message || 'Authentication failed');
       }
     } catch (error) {
+      setShowAuthModal(false);
       setError('Authentication failed. Please try again.');
       console.error(error);
     } finally {
@@ -48,6 +54,7 @@ const LoginForm = () => {
   };
 
   return (
+    <>
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 w-full max-w-full overflow-hidden">
     {/* Login Cover - Mobile */}
     <div className="md:hidden h-20 bg-cover bg-center relative w-screen" style={{
@@ -142,6 +149,12 @@ const LoginForm = () => {
       </div>
     </div>
   </div>
+
+  <AuthModal
+  isOpen={showAuthModal}
+  onClose={() => setShowAuthModal(false)}
+  />
+    </>
   );
 };
 
