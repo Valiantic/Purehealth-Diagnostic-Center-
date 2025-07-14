@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { BsTriangleFill } from 'react-icons/bs';
+import { TbTriangleInvertedFilled } from 'react-icons/tb';
+import { RxAvatar } from 'react-icons/rx';
 import Chart from 'chart.js/auto';
 import Sidebar from '../components/Sidebar';
-import Income from '../assets/icons/profits.png';
-import Expense from '../assets/icons/expense.png';
 import useAuth from '../hooks/useAuth';
+import { Calendar } from 'lucide-react';
 
 const Dashboard = () => {
   // Use the custom auth hook - with isAuthenticating check
@@ -211,30 +213,61 @@ const Dashboard = () => {
       
       <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
         {/* Header Section */}
-        <div className="bg-[#02542D] p-6 rounded-lg shadow-md flex justify-around items-center space-x-8 mb-6">
-          {/* Total Income */}
-          <div className="flex flex-col items-start">
-            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-2xl">Total Monthly Revenue</h2>
-            <div className="flex items-center gap-4">
-              <img src={Income} className="w-12 h-12" alt="Income Icon" />
-              <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 25,000</h1>
+        <div className='flex flex-col lg:flex-row items-start justify-start gap-4 mb-6'>
+
+          {/* Main metrics container */}
+          <div className='flex-1 w-full text-center grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-3 gap-4'>
+
+            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
+              {/* Total Revenue */}
+              <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Revenue</h2>
+              <div className="flex items-center gap-2 md:gap-4">
+                <BsTriangleFill className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" />
+                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">₱ 25,000</h1>
+              </div>
             </div>
+
+            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
+              {/* Total Expenses */}
+              <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Expenses</h2>
+              <div className="flex items-center gap-2 md:gap-4">
+                <TbTriangleInvertedFilled className="w-4 h-4  sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" />
+                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">₱ 3,000</h1>
+              </div>
+            </div>
+
+            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
+              {/* Net Profit */}
+              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Net Profit</h2>
+              <div className="flex items-center gap-2 md:gap-4">
+                <BsTriangleFill className="w-4 h-4  sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" />
+                <h1 className="text-green-800 font-medium text-lg md:text-2xl lg:text-3xl">₱ 22,000</h1>
+              </div>
+            </div>
+
           </div>
 
-          {/* Total Expenses */}
-          <div className="flex flex-col items-start">
-            <h2 className="font-bold mb-4 text-white sm:text-xs md:text-2xl">Total Monthly Expenses</h2>
-            <div className="flex items-center gap-4">
-              <img src={Expense} className="w-12 h-12" alt="Expense Icon" />
-              <h1 className="text-white font-bold sm:text-xs md:text-4xl">₱ 3,000</h1>
+          {/* Side info container */}
+          <div className='flex flex-row lg:flex-col gap-4 w-full lg:w-auto lg:min-w-[220px]'>
+
+            <div className='bg-white border-2 border-green-600 p-3 rounded-lg shadow-md flex items-center justify-center gap-2 flex-1 lg:flex-none'>
+              <RxAvatar className="w-4 h-4 md:w-6 sm:w-4 sm:h-4 md:h-6 text-green-700" /> 
+              <span className="text-green-700 font-medium text-sm md:text-lg">John Doe</span>
             </div>
+
+            <div className='bg-white border-2 border-green-600 p-3 rounded-lg shadow-md flex items-center justify-center gap-2 flex-1 lg:flex-none'>
+              <Calendar className="w-4 h-4 md:w-6 sm:w-4 sm:h-4 md:h-6 text-green-700" /> 
+              <span className="text-green-700 font-medium text-sm md:text-lg">March 2025</span>
+            </div>
+          
           </div>
+
         </div>
-        
-        {/* Charts Section */}
+              
+              {/* Charts Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Daily Income Trend Chart */}
-          <div className="bg-white p-4 rounded-lg shadow-md">
+          <div className="bg-white border border-2 border-green-600 p-4 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-medium text-gray-700">Daily Income Trend</h3>
               <div 
@@ -257,7 +290,7 @@ const Dashboard = () => {
           </div>
           
           {/* Monthly Expenses by Department Chart */}
-          <div className="bg-white p-4 rounded-lg shadow-md">
+          <div className="bg-white border border-2 border-green-600 p-4 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-medium text-gray-700">Monthly Expenses Breakdown by Department</h3>
               <div 
@@ -301,7 +334,7 @@ const Dashboard = () => {
         </div>
         
         {/* Monthly Net Profit Chart (Full Width) */}
-        <div className="bg-white p-4 rounded-lg shadow-md mt-6">
+        <div className="bg-white border border-2 border-green-600 p-4 rounded-lg shadow-md mt-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-medium text-gray-700">Monthly Net Profit</h3>
             <div 
