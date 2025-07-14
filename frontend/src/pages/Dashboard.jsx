@@ -4,13 +4,16 @@ import { TbTriangleInvertedFilled } from 'react-icons/tb';
 import { RxAvatar } from 'react-icons/rx';
 import Chart from 'chart.js/auto';
 import Sidebar from '../components/Sidebar';
-import useAuth from '../hooks/useAuth';
 import { Calendar } from 'lucide-react';
+import useUserDisplay from '../hooks/useUserDisplay';
+import useAuth  from '../hooks/useAuth';
 
 const Dashboard = () => {
   // Use the custom auth hook - with isAuthenticating check
   const { user, isAuthenticating } = useAuth();
-  
+
+  const userDisplayData = useUserDisplay(user);
+
   // Tooltip visibility states
   const [showDailyIncomeTooltip, setShowDailyIncomeTooltip] = useState(false);
   const [showExpensesTooltip, setShowExpensesTooltip] = useState(false);
@@ -252,7 +255,11 @@ const Dashboard = () => {
 
             <div className='bg-white border-2 border-green-600 p-3 rounded-lg shadow-md flex items-center justify-center gap-2 flex-1 lg:flex-none'>
               <RxAvatar className="w-4 h-4 md:w-6 sm:w-4 sm:h-4 md:h-6 text-green-700" /> 
-              <span className="text-green-700 font-medium text-sm md:text-lg">John Doe</span>
+              <span className="text-green-700 font-medium text-sm md:text-lg"
+              title={userDisplayData.fullName}
+              >
+                {userDisplayData.displayName}
+              </span>
             </div>
 
             <div className='bg-white border-2 border-green-600 p-3 rounded-lg shadow-md flex items-center justify-center gap-2 flex-1 lg:flex-none'>
