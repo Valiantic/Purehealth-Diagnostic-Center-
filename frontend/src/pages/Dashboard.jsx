@@ -7,10 +7,37 @@ import Sidebar from '../components/Sidebar';
 import { Calendar } from 'lucide-react';
 import useUserDisplay from '../hooks/useUserDisplay';
 import useAuth  from '../hooks/useAuth';
+import useDashboardMetrics from '../hooks/useDashboardMetrics';
 
 const Dashboard = () => {
   // Use the custom auth hook - with isAuthenticating check
   const { user, isAuthenticating } = useAuth();
+  
+  // Get current month/year for dashboard metrics
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear();
+  
+  // Use dashboard metrics hook
+  const { metrics, loading: metricsLoading, error: metricsError, refetch } = useDashboardMetrics(currentMonth, currentYear);
+
+  console.log('Dashboard state:', { 
+    user: !!user, 
+    isAuthenticating, 
+    metricsLoading, 
+    metricsError, 
+    metrics 
+  });
+
+  // Debug: Force refetch when component mounts
+  useEffect(() => {
+    if (user && !metricsLoading) {
+      console.log('🔄 Component mounted, attempting to refetch metrics...');
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+    }
+  }, [user]);
 
   const userDisplayData = useUserDisplay(user);
 
@@ -202,13 +229,43 @@ const Dashboard = () => {
 
   // Return nothing while authenticating to prevent flash of protected content
   if (isAuthenticating) {
+    console.log('🔐 Authenticating user...');
     return null;
   }
 
   // If user is null after authentication check, the hook will handle redirect
   if (!user) {
+    console.log('❌ No user found, redirecting...');
     return null;
   }
+
+  // Show loading state while fetching metrics
+  if (metricsLoading) {
+    console.log('📊 Loading dashboard metrics...');
+    return (
+      <div className="flex h-screen bg-gray-100">
+        <Sidebar />
+        <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading dashboard metrics...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Format currency for display
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -226,7 +283,9 @@ const Dashboard = () => {
               <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Revenue</h2>
               <div className="flex items-center gap-2 md:gap-4">
                 <BsTriangleFill className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" />
-                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">₱ 25,000</h1>
+                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
+                  {metricsError ? '₱ 0' : formatCurrency(metrics.totalRevenue)}
+                </h1>
               </div>
             </div>
 
@@ -235,7 +294,9 @@ const Dashboard = () => {
               <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Expenses</h2>
               <div className="flex items-center gap-2 md:gap-4">
                 <TbTriangleInvertedFilled className="w-4 h-4  sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" />
-                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">₱ 3,000</h1>
+                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
+                  {metricsError ? '₱ 0' : formatCurrency(metrics.totalExpenses)}
+                </h1>
               </div>
             </div>
 
@@ -243,8 +304,10 @@ const Dashboard = () => {
               {/* Net Profit */}
               <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Net Profit</h2>
               <div className="flex items-center gap-2 md:gap-4">
-                <BsTriangleFill className="w-4 h-4  sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" />
-                <h1 className="text-green-800 font-medium text-lg md:text-2xl lg:text-3xl">₱ 22,000</h1>
+                <BsTriangleFill className={`w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 ${metrics.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                <h1 className="text-green-800 font-medium text-lg md:text-2xl lg:text-3xl">
+                  {metricsError ? '₱ 0' : formatCurrency(metrics.netProfit)}
+                </h1>
               </div>
             </div>
 
@@ -264,12 +327,38 @@ const Dashboard = () => {
 
             <div className='bg-white border-2 border-green-600 p-3 rounded-lg shadow-md flex items-center justify-center gap-2 flex-1 lg:flex-none'>
               <Calendar className="w-4 h-4 md:w-6 sm:w-4 sm:h-4 md:h-6 text-green-700" /> 
-              <span className="text-green-700 font-medium text-sm md:text-lg">March 2025</span>
+              <span className="text-green-700 font-medium text-sm md:text-lg">
+                {new Date(currentYear, currentMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
             </div>
           
           </div>
 
         </div>
+
+        {/* Error Display */}
+        {metricsError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex items-center justify-between">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Unable to load dashboard metrics
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{metricsError}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={refetch}
+                  className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
               
               {/* Charts Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
