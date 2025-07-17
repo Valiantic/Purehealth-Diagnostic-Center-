@@ -6,6 +6,16 @@ const http = require('http');
 const { sequelize } = require('./models');
 const socketManager = require('./utils/socketManager');
 
+// Log environment variables for WebAuthn debugging
+console.log('WebAuthn Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DOMAIN: process.env.DOMAIN,
+  RP_ID: process.env.RP_ID,
+  ORIGIN: process.env.ORIGIN,
+  VERCEL: process.env.VERCEL,
+  VERCEL_URL: process.env.VERCEL_URL
+});
+
 // Routes
 const userRoutes = require('./routes/userRoutes');
 const webauthnRoutes = require('./routes/webauthnRoutes');
@@ -31,7 +41,7 @@ socketManager.init(server);
 
 // Configure CORS more explicitly
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.CORS_ORIGIN || 'https://purehealth-diagnostic-center.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));

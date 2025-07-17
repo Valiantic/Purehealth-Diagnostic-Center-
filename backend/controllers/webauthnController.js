@@ -24,7 +24,8 @@ setInterval(() => {
 // Generate temporary registration options (no user created yet)
 async function tempRegistrationOptions(req, res) {
   try {
-    const userData = req.body;
+    const { clientOrigin, ...userData } = req.body;
+    
     
     // Validate input
     if (!userData.email || !userData.firstName || !userData.lastName) {
@@ -52,7 +53,8 @@ async function tempRegistrationOptions(req, res) {
       email: userData.email,
       firstName: userData.firstName,
       lastName: userData.lastName,
-      isTemporary: true  // Flag to indicate this is not a Sequelize model
+      isTemporary: true,  
+      clientOrigin: clientOrigin 
     };
     
     // Generate registration options
@@ -88,7 +90,7 @@ async function tempRegistrationOptions(req, res) {
 // Verify temporary registration and create user
 async function tempRegistrationVerify(req, res) {
   try {
-    const { tempRegistrationId, response, userData } = req.body;
+    const { tempRegistrationId, response, userData, clientOrigin } = req.body;
     
     // Check if temp registration exists
     if (!tempRegistrations.has(tempRegistrationId)) {
@@ -111,8 +113,7 @@ async function tempRegistrationVerify(req, res) {
     };
     
     try {
-      // Verify registration response
-      const verification = await verifyRegResponse(tempUser, response, true);
+      const verification = await verifyRegResponse(tempUser, response, true, clientOrigin);
       
       if (!verification.verified) {
         return res.status(400).json({
@@ -226,7 +227,7 @@ async function registrationOptions(req, res) {
 // Verify registration response
 async function registrationVerify(req, res) {
   try {
-    const { userId, response, isPrimary = true } = req.body;
+    const { userId, response, isPrimary = true, clientOrigin } = req.body;
 
     if (!userId || !response) {
       return res.status(400).json({
@@ -244,8 +245,7 @@ async function registrationVerify(req, res) {
       });
     }
 
-    // Verify registration response
-    const verification = await verifyRegResponse(user, response, isPrimary);
+    const verification = await verifyRegResponse(user, response, isPrimary, clientOrigin);
 
     if (!verification.verified) {
       return res.status(400).json({
@@ -310,7 +310,7 @@ async function authenticationOptions(req, res) {
 // Verify authentication response
 async function authenticationVerify(req, res) {
   try {
-    const { userId, response } = req.body;
+    const { userId, response, clientOrigin } = req.body;
 
     if (!userId || !response) {
       return res.status(400).json({
@@ -328,8 +328,7 @@ async function authenticationVerify(req, res) {
       });
     }
 
-    // Verify authentication response
-    const verification = await verifyAuthResponse(user, response);
+    const verification = await verifyAuthResponse(user, response, clientOrigin);
 
     if (!verification.verified) {
       return res.status(401).json({
