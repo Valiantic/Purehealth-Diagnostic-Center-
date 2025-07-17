@@ -1,6 +1,7 @@
 const { Expense, ExpenseItem, Department, User, ActivityLog } = require('../models');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
+const socketManager = require('../utils/socketManager');
 
 // Create a new expense with multiple expense items
 const createExpense = async (req, res) => {
@@ -45,6 +46,9 @@ const createExpense = async (req, res) => {
     }, { transaction });
     
     await transaction.commit();
+    
+    // Emit socket event for real-time dashboard update
+    socketManager.emitExpenseUpdate(expense);
     
     res.status(201).json({
       success: true,

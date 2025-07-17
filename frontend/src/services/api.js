@@ -2,13 +2,55 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+// Add this to prevent duplicate requests for dashboard real time updates
+// Request queue to prevent overwhelming the server
+const requestQueue = new Map();
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 10000 // 10 second timeout
 });
+
+// Add request interceptor for duplicate request prevention
+apiClient.interceptors.request.use(
+  (config) => {
+    const requestKey = `${config.method}:${config.url}:${JSON.stringify(config.params)}`;
+    
+    if (requestQueue.has(requestKey)) {
+      return requestQueue.get(requestKey);
+    }
+    
+    requestQueue.set(requestKey, config);
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to clean up the queue
+apiClient.interceptors.response.use(
+  (response) => {
+    const requestKey = `${response.config.method}:${response.config.url}:${JSON.stringify(response.config.params)}`;
+
+    requestQueue.delete(requestKey);
+    
+    return response;
+  },
+  (error) => {
+    if (error.config) {
+      const requestKey = `${error.config.method}:${error.config.url}:${JSON.stringify(error.config.params)}`;
+      requestQueue.delete(requestKey);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // User API
 export const userAPI = {
@@ -418,4 +460,33 @@ export const monthlyExpenseAPI = {
     return apiClient.get(`/monthly-expenses/summary`, { params });
   }
 };
+
+// Dashboard API
+export const dashboardAPI = {
+  getMonthlyData: (month, year) => {
+    return apiClient.get('/dashboard/monthly-data', {
+      params: { month, year }
+    });
+  },
+  
+  getDailyIncome: (month, year) => {
+    return apiClient.get('/dashboard/daily-income', {
+      params: { month, year }
+    });
+  },
+  
+  getExpensesByDepartment: (month, year) => {
+    return apiClient.get('/dashboard/expenses-by-department', {
+      params: { month, year }
+    });
+  },
+  
+  getMonthlyProfit: (year) => {
+    return apiClient.get('/dashboard/monthly-profit', {
+      params: { year }
+    });
+  }
+};
+
+export default apiClient;
 
