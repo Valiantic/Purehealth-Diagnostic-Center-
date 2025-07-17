@@ -5,7 +5,6 @@ module.exports = (sequelize) => {
         expenseItemId: {
             type: DataTypes.INTEGER,
             primaryKey: true,
-            defaultValue: DataTypes.INTEGER,
             autoIncrement: true
         },
         expenseId: {

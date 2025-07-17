@@ -72,7 +72,7 @@ const createExpense = async (req, res) => {
 // Get expenses with pagination and filtering
 const getExpenses = async (req, res) => {
   try {
-    const { page = 1, limit = 10, departmentId, startDate, endDate } = req.query;
+    const { page = 1, limit = 10, departmentId, startDate, endDate, date } = req.query;
     
     const offset = (page - 1) * limit;
     
@@ -84,7 +84,10 @@ const getExpenses = async (req, res) => {
     }
     
     // Add date range filter if provided
-    if (startDate && endDate) {
+    if (date) {
+      // If single date is provided, filter for that specific date
+      whereClause.date = date;
+    } else if (startDate && endDate) {
       whereClause.date = {
         [Op.between]: [startDate, endDate]
       };
