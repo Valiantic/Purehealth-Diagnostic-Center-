@@ -287,6 +287,12 @@ feature/Build-Dashboard-Functionality
 - New endpoints to getMonthly data
 - Create chartDataTransformers for chart styling
 
+feature/Socket-io-Package-Install-BE 
+
+devpatch6 - Merge Conflict
+
+feature/Build-Dashboard-Functionality-With-Socket.io-Package-BE
+
 
 --LATER--
 feature/Test-Management-Search-Date-Bug
