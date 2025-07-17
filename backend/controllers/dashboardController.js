@@ -121,7 +121,10 @@ const dashboardController = {
             [Op.ne]: 'refunded'
           }
         },
-        group: [sequelize.fn('EXTRACT', sequelize.literal("DAY FROM \"Transaction\".\"transactionDate\""))],
+        group: [
+          sequelize.fn('EXTRACT', sequelize.literal("DAY FROM \"Transaction\".\"transactionDate\"")),
+          sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day')
+        ],
         order: [[sequelize.fn('EXTRACT', sequelize.literal("DAY FROM \"Transaction\".\"transactionDate\"")), 'ASC']],
         raw: true
       });
@@ -212,9 +215,9 @@ const dashboardController = {
           }
         },
         group: [
-        '"Expense"."departmentId"', 
-        '"Department"."departmentId"', 
-        '"Department"."departmentName"'
+          '"Expense"."departmentId"',
+          '"Expense->Department"."departmentId"',
+          '"Expense->Department"."departmentName"'
         ],
         having: sequelize.literal('SUM("ExpenseItem"."amount") > 0'),
         raw: true
@@ -226,8 +229,8 @@ const dashboardController = {
       const chartData = expensesByDept.map(item => {
         
         // Try different possible paths for department name
-        const departmentName = item['Expense.Department.departmentName'] || 
-                              item['Expense->Department.departmentName'] || 
+        const departmentName = item['Expense->Department.departmentName'] || 
+                              item['Expense.Department.departmentName'] || 
                               item['Department.departmentName'] ||
                               item.departmentName ||
                               'Other';
