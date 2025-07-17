@@ -75,7 +75,7 @@ CREATE TABLE `tests` (
 -- Create Transactions table
 CREATE TABLE "Transactions" (
   "transactionId" VARCHAR(5) PRIMARY KEY,
-  "mcNo" VARCHAR(5) NOT NULL CHECK ("mcNo" ~ '^[0-9]{5}$'),
+  "mcNo" VARCHAR(10) NOT NULL CHECK ("mcNo" ~ '^[0-9]{5,10}$'),
   "firstName" VARCHAR(255) NOT NULL,
   "lastName" VARCHAR(255) NOT NULL,
   "idType" VARCHAR(255) NOT NULL DEFAULT 'Regular',
@@ -184,3 +184,7 @@ CREATE TABLE `CollectibleIncome` (
   `updatedAt` DATETIME NOT NULL,
   PRIMARY KEY (`companyId`)
 ) 
+
+-- mcNo/OrNo Bug fixed
+ALTER TABLE Transactions 
+MODIFY COLUMN mcNo VARCHAR(10) NOT NULL;

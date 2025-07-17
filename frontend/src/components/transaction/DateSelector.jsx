@@ -6,7 +6,8 @@ const DateSelector = ({
   onDateChange, 
   inputRef, 
   className = "relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer",
-  customStyles = {}
+  customStyles = {},
+  displayFormat = "full-date" // "full-date" or "month-year"
 }) => {
 
   const openDatePicker = () => {
@@ -16,6 +17,13 @@ const DateSelector = ({
   };
 
   const formatDateToDisplay = (date) => {
+    if (displayFormat === "month-year") {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long'
+      });
+    }
+    
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

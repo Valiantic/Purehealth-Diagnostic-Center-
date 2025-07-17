@@ -1,5 +1,6 @@
 const { Transaction, TestDetails, ActivityLog, Department, DepartmentRevenue, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Fix: use CommonJS require syntax instead of ES Module import
+const socketManager = require('../utils/socketManager');
 
 // Create a new transaction with items and track department revenue
 exports.createTransaction = async (req, res) => {
@@ -70,21 +71,25 @@ exports.createTransaction = async (req, res) => {
     if (mcNo) {
       generatedMcNo = mcNo;
     } else {
-      // Find the highest MC number in the database
+      // Find the highest MC number in the database using Sequelize literal to cast as integer
       const highestMcTransaction = await Transaction.findOne({
         attributes: ['mcNo'],
-        order: [['mcNo', 'DESC']]
-      }, { transaction: t });
+        order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+        transaction: t
+      });
       
       // Generate the next MC number
       if (highestMcTransaction && highestMcTransaction.mcNo) {
         // Convert string to number, increment, then format back to string with leading zeros
         const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
         const nextNumber = currentNumber + 1;
+        
         generatedMcNo = String(nextNumber).padStart(5, '0');
+        console.log(`Found highest mcNo: ${highestMcTransaction.mcNo}, generating next: ${generatedMcNo}`);
       } else {
         // If no existing transactions, start from 10000
         generatedMcNo = '10000';
+        console.log('No existing transactions found, starting from: 10000');
       }
     }
     
@@ -166,6 +171,9 @@ exports.createTransaction = async (req, res) => {
 
     // Commit the transaction
     await t.commit();
+
+    // Emit socket event for real-time dashboard update
+    socketManager.emitTransactionUpdate(transaction);
 
     // Return success response
     res.status(201).json({
