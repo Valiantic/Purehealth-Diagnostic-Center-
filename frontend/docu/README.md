@@ -287,6 +287,16 @@ feature/Build-Dashboard-Functionality
 - New endpoints to getMonthly data
 - Create chartDataTransformers for chart styling
 
+feature/Socket-io-Package-Install-BE 
+
+devpatch6 - Merge Conflict
+
+feature/Build-Dashboard-Functionality-With-Socket.io-Package-BE -- will not used instead use devpatch-pre-prod merge fixed branch
+
+devpatch7 - New Core Branch due to Conflict
+
+feature/Pre-Prod-Merge-Conflict-Resolve-v.1
+
 
 --LATER--
 feature/Test-Management-Search-Date-Bug
@@ -467,10 +477,4 @@ ALTER COLUMN "referrerId" TYPE INTEGER USING "referrerId"::text::integer;
 -- 5. Fix TestDetails table - Change testId from UUID to INTEGER  
 ALTER TABLE "TestDetails"
 ALTER COLUMN "testId" TYPE INTEGER USING "testId"::text::integer;
-
-
-
-
-
-
 
