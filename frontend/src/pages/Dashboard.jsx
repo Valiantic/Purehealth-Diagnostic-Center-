@@ -58,23 +58,11 @@ const DashboardContent = () => {
       const year = newDate.getFullYear();
       
       if (month !== currentMonth || year !== currentYear) {
-        console.log('Date changed, setting period to:', month, year);
         setSelectedDate(newDate);
         setPeriod(month, year);
       }
     }
   };
-
-  // Debug comparison data
-  useEffect(() => {
-    if (revenueComparison || expensesComparison || netProfitComparison) {
-      console.log('Comparison data:', {
-        revenue: revenueComparison,
-        expenses: expensesComparison,
-        netProfit: netProfitComparison
-      });
-    }
-  }, [revenueComparison, expensesComparison, netProfitComparison]);
 
   // Tooltip visibility states
   const [showDailyIncomeTooltip, setShowDailyIncomeTooltip] = useState(false);
