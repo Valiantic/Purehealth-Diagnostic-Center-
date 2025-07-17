@@ -1,0 +1,299 @@
+// Chart color palette
+export const chartColors = {
+  primary: '#02542D',
+  secondary: '#1C7847',
+  accent1: '#4CAF50',
+  accent2: '#8BC34A',
+  gradient: 'rgba(2, 84, 45, 0.1)',
+  
+  // Color arrays for multiple data series
+  greenShades: ['#02542D', '#1C7847', '#4CAF50', '#8BC34A', '#C8E6C9', '#66BB6A', '#81C784', '#A5D6A7'],
+  pieChartColors: [
+    '#02542D',  // Deep green
+    '#1C7847',  // Forest green  
+    '#4CAF50',  // Material green
+    '#8BC34A',  // Light green
+    '#66BB6A',  // Medium green
+    '#81C784',  // Soft green
+    '#A5D6A7',  // Very light green
+    '#C8E6C9'   // Pale green
+  ],
+  profitColors: ['#8BC34A', '#4CAF50', '#02542D']
+};
+
+// Transform daily income data for Chart.js line chart
+export const transformDailyIncomeData = (dailyData) => {
+  if (!Array.isArray(dailyData) || dailyData.length === 0) {
+    return {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Daily Income',
+        data: [0, 0, 0, 0, 0, 0, 0],
+        borderColor: chartColors.primary,
+        backgroundColor: chartColors.gradient,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: chartColors.primary,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      }]
+    };
+  }
+
+  // Sort data by day
+  const sortedData = [...dailyData].sort((a, b) => a.day - b.day);
+  
+  const labels = sortedData.map(item => 
+    item.dayName?.substring(0, 3) || `Day ${item.day}`
+  );
+  
+  const amounts = sortedData.map(item => parseFloat(item.amount) || 0);
+
+  return {
+    labels,
+    datasets: [{
+      label: 'Daily Income',
+      data: amounts,
+      borderColor: chartColors.primary,
+      backgroundColor: chartColors.gradient,
+      tension: 0.4,
+      fill: true,
+      pointBackgroundColor: chartColors.primary,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 2,
+      pointRadius: 4
+    }]
+  };
+};
+
+// Transform expenses by department data for Chart.js pie chart
+export const transformExpensesByDepartment = (expensesData) => {
+  
+  if (!Array.isArray(expensesData) || expensesData.length === 0) {
+
+    return {
+      labels: ['No Data'],
+      datasets: [{
+        data: [100],
+        backgroundColor: ['#E0E0E0'],
+        borderColor: ['#ffffff'],
+        borderWidth: 2
+      }],
+      legendData: [{
+        label: 'No Data',
+        color: '#E0E0E0',
+        amount: 0,
+        percentage: 100
+      }]
+    };
+  }
+
+  const labels = expensesData.map(item => item.department || 'Unknown');
+  const amounts = expensesData.map(item => parseFloat(item.amount) || 0);
+  const percentages = expensesData.map(item => parseFloat(item.percentage) || 0);
+  
+  
+  // Generate distinct colors for each department
+  const colors = labels.map((_, index) => 
+    chartColors.pieChartColors[index % chartColors.pieChartColors.length]
+  );
+
+  // Legend data for manual legend rendering with proper percentage calculation
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  const legendData = labels.map((label, index) => ({
+    label,
+    color: colors[index],
+    amount: amounts[index],
+    percentage: total > 0 ? parseFloat(((amounts[index] / total) * 100).toFixed(2)) : 0
+  }));
+
+  return {
+    labels,
+    datasets: [{
+      data: amounts,
+      backgroundColor: colors,
+      borderColor: colors.map(() => '#ffffff'),
+      borderWidth: 2,
+      hoverOffset: 6,
+      hoverBorderWidth: 3,
+      hoverBorderColor: '#ffffff'
+    }],
+    legendData
+  };
+};
+
+// Transform monthly profit data for Chart.js bar chart
+export const transformMonthlyProfitData = (monthlyData) => {
+  if (!Array.isArray(monthlyData) || monthlyData.length === 0) {
+    // Return default 12-month structure
+    const defaultMonths = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    return {
+      labels: defaultMonths,
+      datasets: [{
+        label: 'Net Profit',
+        data: new Array(12).fill(0),
+        backgroundColor: new Array(12).fill(chartColors.primary),
+        borderWidth: 0,
+        borderRadius: 2,
+        barThickness: 30
+      }]
+    };
+  }
+
+  // Ensure we have all 12 months
+  const allMonths = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const labels = allMonths;
+  const profits = allMonths.map((_, index) => {
+    const monthData = monthlyData.find(item => item.month === index + 1);
+    return monthData ? parseFloat(monthData.profit) || 0 : 0;
+  });
+
+  // Color bars based on profit value
+  const backgroundColors = profits.map(profit => {
+    if (profit > 15000) return chartColors.accent2;
+    if (profit > 5000) return chartColors.accent1;
+    if (profit > 0) return chartColors.primary;
+    return '#E0E0E0'; // Gray for zero/negative
+  });
+
+  return {
+    labels,
+    datasets: [{
+      label: 'Net Profit',
+      data: profits,
+      backgroundColor: backgroundColors,
+      borderWidth: 0,
+      borderRadius: 2,
+      barThickness: 30
+    }]
+  };
+};
+
+// Format currency for tooltips and labels
+export const formatCurrency = (amount, currency = '₱') => {
+  if (typeof amount !== 'number') {
+    amount = parseFloat(amount) || 0;
+  }
+  
+  return `${currency} ${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  })}`;
+};
+
+// Common chart options
+export const getCommonChartOptions = () => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false
+    },
+    tooltip: {
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      titleColor: '#ffffff',
+      bodyColor: '#ffffff',
+      cornerRadius: 4,
+      displayColors: false
+    }
+  }
+});
+
+// Line chart specific options
+export const getLineChartOptions = () => ({
+  ...getCommonChartOptions(),
+  plugins: {
+    ...getCommonChartOptions().plugins,
+    tooltip: {
+      ...getCommonChartOptions().plugins.tooltip,
+      callbacks: {
+        label: function(context) {
+          return `Income: ${formatCurrency(context.parsed.y)}`;
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        stepSize: 1000,
+        font: { size: 10 },
+        callback: function(value) {
+          return formatCurrency(value);
+        }
+      },
+      grid: {
+        color: 'rgba(0, 0, 0, 0.1)'
+      }
+    },
+    x: {
+      grid: {
+        color: 'rgba(0, 0, 0, 0.1)'
+      }
+    }
+  }
+});
+
+// Pie chart specific options
+export const getPieChartOptions = () => ({
+  ...getCommonChartOptions(),
+  plugins: {
+    ...getCommonChartOptions().plugins,
+    tooltip: {
+      ...getCommonChartOptions().plugins.tooltip,
+      callbacks: {
+        label: function(context) {
+          const label = context.label || '';
+          const value = context.parsed || 0;
+          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+          return `${label}: ${formatCurrency(value)} (${percentage}%)`;
+        }
+      }
+    }
+  }
+});
+
+// Bar chart specific options
+export const getBarChartOptions = () => ({
+  ...getCommonChartOptions(),
+  plugins: {
+    ...getCommonChartOptions().plugins,
+    tooltip: {
+      ...getCommonChartOptions().plugins.tooltip,
+      callbacks: {
+        label: function(context) {
+          return formatCurrency(context.parsed.y);
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      grid: {
+        color: 'rgba(0, 0, 0, 0.1)'
+      },
+      ticks: {
+        callback: function(value) {
+          return value === 0 ? '0' : formatCurrency(value);
+        }
+      }
+    },
+    x: {
+      grid: {
+        display: false
+      }
+    }
+  }
+});

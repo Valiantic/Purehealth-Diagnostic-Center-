@@ -11,16 +11,11 @@ module.exports = (sequelize) => {
       }
     },
     mcNo: {
-      type: DataTypes.STRING(5),
+      type: DataTypes.STRING(10),
       allowNull: false,
       defaultValue: () => {
-        // Ensure mcNo is exactly 5 digits - no "mc" prefix
         const num = Math.floor(10000 + Math.random() * 90000);
-        return num.toString(); // Just the 5 digits
-      },
-      // Validate that mcNo is exactly 5 digits
-      validate: {
-        is: /^\d{5}$/
+        return num.toString();
       }
     },
     firstName: {

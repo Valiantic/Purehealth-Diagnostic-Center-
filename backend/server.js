@@ -2,7 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const http = require('http');
 const { sequelize } = require('./models');
+const socketManager = require('./utils/socketManager');
 
 // Routes
 const userRoutes = require('./routes/userRoutes');
@@ -18,9 +20,14 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const collectibleIncomeRoutes = require('./routes/collectibleIncomeRoute');
 const monthlyIncomeRoutes = require('./routes/monthlyIncomeRoutes');
 const monthlyExpenseRoutes = require('./routes/monthlyExpenseRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize Socket.IO
+socketManager.init(server);
 
 // Configure CORS more explicitly
 app.use(cors({
@@ -49,6 +56,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/collectible-incomes', collectibleIncomeRoutes);
 app.use('/api/monthly-income', monthlyIncomeRoutes);
 app.use('/api/monthly-expenses', monthlyExpenseRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -68,8 +76,9 @@ app.use((err, req, res, next) => {
 // Sync database and start server
 sequelize.sync({ alter: process.env.NODE_ENV === 'development' })
   .then(() => {
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      console.log(`Socket.IO enabled for real-time updates`);
     });
   })
   .catch(err => {
