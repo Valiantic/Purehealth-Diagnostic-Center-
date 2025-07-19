@@ -296,7 +296,6 @@ const Monthly = () => {
                         </th>
                       ))}
                       <th className="p-1 border-r border-green-800 text-sm font-medium">GCash</th>
-                      <th className="p-1 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -317,21 +316,7 @@ const Monthly = () => {
                             </td>
                           ))}
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(day.gCashAmount)}</td>
-                          <td className="p-1 text-center relative bg-white">
-                            <button 
-                              className="text-green-800 hover:text-green-600" 
-                              onClick={() => toggleMenu(`day-${day.date}`)}
-                              aria-label="Transaction menu"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                            
-                            {activeMenu === `day-${day.date}` && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                 {/* TO ADD ACTION HERE SOON */}
-                              </div>
-                            )}
-                          </td>
+                          
                         </tr>
                       ))
                     ) : (
@@ -352,7 +337,6 @@ const Monthly = () => {
                             <td key={`empty-${index}-${dept.id}`} className="p-1 border-r border-green-200 bg-white"></td>
                           ))}
                           <td className="p-1 border-r border-green-200 bg-white"></td>
-                          <td className="p-1 bg-white"></td>
                         </tr>
                       ))
                     }
@@ -367,7 +351,6 @@ const Monthly = () => {
                         </td>
                       ))}
                       <td className="p-1 border-r border-green-800 text-center">{formatCurrency(monthlySummary.totalGCash)}</td>
-                      <td className="p-1"></td>
                     </tr>
                   </tfoot>
                 </table>

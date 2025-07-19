@@ -317,7 +317,6 @@ const MonthlyExpenses = () => {
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Payee</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Purpose</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
-                      <th className="p-1 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -335,25 +334,7 @@ const MonthlyExpenses = () => {
                           <td className="p-1 border-r border-green-200 text-center bg-white">{item.paidTo || '-'}</td>
                           <td className="p-1 border-r border-green-200 text-center bg-white">{item.purpose || '-'}</td>
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(item.amount)}</td>
-                          <td className="p-1 text-center bg-white">
-                            <button 
-                              className="text-green-800 hover:text-green-600" 
-                              onClick={() => toggleMenu(`expense-${item.id}`)}
-                              aria-label="Expense menu"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                            
-                            {activeMenu === `expense-${item.id}` && (
-                              <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                <ul className="py-1">
-                                  <li>
-                                    {/* TO ADD SOON */}
-                                  </li>
-                                </ul>
-                              </div>
-                            )}
-                          </td>
+                          
                         </tr>
                       ))
                     ) : (
@@ -373,7 +354,6 @@ const MonthlyExpenses = () => {
                           <td className="p-1 border-r border-green-200 bg-white"></td>
                           <td className="p-1 border-r border-green-200 bg-white"></td>
                           <td className="p-1 border-r border-green-200 bg-white"></td>
-                          <td className="p-1 bg-white"></td>
                         </tr>
                       ))
                     }
@@ -387,7 +367,6 @@ const MonthlyExpenses = () => {
                           ? monthlySummary.totalExpense 
                           : monthlySummary.departmentTotals[selectedDepartment]?.amount || 0
                       )}</td>
-                      <td className="p-1"></td>
                     </tr>
                   </tfoot>
                 </table>
