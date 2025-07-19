@@ -175,7 +175,7 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Revenue */}
-              <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Revenue</h2>
+              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">Total Monthly Revenue</h2>
               <div className="flex items-center gap-2 md:gap-4">
                 {revenueComparison ? (
                   revenueComparison.direction === 'up' ? (
@@ -208,7 +208,7 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Expenses */}
-              <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Expenses</h2>
+              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">Total Monthly Expenses</h2>
               <div className="flex items-center gap-2 md:gap-4">
                 {expensesComparison ? (
                   expensesComparison.direction === 'up' ? (
@@ -241,7 +241,7 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
               {/* Net Profit */}
-              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Net Profit</h2>
+              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">Net Profit</h2>
               <div className="flex items-center gap-2 md:gap-4">
                 {netProfitComparison ? (
                   netProfitComparison.direction === 'up' ? (
@@ -266,7 +266,7 @@ const DashboardContent = () => {
                     title="No previous month data available"
                   ></div>
                 )}
-                <h1 className={`font-medium text-lg md:text-2xl lg:text-3xl ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
+                <h1 className={`font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
                   {loading.monthlyData ? 'Loading...' : formatCurrency(netProfit)}
                 </h1>
               </div>
