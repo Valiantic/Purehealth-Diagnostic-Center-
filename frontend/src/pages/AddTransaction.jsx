@@ -1177,7 +1177,7 @@ const AddIncome = () => {
                               ) : (
                                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-green-800 text-green-800 text-xs mr-1"></span>
                               )}
-                              <span className="flex-1 text-green-800">{test.testName}</span>
+                              <span className="flex-1 font-medium text-sm sm:text-xs md:text-lg lg:text-lg text-green-800">{test.testName}</span>
                               <div className="relative">
                                 <button
                                   className="text-green-800"
