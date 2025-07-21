@@ -241,7 +241,9 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
               {/* Net Profit */}
-              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">Net Profit</h2>
+              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">
+                {netProfit >= 0 ? 'Net Profit' : 'Net Loss'}
+              </h2>
               <div className="flex items-center gap-2 md:gap-4">
                 {netProfitComparison ? (
                   netProfitComparison.direction === 'up' ? (
