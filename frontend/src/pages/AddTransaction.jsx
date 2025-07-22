@@ -20,7 +20,7 @@ const AddIncome = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedModalTest, setSelectedModalTest] = useState(null);
   const [basePrice, setBasePrice] = useState(0);
-  const [price, setPrice] = useState(0);
+  const [price, setPrice] = useState();
   const [discount, setDiscount] = useState(20);
   const [cashPaid, setCashPaid] = useState(0);
   const [gCashPaid, setGCashPaid] = useState(0);
