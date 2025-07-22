@@ -1,4 +1,4 @@
-const { Expense, ExpenseItem, Department, User, ActivityLog } = require('../models');
+const { Expense, ExpenseItem, Department, Category, User, ActivityLog } = require('../models');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
 const socketManager = require('../utils/socketManager');
@@ -8,26 +8,28 @@ const createExpense = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
-    const { name, departmentId, date, expenses, userId } = req.body;
+    const { firstName, lastName, departmentId, date, expenses, userId } = req.body;
     
     const totalAmount = expenses.reduce((sum, item) => 
       sum + parseFloat(parseFloat(item.amount).toFixed(2)), 0).toFixed(2);
     
     // Create expense record
     const expense = await Expense.create({
-      name,
+      firstName,
+      lastName,
       departmentId,
       date,
       totalAmount,
       userId
     }, { transaction });
     
-    const expenseItems = await Promise.all(
+     const expenseItems = await Promise.all(
       expenses.map(item => 
         ExpenseItem.create({
           expenseId: expense.expenseId,
           paidTo: item.paidTo,
           purpose: item.purpose,
+          categoryId: item.categoryId || null,
           amount: parseFloat(parseFloat(item.amount).toFixed(2))
         }, { transaction })
       )
@@ -39,7 +41,7 @@ const createExpense = async (req, res) => {
       action: 'CREATE',
       resourceType: 'EXPENSE',
       resourceId: expense.expenseId,
-      details: `Created expense record for ${name} with total amount ${parseFloat(totalAmount).toFixed(2)}`,
+      details: `Created expense record for ${firstName} ${lastName} with total amount ${parseFloat(totalAmount).toFixed(2)}`,
       userInfo: {
         id: userId
       }
@@ -110,7 +112,14 @@ const getExpenses = async (req, res) => {
           attributes: ['userId', 'firstName', 'lastName', 'email']
         },
         {
-          model: ExpenseItem
+          model: ExpenseItem,
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false 
+            }
+          ]
         }
       ],
       limit: parseInt(limit),
@@ -141,10 +150,8 @@ const updateExpense = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { name, departmentId, date, totalAmount, ExpenseItems, userId } = req.body;
-    
-    console.log("Updating expense with data:", req.body);
-    
+    const { firstName, lastName, departmentId, date, totalAmount, ExpenseItems, userId } = req.body;
+        
     const existingExpense = await Expense.findByPk(id);
     if (!existingExpense) {
       return res.status(404).json({
@@ -183,7 +190,8 @@ const updateExpense = async (req, res) => {
     const formattedTotalAmount = parseFloat(activeTotal);
     
     await existingExpense.update({
-      name,
+      firstName,
+      lastName,
       departmentId,
       date: formattedDate,
       totalAmount: formattedTotalAmount,
@@ -208,12 +216,10 @@ const updateExpense = async (req, res) => {
       transaction
     });
     
-    // Create new expense items with 2 decimal places
+   // Create new expense items
     await Promise.all(
       ExpenseItems.map(item => {
         const formattedAmount = parseFloat(parseFloat(item.amount || 0).toFixed(2));
-        
-
         const validStatus = ['pending', 'paid', 'refunded'].includes(item.status) 
           ? item.status 
           : 'pending';
@@ -222,6 +228,7 @@ const updateExpense = async (req, res) => {
           expenseId: id,
           paidTo: item.paidTo || '',
           purpose: item.purpose || '',
+          categoryId: item.categoryId || null,
           amount: formattedAmount,
           status: validStatus,
           ...(item.id && !String(item.id).startsWith('temp-') ? { id: item.id } : {})
@@ -230,7 +237,7 @@ const updateExpense = async (req, res) => {
     );
     
     // Log activity with formatted amount
-    let activityDetails = `Updated expense record for ${name} with total active amount ${formattedTotalAmount.toFixed(2)}`;
+    let activityDetails = `Updated expense record for ${firstName} ${lastName} with total active amount ${formattedTotalAmount.toFixed(2)}`;
     
     if (newlyRefundedItems.length > 0) {
       const refundTotal = newlyRefundedItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2);
@@ -262,7 +269,14 @@ const updateExpense = async (req, res) => {
           attributes: ['userId', 'firstName', 'lastName', 'email']
         },
         {
-          model: ExpenseItem
+          model: ExpenseItem,
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false
+            }
+          ]
         }
       ]
     });
@@ -301,7 +315,14 @@ const getExpenseById = async (req, res) => {
           attributes: ['userId', 'firstName', 'lastName', 'email']
         },
         {
-          model: ExpenseItem
+          model: ExpenseItem,
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false
+            }
+          ]
         }
       ]
     });
@@ -327,9 +348,196 @@ const getExpenseById = async (req, res) => {
   }
 };
 
+// Get all categories
+const getAllCategories = async (req, res) => {
+  try {
+    const categories = await Category.findAll({
+      order: [['name', 'ASC']]
+    });
+    
+    res.json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch categories',
+      error: error.message
+    });
+  }
+};
+
+// Get category by ID
+const getCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const category = await Category.findByPk(id);
+    
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: category
+    });
+  } catch (error) {
+    console.error('Error fetching category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch category',
+      error: error.message
+    });
+  }
+};
+
+// Create new category
+const createCategory = async (req, res) => {
+  try {
+    const { name, userId } = req.body;
+    
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category name is required'
+      });
+    }
+    
+    // Check if category already exists
+    const existingCategory = await Category.findOne({
+      where: { name: name.trim() }
+    });
+    
+    if (existingCategory) {
+      return res.status(409).json({
+        success: false,
+        message: 'Category already exists'
+      });
+    }
+    
+    const category = await Category.create({
+      name: name.trim()
+    });
+
+    await ActivityLog.create({
+      userId: userId || 1, 
+      action: 'CREATE',
+      resourceType: 'CATEGORY',
+      resourceId: category.categoryId,
+      details: `Created new expense category ${category.name}`,
+      userInfo: {
+        id: userId || 1
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Category created successfully',
+      data: category
+    });
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create category',
+      error: error.message
+    });
+  }
+};
+
+// Update category
+const updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, status, userId } = req.body;
+    
+    const category = await Category.findByPk(id);
+    
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+    
+    const originalName = category.name;
+    const originalStatus = category.status;
+    
+    // Check if name is unique (if changing name)
+    if (name && name.trim() !== category.name) {
+      const existingCategory = await Category.findOne({
+        where: { 
+          name: name.trim(),
+          categoryId: { [Op.ne]: id }
+        }
+      });
+      
+      if (existingCategory) {
+        return res.status(409).json({
+          success: false,
+          message: 'Category name already exists'
+        });
+      }
+    }
+    
+    await category.update({
+      ...(name && { name: name.trim() }),
+      ...(status && { status })
+    });
+
+    // Prepare activity log details
+    let changes = [];
+    if (name && name.trim() !== originalName) {
+      changes.push(`name: "${originalName}" → "${name.trim()}"`);
+    }
+    if (status && status !== originalStatus) {
+      changes.push(`status: "${originalStatus}" → "${status}"`);
+    }
+    
+    const activityDetails = changes.length > 0 
+      ? `Updated expense category "${originalName}": ${changes.join(', ')}`
+      : `Updated expense category "${originalName}"`;
+    
+    // Log activity
+    await ActivityLog.create({
+      userId: userId || 1, 
+      action: 'UPDATE',
+      resourceType: 'CATEGORY',
+      resourceId: id,
+      details: activityDetails,
+      userInfo: {
+        id: userId || 1
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Category updated successfully',
+      data: category
+    });
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update category',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createExpense,
   getExpenses,
   updateExpense,
-  getExpenseById
+  getExpenseById,
+  getAllCategories,
+  getCategoryById,
+  createCategory,
+  updateCategory,
 };

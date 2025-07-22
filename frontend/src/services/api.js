@@ -369,6 +369,18 @@ export const expenseAPI = {
   },
   getExpenseById: (expenseId) => {
     return apiClient.get(`/expenses/${expenseId}`);
+  },
+  getAllCategories: () => {
+    return apiClient.get('/expenses/categories');
+  },
+  getCategoryById: (id) => {
+    return apiClient.get(`/expenses/categories/${id}`);
+  },
+  createCategory: (data) => {
+    return apiClient.post('/expenses/categories', data);
+  },
+  updateCategory: (id, data) => {
+    return apiClient.put(`/expenses/categories/${id}`, data); 
   }
 };
 

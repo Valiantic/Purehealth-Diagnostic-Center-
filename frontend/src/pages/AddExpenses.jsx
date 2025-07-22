@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import CategoryModal from '../components/add-expenses/CategoryModal';
 import useAuth from '../hooks/useAuth'
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentAPI, expenseAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,12 +11,16 @@ import 'react-toastify/dist/ReactToastify.css';
 const AddExpenses = () => {
 
   const { user, isAuthenticating } = useAuth()
+  const queryClient = useQueryClient()
   const [paidTo, setPaidTo] = useState('');
   const [purpose, setPurpose] = useState('');
   const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
   const [expenses, setExpenses] = useState([]);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState(''); 
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(''); 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -25,6 +30,7 @@ const AddExpenses = () => {
   const [errors, setErrors] = useState({
     paidTo: '',
     purpose: '',
+    category: '',
     amount: ''
   });
 
@@ -33,10 +39,17 @@ const AddExpenses = () => {
     queryFn: () => departmentAPI.getAllDepartments().then(res => {
       return res.data;
     }),
-    onSuccess: (data) => {
-    },
     onError: (error) => console.error('Failed to fetch departments:', error),
-    staleTime: 300000,
+
+  });
+
+  // Fetch categories using expenseAPI
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => expenseAPI.getAllCategories().then(res => {
+      return res.data;
+    }),
+    onError: (error) => console.error('Failed to fetch categories:', error),
   });
 
   // Access the departments data consistently
@@ -45,10 +58,48 @@ const AddExpenses = () => {
     (departmentsData.data && Array.isArray(departmentsData.data) ? departmentsData.data : [])) 
     : [];
 
+  const categories = categoriesData ? 
+    (Array.isArray(categoriesData) ? categoriesData : 
+    (categoriesData.data && Array.isArray(categoriesData.data) ? categoriesData.data : [])) 
+    : [];
+
   // Handle department selection
   const handleDepartmentChange = (e) => {
     const value = e.target.value;
     setSelectedDepartment(value);
+  };
+
+   // Handle category selection
+  const handleCategoryChange = (e) => {
+    const value = e.target.value;
+    if (value === 'add_new') {
+      setShowCategoryModal(true);
+    } else {
+      setCategory(value);
+    }
+  };
+
+  // Handle adding new category using expenseAPI
+  const handleAddCategory = async (newCategory) => {
+    try {
+      const categoryData = {
+        ...newCategory,
+        userId: user?.userId || 1  
+      };
+      
+      const response = await expenseAPI.createCategory(categoryData);
+      if (response.data.success) {
+        toast.success('Category added successfully');
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+        setCategory(response.data.data.categoryId);
+        setShowCategoryModal(false);
+      } else {
+        toast.error('Failed to add category');
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast.error('Error adding category');
+    }
   };
 
   // Always call useEffect regardless of conditions - moved from below
@@ -131,12 +182,14 @@ const AddExpenses = () => {
   const handleConfirmTransaction = async () => {
     try {
       const expenseData = {
-        name: name || 'Unnamed Expense',
+        firstName: firstName || 'Unknown',
+        lastName: lastName || 'Unknown',
         departmentId: selectedDepartment,
         date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
         expenses: expenses.map(exp => ({
           paidTo: exp.paidTo,
           purpose: exp.purpose,
+          categoryId: exp.categoryId,
           amount: exp.amount
         })),
         userId: user.userId
@@ -148,8 +201,10 @@ const AddExpenses = () => {
       setExpenses([]);
       setPaidTo('');
       setPurpose('');
+      setCategory('');
       setAmount('');
-      setName('');
+      setFirstName('');
+      setLastName('');
       toast.success('Expense saved successfully');
     } catch (error) {
       toast.error('Failed to save expense');
@@ -162,6 +217,7 @@ const AddExpenses = () => {
     const newErrors = {
       paidTo: '',
       purpose: '',
+      category: '',
       amount: ''
     };
 
@@ -177,6 +233,11 @@ const AddExpenses = () => {
       newErrors.purpose = 'Purpose is required';
       isValid = false;
     }
+
+    if(!category) {
+      newErrors.category = 'Category is required';
+      isValid = false;
+    }
     
     if (!amount) {
       newErrors.amount = 'Amount is required';
@@ -189,16 +250,20 @@ const AddExpenses = () => {
     setErrors(newErrors);
 
     if (isValid) {
+      const selectedCategoryObj = categories.find(cat => cat.categoryId === parseInt(category));
       const newExpense = {
         id: Date.now(), // Use timestamp as a simple unique id
         paidTo,
         purpose,
+        categoryId: category,
+        categoryName: selectedCategoryObj?.name || 'Unknown Category',
         amount: parseFloat(amount)
       };
       setExpenses([...expenses, newExpense]);
       // Reset form fields
       setPaidTo('');
       setPurpose('');
+      setCategory('');
       setAmount('');
     }
   };
@@ -240,21 +305,39 @@ const AddExpenses = () => {
             </div>
 
             <div className="p-4 space-y-4">
-              {/* Name Field */}
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-gray-700 font-semibold text-sm mb-1"
-                >
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none"
-                />
-              </div>
+              {/* First Name Field */}
+                <div>
+                  <label
+                    htmlFor="firstName"
+                    className="block text-gray-700 font-semibold text-sm mb-1"
+                  >
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none"
+                  />
+                </div>
+
+                {/* Last Name Field */}
+                <div>
+                  <label
+                    htmlFor="lastName"
+                    className="block text-gray-700 font-semibold text-sm mb-1"
+                  >
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none"
+                  />
+                </div>
 
               {/* Department Field */}
               <div>
@@ -411,6 +494,42 @@ const AddExpenses = () => {
                 {errors.purpose && <p className="text-red-500 text-xs mt-1">{errors.purpose}</p>}
               </div>
 
+               {/* Category Field */}
+                <div>
+                  <label 
+                    htmlFor="category"
+                    className='block text-gray-700 font-semibold text-sm mb-1'
+                  >
+                    Category
+                  </label>
+                  <select
+                    id="category"
+                    value={category}
+                    onChange={handleCategoryChange}
+                    className={`w-full border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md py-2 px-3 text-gray-700 focus:outline-none`}
+                  >
+                    <option value="">Select a category</option>
+                    {categoriesLoading ? (
+                      <option value="" disabled>Loading categories...</option>
+                    ) : (
+                      categories.filter(cat => cat.status === 'active')
+                      .map((cat) => (
+                        <option
+                          key={cat.categoryId}
+                          value={cat.categoryId}
+                        >
+                          {cat.name}
+                        </option>
+                      ))
+                    )}
+                    <option value="add_new" className="text-green-600 font-semibold">
+                      + Add New Category
+                    </option>
+                  </select>
+                  {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+                </div>
+
+
               {/* Amount Field and Queue Button */}
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
@@ -464,6 +583,7 @@ const AddExpenses = () => {
                   <tr className="bg-green-100">
                     <th className="border-b py-2 px-4 text-left text-green-800">Paid To</th>
                     <th className="border-b py-2 px-4 text-left text-green-800">Purpose</th>
+                    <th className="border-b py-2 px-4 text-left text-green-800">Category</th>
                     <th className="border-b py-2 px-4 text-right text-green-800">Amount</th>
                     <th className="border-b py-2 px-4"></th>
                   </tr>
@@ -473,6 +593,7 @@ const AddExpenses = () => {
                     <tr key={expense.id}>
                       <td className="border-b py-2 px-4">{expense.paidTo}</td>
                       <td className="border-b py-2 px-4">{expense.purpose}</td>
+                      <td className="border-b py-2 px-4">{expense.categoryName}</td>
                       <td className="border-b py-2 px-4 text-right">
                         {expense.amount.toLocaleString()}
                       </td>
@@ -532,8 +653,12 @@ const AddExpenses = () => {
                     <table className="w-full text-sm border-collapse">
                       <tbody>
                         <tr className="border-b">
-                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Full Name</td>
-                          <td className="p-2">{name || 'N/A'}</td>
+                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">First Name</td>
+                          <td className="p-2">{firstName || 'N/A'}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Last Name</td>
+                          <td className="p-2">{lastName || 'N/A'}</td>
                         </tr>
                         <tr className="border-b">
                           <td className="p-2 pl-4 font-medium border-r border-green-700">Department</td>
@@ -565,6 +690,7 @@ const AddExpenses = () => {
                           <tr>
                             <th className='text-left p-2 pl-4 border-b'>Paid to</th>
                             <th className='text-left p-2 border-b'>Purpose</th>
+                            <th className='text-left p-2 border-b'>Category</th>
                             <th className='text-right p-2 pr-4 border-b'>Amount</th>
                           </tr>
                         </thead>
@@ -573,6 +699,7 @@ const AddExpenses = () => {
                             <tr key={expense.id} className='border-b'>
                               <td className='p-2 pl-4'>{expense.paidTo}</td>
                               <td className='p-2'>{expense.purpose}</td>
+                              <td className='p-2'>{expense.categoryName}</td>
                               <td className='p-2 pr-4 text-right'>{expense.amount.toLocaleString()}</td>
                             </tr>
                           ))}
@@ -609,8 +736,20 @@ const AddExpenses = () => {
         </div>
       </div>
 
+            {/* Category Modal */}
+            <CategoryModal
+              isOpen={showCategoryModal}
+              onClose={() => {
+                setShowCategoryModal(false);
+                // Reset the dropdown selection if user cancels without adding a category
+                if (!category) {
+                  // Category dropdown will reset to empty automatically
+                }
+              }}
+              onAddCategory={handleAddCategory}
+            />
+
     </div>
-    
     </div>
   )
 }
