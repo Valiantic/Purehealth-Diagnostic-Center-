@@ -10,6 +10,7 @@ const TestDetails = require('./TestDetails')(sequelize);
 const DepartmentRevenue = require('./DepartmentRevenue')(sequelize);
 const Expense = require('./Expenses')(sequelize);
 const ExpenseItem = require('./ExpenseItems')(sequelize);
+const Category = require('./Categories')(sequelize);
 const CollectibleIncome = require('./CollectibleIncome')(sequelize);
 
 // Relationships
@@ -59,6 +60,16 @@ Transaction.hasMany(TestDetails, {
   foreignKey: 'transactionId',
   constraints: false
 });
+
+Category.hasMany(ExpenseItem, { 
+  foreignKey: 'categoryId',
+  onDelete: 'SET NULL'
+});
+
+ExpenseItem.belongsTo(Category, { 
+  foreignKey: 'categoryId'
+});
+
 TestDetails.belongsTo(Transaction, { 
   foreignKey: 'transactionId',
   constraints: false
@@ -155,6 +166,7 @@ module.exports = {
   TestDetails,
   DepartmentRevenue,
   Expense,
-  ExpenseItem, 
+  ExpenseItem,
+  Category,
   CollectibleIncome
 };

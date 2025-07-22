@@ -5,7 +5,6 @@ module.exports = (sequelize) => {
         expenseItemId: {
             type: DataTypes.INTEGER,
             primaryKey: true,
-            defaultValue: DataTypes.INTEGER,
             autoIncrement: true
         },
         expenseId: {
@@ -19,6 +18,10 @@ module.exports = (sequelize) => {
         purpose: {
             type: DataTypes.STRING,
             allowNull: false
+        },
+        categoryId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
         },
         amount: {
             type: DataTypes.DECIMAL(10, 2),
@@ -37,6 +40,10 @@ module.exports = (sequelize) => {
             {
                 name: 'idx_expense_item_expense',
                 fields: ['expenseId']
+            },
+            {
+                name: 'idx_expense_item_category',
+                fields: ['categoryId']
             }
         ]
     });

@@ -188,3 +188,41 @@ CREATE TABLE `CollectibleIncome` (
 -- mcNo/OrNo Bug fixed
 ALTER TABLE Transactions 
 MODIFY COLUMN mcNo VARCHAR(10) NOT NULL;
+
+
+-- Create Categories table
+CREATE TABLE Categories (
+    categoryId INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_category_name (name),
+    INDEX idx_category_status (status)
+);
+
+-- Add categoryId to ExpenseItems table
+ALTER TABLE ExpenseItems
+ADD COLUMN categoryId INT AFTER PAIDTO;
+ALTER TABLE ExpenseItems
+ADD INDEX idx_expense_item_category (categoryId);
+
+-- Add foreign key constraint (optional, but recommended)
+ALTER TABLE ExpenseItems 
+ADD CONSTRAINT fk_expense_item_category 
+FOREIGN KEY (categoryId) REFERENCES Categories(categoryId) 
+ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- Split name field in Expenses table
+ALTER TABLE Expenses 
+ADD COLUMN firstName VARCHAR(255) AFTER name,
+ADD COLUMN lastName VARCHAR(255) AFTER firstName;
+
+-- Update existing records if you have existing data
+-- UPDATE Expenses SET 
+--   firstName = TRIM(SUBSTRING_INDEX(name, ' ', 1)), 
+--   lastName = TRIM(SUBSTRING_INDEX(name, ' ', -1)) 
+-- WHERE name IS NOT NULL AND name != '';
+
+-- Remove the old name column (do this after migrating data)
+-- ALTER TABLE Expenses DROP COLUMN name;
