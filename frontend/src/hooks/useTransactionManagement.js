@@ -271,6 +271,17 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
 
   // Handle changes to summary fields
   const handleSummaryInputChange = (e, field) => {
+    if (field === 'birthDate') {
+      const selectedDate = new Date(e.target.value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate > today) {
+        toast.error("Birth date cannot be in the future");
+        return; 
+      }
+    }
     // Special handling for ID Type
     if (field === 'idType') {
       const newIdType = e.target.value;

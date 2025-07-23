@@ -32,8 +32,6 @@ const AddIncome = () => {
 
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
   const [testDepartment, setTestDepartment] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
-  const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [testForm, setTestForm] = useState({
     testName: '',
@@ -434,6 +432,18 @@ const AddIncome = () => {
 
   const handleDateChange = (e) => {
     const newDate = e.target.value;
+    const selectedDate = new Date(newDate);
+    const today = new Date();
+    
+    // Set today to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) {
+      toast.error('Birth date cannot be in the future');
+      return;
+    }
+    
     setFormData({ ...formData, birthDate: newDate });
   };
 
@@ -611,6 +621,19 @@ const AddIncome = () => {
     if ((formData.id === "Senior Citizen" || formData.id === "Person with Disability") && 
         !formData.idNumber.trim()) {
       missingFields.push("ID Number");
+    }
+
+    // Validate birth date is not in the future
+    if (formData.birthDate) {
+      const selectedDate = new Date(formData.birthDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate > today) {
+        toast.error("Birth date cannot be in the future");
+        return;
+      }
     }
 
     if (missingFields.length > 0) {
@@ -986,6 +1009,7 @@ const AddIncome = () => {
                       type="date"
                       value={formData.birthDate}
                       onChange={handleDateChange}
+                      max={new Date().toISOString().split('T')[0]}
                       className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
                     />
                     {formData.birthDate && (
