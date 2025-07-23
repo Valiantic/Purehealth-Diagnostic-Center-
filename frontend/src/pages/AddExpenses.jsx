@@ -28,6 +28,8 @@ const AddExpenses = () => {
   const datePickerRef = useRef(null);
 
   const [errors, setErrors] = useState({
+    firstName: '',
+    lastName: '',
     paidTo: '',
     purpose: '',
     category: '',
@@ -182,8 +184,8 @@ const AddExpenses = () => {
   const handleConfirmTransaction = async () => {
     try {
       const expenseData = {
-        firstName: firstName || 'Unknown',
-        lastName: lastName || 'Unknown',
+        firstName: firstName,
+        lastName: lastName,
         departmentId: selectedDepartment,
         date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
         expenses: expenses.map(exp => ({
@@ -215,6 +217,8 @@ const AddExpenses = () => {
   const handleAddExpense = () => {
     // Reset previous errors
     const newErrors = {
+      firstName: '',
+      lastName: '',
       paidTo: '',
       purpose: '',
       category: '',
@@ -223,6 +227,16 @@ const AddExpenses = () => {
 
     // Validate fields
     let isValid = true;
+
+    if(!firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+      isValid = false;
+    }
+
+    if(!lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+      isValid = false;
+    }
     
     if (!paidTo.trim()) {
       newErrors.paidTo = 'Paid To is required';
@@ -318,8 +332,9 @@ const AddExpenses = () => {
                     id="firstName"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none"
+                    className={`w-full border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md py-2 px-3 text-gray-700 focus:outline-none`}
                   />
+                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                 </div>
 
                 {/* Last Name Field */}
@@ -335,8 +350,9 @@ const AddExpenses = () => {
                     id="lastName"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none"
+                    className={`w-full border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md py-2 px-3 text-gray-700 focus:outline-none`}
                   />
+                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                 </div>
 
               {/* Department Field */}
