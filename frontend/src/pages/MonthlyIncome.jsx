@@ -5,7 +5,8 @@ import Sidebar from '../components/Sidebar'
 import useAuth from '../hooks/useAuth'
 import AddCollectibleIncomeModal from '../components/monthly/AddCollectiblesIncomeModals'
 import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
@@ -239,6 +240,20 @@ const Monthly = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-cream-50">
+      
+      {/* Toast Container */}
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000} 
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+      
       {/* Sidebar */}
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
