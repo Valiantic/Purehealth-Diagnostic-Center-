@@ -172,6 +172,7 @@ const TransactionSummaryModal = ({
                             value={editedTransaction.originalTransaction.birthDate ? 
                               new Date(editedTransaction.originalTransaction.birthDate).toISOString().split('T')[0] : ''}
                             onChange={(e) => handleSummaryInputChange(e, 'birthDate')}
+                            max={new Date().toISOString().split('T')[0]}
                             className="w-full px-2 py-1 border border-green-600 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-600"
                             onClick={(e) => e.target.showPicker()}
                           />
