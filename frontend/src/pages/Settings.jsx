@@ -176,7 +176,7 @@ const Settings = () => {
       <ToastContainer />
       
       {/* Main content */}
-      <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
+      <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
         
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
           <TabNavigation tabsConfig={filteredTabs} />
