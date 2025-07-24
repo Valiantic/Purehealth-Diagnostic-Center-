@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
-import AddCollectibleIncomeModal from '../components/monthly/AddCollectiblesIncomeModals'
+import useAuth from '../hooks/auth/useAuth'
+import AddCollectibleIncomeModal from '../components/monthly-income/AddCollectiblesIncomeModals'
 import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

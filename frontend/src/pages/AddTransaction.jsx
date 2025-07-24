@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
+import useAuth from '../hooks/auth/useAuth'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
 import { handleDecimalKeyPress } from '../utils/decimalUtils'

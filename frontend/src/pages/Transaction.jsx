@@ -4,8 +4,8 @@ import Sidebar from '../components/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Download } from 'lucide-react';
-import useAuth from '../hooks/useAuth';
-import Loading from '../components/Loading';
+import useAuth from '../hooks/auth/useAuth';
+import Loading from '../components/transaction/Loading';
 import { useQueryClient } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify'; // Added toast import
 import { calculateRefundTotal } from '../utils/transactionUtils';
@@ -15,8 +15,8 @@ import ExpenseTable from '../components/transaction/ExpenseTable';
 import ConfirmationModal from '../components/transaction/ConfirmationModal';
 import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal';
 import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
-import { useTransactionManagement } from '../hooks/useTransactionManagement';
-import { useTransactionData } from '../hooks/useTransactionData';
+import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
+import { useTransactionData } from '../hooks/transaction/useTransactionData';
 
 const Transaction = () => {
   const { user, isAuthenticating } = useAuth();

@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { useDashboardContext } from '../contexts/DashboardContext';
-import { dashboardAPI } from '../services/api';
+import { useDashboardContext } from '../../contexts/DashboardContext';
+import { dashboardAPI } from '../../services/api';
 
 const useDashboardData = () => {
   const {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import { ChevronLeft, ChevronRight, CirclePlus, ChevronDown, MoreVertical } from 'lucide-react'
-import useAuth from '../hooks/useAuth'
+import useAuth from '../hooks/auth/useAuth'
 import { monthlyExpenseAPI, departmentAPI } from '../services/api'
 import { toast } from 'react-toastify'
 

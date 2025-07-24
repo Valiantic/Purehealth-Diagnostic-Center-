@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import useAuth from '../hooks/useAuth'
+import useAuth from '../../hooks/auth/useAuth'
 import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
