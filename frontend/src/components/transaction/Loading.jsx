@@ -1,6 +1,6 @@
 import React from 'react';
 import Lottie from 'lottie-react';
-import loadingAnimation from '../assets/animations/loading-animation.json';
+import loadingAnimation from '../../assets/animations/loading-animation.json';
 
 const Loading = ({ message = 'Loading data...', height = 200 }) => {
   return (

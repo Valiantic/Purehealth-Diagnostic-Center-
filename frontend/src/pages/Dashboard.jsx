@@ -4,12 +4,12 @@ import { TbTriangleInvertedFilled } from 'react-icons/tb';
 import { RxAvatar } from 'react-icons/rx';
 import Chart from 'chart.js/auto';
 import Sidebar from '../components/Sidebar';
-import DashboardErrorBoundary from '../components/DashboardErrorBoundary';
+import DashboardErrorBoundary from '../components/dashboard/DashboardErrorBoundary';
 import DateSelector from '../components/transaction/DateSelector';
-import useUserDisplay from '../hooks/useUserDisplay';
-import useAuth  from '../hooks/useAuth';
+import useUserDisplay from '../hooks/dashboard/useUserDisplay';
+import useAuth  from '../hooks/auth/useAuth';
 import { DashboardProvider, useDashboardContext } from '../contexts/DashboardContext';
-import useDashboardData from '../hooks/useDashboardData';
+import useDashboardData from '../hooks/dashboard/useDashboardData';
 import {
   transformDailyIncomeData,
   transformExpensesByDepartment,

@@ -5,7 +5,7 @@ import { Shield, X } from 'lucide-react'
 import BackupKeyImg from '../assets/images/BackupKeyPic.png'
 import Sidebar from '../components/Sidebar'
 import TabNavigation from '../components/TabNavigation'
-import useAuth from '../hooks/useAuth'
+import useAuth from '../hooks/auth/useAuth'
 import FIDO2BG from '../assets/images/FIDO2BG.png'
 import tabsConfig from '../config/tabsConfig'
 

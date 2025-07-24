@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import CategoryModal from '../components/add-expenses/CategoryModal';
-import useAuth from '../hooks/useAuth'
+import useAuth from '../hooks/auth/useAuth'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentAPI, expenseAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';

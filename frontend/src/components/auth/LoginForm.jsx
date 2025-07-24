@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authenticateUser } from '../utils/webauthn';
+import { authenticateUser } from '../../utils/webauthn';
 import { Shield } from 'lucide-react';
-import MicroscopeBg from '../assets/images/LoginCover.jpg';
-import PHDCILogo from '../assets/icons/purehealth_logo.png';
+import MicroscopeBg from '../../assets/images/LoginCover.jpg';
+import PHDCILogo from '../../assets/icons/purehealth_logo.png';
 import AuthModal from './AuthModal';
 
 const LoginForm = () => {
