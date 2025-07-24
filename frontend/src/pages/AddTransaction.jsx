@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
+import ReferrerModal from '../components/referral-management/ReferrerModal'
 import useAuth from '../hooks/auth/useAuth'
+import useReferrerForm from '../hooks/referral-management/useReferrerForm'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
 import { handleDecimalKeyPress } from '../utils/decimalUtils'
@@ -27,7 +29,6 @@ const AddIncome = () => {
   const [discountFieldFocused, setDiscountFieldFocused] = useState(false);
 
   const [discountedPrice, setDiscountedPrice] = useState(0);
-  const [balance, setBalance] = useState(0);
   const [testName, setTestName] = useState('');
 
   const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
@@ -543,15 +544,26 @@ const AddIncome = () => {
   }
 
   const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
-  const [newReferrerData, setNewReferrerData] = useState({
-    firstName: '',
-    lastName: '',
-    birthday: '',
-    sex: 'Male',
-    clinicName: '',
-    clinicAddress: '',
-    contactNo: ''
-  });
+  
+  const {
+    firstName: referrerFirstName,
+    lastName: referrerLastName,
+    birthday: referrerBirthday,
+    sex: referrerSex,
+    clinicName: referrerClinicName,
+    clinicAddress: referrerClinicAddress,
+    contactNo: referrerContactNo,
+    setFirstName: setReferrerFirstName,
+    setLastName: setReferrerLastName,
+    setBirthday: setReferrerBirthday,
+    setSex: setReferrerSex,
+    setClinicName: setReferrerClinicName,
+    setClinicAddress: setReferrerClinicAddress,
+    setContactNo: setReferrerContactNo,
+    resetForm: resetReferrerForm,
+    validateForm: validateReferrerForm,
+    getFormData: getReferrerFormData
+  } = useReferrerForm();
 
   const addReferrerMutation = useMutation({
     mutationFn: (referrerData) =>
@@ -568,37 +580,21 @@ const AddIncome = () => {
 
   const closeReferrerModal = () => {
     setIsReferrerModalOpen(false);
-    setNewReferrerData({
-      firstName: '',
-      lastName: '',
-      birthday: '',
-      sex: 'Male',
-      clinicName: '',
-      clinicAddress: '',
-      contactNo: ''
-    });
-  };
-
-  const handleReferrerInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewReferrerData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    resetReferrerForm();
   };
 
   const handleAddNewReferrer = () => {
-    if (!newReferrerData.firstName.trim()) {
-      toast.error('First name is required');
+    if (!validateReferrerForm()) {
       return;
     }
 
-    if (!newReferrerData.lastName.trim()) {
-      toast.error('Last name is required');
-      return;
+    const referrerData = getReferrerFormData();
+    
+    if (referrerData.birthday) {
+      referrerData.birthday = referrerData.birthday || null;
     }
 
-    addReferrerMutation.mutate(newReferrerData);
+    addReferrerMutation.mutate(referrerData);
   };
 
   const [isTransactionSummaryOpen, setIsTransactionSummaryOpen] = useState(false);
@@ -1574,125 +1570,28 @@ const AddIncome = () => {
         </div>
       )}
 
-      {isReferrerModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded shadow-lg">
-            <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10">
-              <h3 className="text-xl font-medium">New Referrer</h3>
-              <button onClick={closeReferrerModal} className="text-white hover:text-gray-200">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">First Name</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={newReferrerData.firstName}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                  <div className="relative" onClick={() => document.getElementById('add-new-referrer-date').showPicker()}>
-                    <input
-                      id="add-new-referrer-date"
-                      type="date"
-                      name="birthday"
-                      value={newReferrerData.birthday}
-                      onChange={handleReferrerInputChange}
-                      className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={newReferrerData.lastName}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Sex</label>
-                  <div className="relative">
-                    <select
-                      name="sex"
-                      value={newReferrerData.sex}
-                      onChange={handleReferrerInputChange}
-                      className="w-full border border-gray-300 rounded p-2 appearance-none"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                        <path d="M7 10l5 5 5-5H7z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
-                  <input
-                    type="text"
-                    name="clinicName"
-                    value={newReferrerData.clinicName}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Contact No.</label>
-                  <input
-                    type="text"
-                    name="contactNo"
-                    value={newReferrerData.contactNo}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
-                  <input
-                    type="text"
-                    name="clinicAddress"
-                    value={newReferrerData.clinicAddress}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-gray-300 my-4"></div>
-
-              <div className="flex justify-center">
-                <button
-                  onClick={handleAddNewReferrer}
-                  disabled={addReferrerMutation.isPending}
-                  className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium"
-                >
-                  {addReferrerMutation.isPending ? 'SAVING...' : 'CONFIRM'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReferrerModal
+        isOpen={isReferrerModalOpen}
+        onClose={closeReferrerModal}
+        firstName={referrerFirstName}
+        setFirstName={setReferrerFirstName}
+        lastName={referrerLastName}
+        setLastName={setReferrerLastName}
+        birthday={referrerBirthday}
+        setBirthday={setReferrerBirthday}
+        sex={referrerSex}
+        setSex={setReferrerSex}
+        clinicName={referrerClinicName}
+        setClinicName={setReferrerClinicName}
+        clinicAddress={referrerClinicAddress}
+        setClinicAddress={setReferrerClinicAddress}
+        contactNo={referrerContactNo}
+        setContactNo={setReferrerContactNo}
+        onConfirm={handleAddNewReferrer}
+        isLoading={addReferrerMutation.isPending}
+        title="New Referrer"
+        mode="add"
+      />
 
       {isTransactionSummaryOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
