@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Download, PlusCircle, X, Edit as EditIcon } from 'lucide-react'
+import { Download, PlusCircle, Edit as EditIcon } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
+import TestModal from '../components/test-management/TestModal'
 import useAuth from '../hooks/auth/useAuth'
+import useTestForm from '../hooks/test-management/useTestForm'
 import TabNavigation from '../components/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { departmentAPI, testAPI } from '../services/api'
@@ -15,13 +17,14 @@ const Test = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  
+  const {
+    testName, testDate, testDepartment, departmentId, price, status, userSelectedDepartment,
+    setTestName, setTestDepartment, setDepartmentId, setStatus, resetForm, validateForm, getFormData, 
+    setFormData, handleDepartmentChange, handlePriceChange, handleDateChange
+  } = useTestForm();
+  
   const [isOpen, setIsOpen] = useState(false);
-  const [testName, setTestName] = useState('');
-  const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
-  const [testDepartment, setTestDepartment] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
-  const [price, setPrice] = useState('');
-  const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -174,51 +177,23 @@ const Test = () => {
   }, [activeDropdown]);
 
   const openModal = () => {
-    setTestName('');
-    setTestDate(new Date().toISOString().split('T')[0]);
-    setUserSelectedDepartment(false); 
+    resetForm();
     const activeDepartments = departments.filter(dept => dept.status == 'active');
     if (activeDepartments.length > 0) {
       setTestDepartment(activeDepartments[0].departmentName);
       setDepartmentId(activeDepartments[0].departmentId);
     }
-    setPrice('');
     setIsOpen(true);
   };
 
   const closeModal = () => {
     setIsOpen(false);
-    setUserSelectedDepartment(false);
-  };
-
-  const handleDepartmentChange = (e) => {
-    const value = e.target.value;
-    if (value === 'add-department') {
-      navigate('/department-management');
-      return;
-    }
-    setTestDepartment(value);
-    const selected = departments.find(dep => dep.departmentName === value);
-    if (selected) {
-      setDepartmentId(selected.departmentId);
-      setUserSelectedDepartment(true); 
-    }
   };
 
   const handleSubmit = async () => {
     try {
-      if (!testName.trim()) {
-        toast.error('Please enter a test name');
-        return;
-      }
-      
-      if (!departmentId) {
-        toast.error('Please select a department');
-        return;
-      }
-      
-      if (!price || parseFloat(price) <= 0) {
-        toast.error('Please enter a valid price');
+      // Use hook validation
+      if (!validateForm()) {
         return;
       }
       
@@ -240,13 +215,9 @@ const Test = () => {
         return;
       }
       
-      const testData = {
-        testName,
-        departmentId,
-        price: parseFloat(price),
-        dateCreated: testDate,
-        currentUserId: userId 
-      };
+      // Get form data using hook utility
+      const testData = getFormData();
+      testData.currentUserId = userId;
 
       createTestMutation.mutate({ testData, userId });
     } catch (error) {
@@ -268,12 +239,17 @@ const Test = () => {
       status: test.status,
       dateCreated: test.dateCreated || new Date().toISOString().split('T')[0]
     });
-    setTestName(test.testName);
-    setTestDepartment(test.Department?.departmentName || '');
-    setDepartmentId(test.departmentId);
-    setPrice(parseFloat(test.price).toFixed(2));
-    setTestDate(test.dateCreated ? new Date(test.dateCreated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
-    setUserSelectedDepartment(true);
+    
+    // Set form data using hook utility
+    setFormData({
+      testName: test.testName,
+      departmentName: test.Department?.departmentName || '',
+      departmentId: test.departmentId,
+      price: test.price,
+      dateCreated: test.dateCreated,
+      status: test.status
+    });
+    
     setIsDepartmentArchived(isArchived);
     setEditModalOpen(true);
   };
@@ -281,23 +257,11 @@ const Test = () => {
   const closeEditModal = () => {
     setEditModalOpen(false);
     setEditingTest(null);
-    setUserSelectedDepartment(false);
   };
 
   const handleEditSubmit = async () => {
     try {
-      if (!testName.trim()) {
-        toast.error('Please enter a test name');
-        return;
-      }
-
-      if (!departmentId) {
-        toast.error('Please select a department');
-        return;
-      }
-
-      if (!price || parseFloat(price) <= 0) {
-        toast.error('Please enter a valid price');
+      if (!validateForm()) {
         return;
       }
 
@@ -320,14 +284,9 @@ const Test = () => {
         return;
       }
       
-      const testData = {
-        testName,
-        departmentId,
-        price: parseFloat(price),
-        status: editingTest.status,
-        dateCreated: testDate,
-        currentUserId: userId
-      };
+      // Get form data using hook utility
+      const testData = getFormData();
+      testData.currentUserId = userId;
 
       updateTestMutation.mutate({ testId: editingTest.testId, testData, userId });
     } catch (error) {
@@ -618,206 +577,47 @@ const Test = () => {
                     </button>
                   </div>
                 </div>
-                {isOpen && (
-                  <div className="fixed inset-0 flex items-start pt-20 justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white w-full max-w-md rounded shadow-lg">
-                      <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center">
-                        <h3 className="text-xl font-medium">New Test</h3>
-                        <button onClick={closeModal} className="text-white hover:text-gray-200">
-                          <X size={24} />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Test Name</label>
-                            <input
-                              type="text"
-                              value={testName}
-                              onChange={(e) => setTestName(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2"
-                              placeholder="Enter test name"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Date Created</label>
-                            <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
-                              <input
-                                id="new-test-date"
-                                type="date"
-                                value={testDate}
-                                onChange={(e) => setTestDate(e.target.value)}
-                                className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                              />
-                             
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Test Department</label>
-                            <div className="relative">
-                              <select
-                                value={testDepartment}
-                                onChange={handleDepartmentChange}
-                                className="w-full border border-gray-300 rounded p-2 appearance-none"
-                                required
-                              >
-                               {Array.isArray(departments) ? departments
-                                  .filter(dept => dept.status === 'active') 
-                                  .map(dept => (
-                                  <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                                )) : <option value="">No departments available</option>}
-                                <option value="add-department">+ Add Department</option>
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                </svg>
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Price</label>
-                            <input
-                              type="text"
-                              value={price}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (/^\d*\.?\d*$/.test(value) || value === '') {
-                                  setPrice(value);
-                                }
-                              }}
-                              className="w-full border border-gray-300 rounded p-2 text-right"
-                              placeholder="0.00"
-                              required
-                            />
-                          </div>
-                        </div>
-                        <div className="border-t border-gray-300 my-4"></div>
-                        <div className="flex justify-center">
-                          <button
-                            onClick={handleSubmit}
-                            disabled={createTestMutation.isPending}
-                            className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
-                          >
-                            {createTestMutation.isPending ? 'Creating...' : 'Confirm'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                
+                <TestModal
+                  isOpen={isOpen}
+                  onClose={closeModal}
+                  testName={testName}
+                  setTestName={setTestName}
+                  testDate={testDate}
+                  handleDateChange={handleDateChange}
+                  testDepartment={testDepartment}
+                  handleDepartmentChange={(value) => handleDepartmentChange(value, departments, navigate)}
+                  price={price}
+                  handlePriceChange={handlePriceChange}
+                  departments={departments}
+                  onConfirm={handleSubmit}
+                  isLoading={createTestMutation.isPending}
+                  title="New Test"
+                  mode="add"
+                  navigate={navigate}
+                />
 
-                {editModalOpen && editingTest && (
-                  <div className="fixed inset-0 flex items-start pt-20 justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white w-full max-w-md rounded shadow-lg">
-                      <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center">
-                        <h3 className="text-xl font-medium">Edit Test</h3>
-                        <button onClick={closeEditModal} className="text-white hover:text-gray-200">
-                          <X size={24} />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Test Name</label>
-                            <input
-                              type="text"
-                              value={testName}
-                              onChange={(e) => setTestName(e.target.value)}
-                              className="w-full border border-gray-300 rounded p-2"
-                              placeholder="Enter test name"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Date Created</label>
-                            <div className="relative" onClick={() => document.getElementById('edit-test-date').showPicker()}>
-                              <input
-                                id="edit-test-date"
-                                type="date"
-                                value={testDate}
-                                onChange={(e) => setTestDate(e.target.value)}
-                                className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                              />
-                             
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Test Department</label>
-                            <div className="relative">
-                              <select
-                                value={testDepartment}
-                                onChange={handleDepartmentChange}
-                                className="w-full border border-gray-300 rounded p-2 appearance-none"
-                                required
-                              >
-                                {departments.map(dept => (
-                                  <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                                ))}
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a 1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                </svg>
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-green-800 font-medium mb-1">Price</label>
-                            <input
-                              type="text"
-                              value={price}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (/^\d*\.?\d*$/.test(value) || value === '') {
-                                  setPrice(value);
-                                }
-                              }}
-                              className="w-full border border-gray-300 rounded p-2 text-right"
-                              placeholder="0.00"
-                              required
-                            />
-                          </div>
-                        </div>
-                        <div>
-                            <label className="block text-green-800 font-medium mb-1">Status</label>
-                            <div className="relative">
-                              <select
-                                value={editingTest.status}
-                                onChange={(e) => setEditingTest({...editingTest, status: e.target.value})}
-                                className={`w-full border border-gray-300 rounded p-2 appearance-none ${isDepartmentArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-                                disabled={isDepartmentArchived}
-                              >
-                                <option value="active">Unarchived</option>
-                                <option value="inactive">Archived</option>
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a 1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                </svg>
-                              </div>
-                            </div>
-                            {isDepartmentArchived && (
-                              <div className="mt-1 text-xs text-red-600">
-                                Note: Status cannot be changed because this test's department is archived.
-                              </div>
-                            )}
-                          </div>
-                        <div className="border-t border-gray-300 my-4"></div>
-                        <div className="flex justify-center">
-                          <button
-                            onClick={handleEditSubmit}
-                            disabled={updateTestMutation.isPending}
-                            className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
-                          >
-                            {updateTestMutation.isPending ? 'Saving...' : 'Save Changes'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <TestModal
+                  isOpen={editModalOpen && editingTest}
+                  onClose={closeEditModal}
+                  testName={testName}
+                  setTestName={setTestName}
+                  testDate={testDate}
+                  handleDateChange={handleDateChange}
+                  testDepartment={testDepartment}
+                  handleDepartmentChange={(value) => handleDepartmentChange(value, departments, navigate)}
+                  price={price}
+                  handlePriceChange={handlePriceChange}
+                  status={status}
+                  setStatus={setStatus}
+                  departments={departments}
+                  onConfirm={handleEditSubmit}
+                  isLoading={updateTestMutation.isPending}
+                  title="Edit Test"
+                  mode="edit"
+                  isDepartmentArchived={isDepartmentArchived}
+                  navigate={navigate}
+                />
               </div>
             </>
           )}
