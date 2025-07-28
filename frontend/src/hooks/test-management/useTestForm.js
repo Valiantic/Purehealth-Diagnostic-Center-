@@ -112,8 +112,7 @@ const useTestForm = () => {
     selectedDate.setHours(0, 0, 0, 0);
     
     if (selectedDate > today) {
-      // Don't update the field if it's a future date
-        errors.push('Birthday cannot be in the future');
+      return;
     }
     
     setTestDate(value);
