@@ -73,6 +73,7 @@ const TestQueueModal = ({
                   type="date"
                   value={formData.dateCreated ? new Date(formData.dateCreated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                   onChange={(e) => handleInputChange('dateCreated', new Date(e.target.value))}
+                  max={new Date().toISOString().split('T')[0]}
                   className="w-full border border-gray-300 rounded p-2 cursor-pointer"
                 />
               </div>
