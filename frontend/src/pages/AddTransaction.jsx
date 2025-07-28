@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar'
+import Sidebar from '../components/dashboard/Sidebar'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
 import TestQueueModal from '../components/transaction/TestQueueModal'
 import useAuth from '../hooks/auth/useAuth'

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
-import Sidebar from '../components/Sidebar'
+import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import { referrerAPI, transactionAPI, departmentAPI } from '../services/api'

@@ -216,7 +216,7 @@ const ReferrerModal = ({
               disabled={isLoading}
               className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'PROCESSING...' : (mode === "edit" ? 'SAVE CHANGES' : 'CONFIRM')}
+              {isLoading ? 'Processing...' : (mode === "edit" ? 'Save Changes' : 'Confirm')}
             </button>
           </div>
         </div>
