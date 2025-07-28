@@ -1339,7 +1339,7 @@ const AddIncome = () => {
         onRemoveFromQueue={removeFromQueue}
         onProcessQueue={handleProcessTestQueue}
         onUpdateFormField={updateTestFormField}
-        title="Add Tests to Database"
+        title="Add New Tests"
       />
 
       <ReferrerModal

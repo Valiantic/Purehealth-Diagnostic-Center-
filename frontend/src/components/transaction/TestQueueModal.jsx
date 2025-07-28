@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const TestQueueModal = ({
   isOpen,
@@ -11,7 +11,6 @@ const TestQueueModal = ({
   errors,
   isValid,
   onAddToQueue,
-  onRemoveFromQueue,
   onProcessQueue,
   onUpdateFormField,
   title = "New Test"
@@ -26,10 +25,54 @@ const TestQueueModal = ({
     onUpdateFormField(field, value);
   };
 
+  const handleDateChange = (e) => {
+    const inputValue = e.target.value;
+    
+    if (!inputValue) {
+      onUpdateFormField('dateCreated', new Date());
+      return;
+    }
+    
+    try {
+      const selectedDate = new Date(inputValue + 'T00:00:00');
+      
+      if (isNaN(selectedDate.getTime())) {
+        console.warn('Invalid date input:', inputValue);
+        return; 
+      }
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate > today) {
+        return; 
+      }
+      
+      onUpdateFormField('dateCreated', selectedDate);
+    } catch (error) {
+      console.error('Error processing date:', error);
+    }
+  };
+
   const handlePriceChange = (value) => {
-    // Only allow numbers and decimal points
     if (/^\d*\.?\d*$/.test(value) || value === '') {
       handleInputChange('price', value);
+    }
+  };
+
+  const getSafeDateValue = () => {
+    try {
+      if (formData.dateCreated) {
+        const date = new Date(formData.dateCreated);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().split('T')[0];
+        }
+      }
+      return new Date().toISOString().split('T')[0];
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return new Date().toISOString().split('T')[0];
     }
   };
 
@@ -71,11 +114,12 @@ const TestQueueModal = ({
                 <input
                   id="new-test-date"
                   type="date"
-                  value={formData.dateCreated ? new Date(formData.dateCreated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-                  onChange={(e) => handleInputChange('dateCreated', new Date(e.target.value))}
+                  value={getSafeDateValue()}
+                  onChange={handleDateChange}
                   max={new Date().toISOString().split('T')[0]}
                   className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
                   placeholder="YYYY-MM-DD"
+                  disabled={isProcessing}
                 />
               </div>
             </div>
