@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
+import TestQueueModal from '../components/transaction/TestQueueModal'
 import useAuth from '../hooks/auth/useAuth'
 import useReferrerForm from '../hooks/referral-management/useReferrerForm'
+import useTestQueue from '../hooks/transaction/useTestQueue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
 import { handleDecimalKeyPress } from '../utils/decimalUtils'
@@ -12,7 +14,6 @@ import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
-  const navigate = useNavigate();
   const { user, isAuthenticating } = useAuth()
   const [showDeptFilter, setShowDeptFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -29,67 +30,31 @@ const AddIncome = () => {
   const [discountFieldFocused, setDiscountFieldFocused] = useState(false);
 
   const [discountedPrice, setDiscountedPrice] = useState(0);
-  const [testName, setTestName] = useState('');
 
-  const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
-  const [testDepartment, setTestDepartment] = useState('');
+  // Replace old test queue state with custom hook
+  const {
+    queue,
+    formData: testFormData,
+    isProcessing: isTestQueueProcessing,
+    errors: testQueueErrors,
+    isValid: isTestQueueValid,
+    addToQueue,
+    removeFromQueue,
+    processQueue,
+    updateFormField: updateTestFormField
+  } = useTestQueue();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [testForm, setTestForm] = useState({
-    testName: '',
-    department: '',
-    price: '',
-    dateCreated: formatDate(new Date())
-  });
-  const [queue, setQueue] = useState([]);
-
   const [generatedMcNo, setGeneratedMcNo] = useState('');
 
-  function formatDate(date) {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('default', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-
-  function handleAddToQueue() {
-    if (!testForm.testName || !testDepartment || !price) {
-      toast.error("Please fill all required test details");
-      return;
-    }
-
-    const newItem = {
-      testName: testForm.testName,
-      department: testDepartment,
-      price: typeof price === 'string' ? price : price.toFixed(2),
-      created: formatDate(new Date(testDate))
-    };
-
-    setQueue([...queue, newItem]);
-
-    setTestForm({
-      testName: '',
-      department: '',
-      price: '',
-      dateCreated: formatDate(new Date())
-    });
-    setPrice('');
-
-    toast.success("Test added to queue successfully");
-  }
+  // Handler for processing the test queue
+  const handleProcessTestQueue = () => {
+    const userId = user?.userId || user?.id;
+    processQueue(departments, userId);
+    setIsOpen(false);
+  };
 
   const queryClient = useQueryClient();
-
-  const createBatchTestsMutation = useMutation({
-    mutationFn: ({ testData, userId }) => testAPI.createTest(testData, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tests'] });
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
-    },
-    onError: (error) => {
-      console.error('Error creating test:', error);
-      toast.error(error.response?.data?.message || 'Failed to create test');
-    }
-  });
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -457,91 +422,6 @@ const AddIncome = () => {
     // Fix: Set empty string for "Out Patient" to ensure it's properly handled
     setFormData({ ...formData, referrer: value });
   };
-
-  const handleDepartmentChange = (e) => {
-    const value = e.target.value;
-    if (value === 'add-department') {
-      navigate('/department-management');
-      return;
-    }
-    if (value) {
-      setTestDepartment(value);
-      const selected = departments.find(dep => dep.departmentName === value);
-      if (selected) {
-        setDepartmentId(selected.departmentId);
-        setUserSelectedDepartment(true);
-      }
-    } else {
-      setTestDepartment('');
-      setDepartmentId('');
-      setUserSelectedDepartment(false);
-    }
-  };
-
-  function handleConfirm() {
-    if (queue.length === 0) {
-      toast.error("No tests in queue to save");
-      return;
-    }
-
-    const userId = user?.userId || user?.id;
-    if (!userId) {
-      toast.error('Authentication error. Please log in again.');
-      return;
-    }
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    Promise.all(
-      queue.map(async (item) => {
-        try {
-          const department = departments.find(
-            d => d.departmentName.toLowerCase() === item.department.toLowerCase()
-          );
-
-          if (!department) {
-            throw new Error(`Department not found for: ${item.department}`);
-          }
-
-          const testData = {
-            testName: item.testName,
-            departmentId: department.departmentId,
-            price: parseFloat(item.price),
-            dateCreated: new Date().toISOString(),
-            currentUserId: userId
-          };
-
-          await testAPI.createTest(testData, userId);
-          successCount++;
-
-        } catch (error) {
-          console.error(`Error saving test "${item.testName}":`, error);
-          errorCount++;
-          return error;
-        }
-      })
-    )
-      .then(() => {
-        if (successCount > 0) {
-          toast.success(`Successfully added ${successCount} tests to the database`);
-        }
-
-        if (errorCount > 0) {
-          toast.error(`Failed to add ${errorCount} tests`);
-        }
-
-        setQueue([]);
-
-        setIsOpen(false);
-
-        queryClient.invalidateQueries({ queryKey: ['tests'] });
-      })
-      .catch(error => {
-        console.error('Error in batch processing:', error);
-        toast.error('An error occurred while saving tests');
-      });
-  }
 
   const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
   
@@ -1449,126 +1329,22 @@ const AddIncome = () => {
         </div>
       )}
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-md w-full max-w-md relative">
-            <div className="bg-green-800 text-white p-3 rounded-t-md flex justify-between items-center">
-              <h2 className="text-xl font-bold">New Test</h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-white hover:text-gray-200"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-4">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Test Name</label>
-                  <input
-                    type="text"
-                    value={testName}
-                    onChange={(e) => {
-                      setTestName(e.target.value);
-                      setTestForm({ ...testForm, testName: e.target.value });
-                    }}
-                    className="w-full border border-gray-300 rounded p-2"
-                    placeholder="Electrocardiogram"
-                  />
-                </div>
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Date Created</label>
-                  <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
-                    <input
-                      id="new-test-date"
-                      type="date"
-                      value={testDate}
-                      onChange={(e) => setTestDate(e.target.value)}
-                      className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Test Department</label>
-                  <select
-                    value={testDepartment}
-                    onChange={handleDepartmentChange}
-                    className="w-full border border-gray-300 rounded p-2 appearance-none"
-                    required
-                  >
-                    <option value="">Select department</option>
-                    {Array.isArray(departments) && departments
-                      .filter(dept => dept.status === 'active')
-                      .map(dept => (
-                        <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                      ))}
-                    <option value="add-department">+ Add Department</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Price</label>
-                  <input
-                    type="text"
-                    value={price}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (/^\d*\.?\d*$/.test(value) || value === '') {
-                        setPrice(value);
-                      }
-                    }}
-                    className="w-full border border-gray-300 rounded p-2 text-right"
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end mb-4">
-                <button
-                  onClick={handleAddToQueue}
-                  className="bg-green-700 text-white py-2 px-4 rounded"
-                >
-                  Add to Queue
-                </button>
-              </div>
-
-              <div className="overflow-x-auto mb-4">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-2 text-green-800">Test Name</th>
-                      <th className="text-left py-2 px-2 text-green-800">Department</th>
-                      <th className="text-left py-2 px-2 text-green-800">Price</th>
-                      <th className="text-left py-2 px-2 text-green-800">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queue.map((item, index) => (
-                      <tr key={index} className="border-b bg-gray-50">
-                        <td className="py-2 px-2">{item.testName}</td>
-                        <td className="py-2 px-2">{item.department}</td>
-                        <td className="py-2 px-2">{item.price}</td>
-                        <td className="py-2 px-2">{item.created}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-center">
-                <button
-                  onClick={handleConfirm}
-                  disabled={createBatchTestsMutation.isPending}
-                  className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
-                >
-                  {createBatchTestsMutation.isPending ? 'Processing...' : 'Confirm'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Test Queue Modal - Now using reusable component */}
+      <TestQueueModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        queue={queue}
+        formData={testFormData}
+        departments={departments}
+        isProcessing={isTestQueueProcessing}
+        errors={testQueueErrors}
+        isValid={isTestQueueValid}
+        onAddToQueue={addToQueue}
+        onRemoveFromQueue={removeFromQueue}
+        onProcessQueue={handleProcessTestQueue}
+        onUpdateFormField={updateTestFormField}
+        title="Add Tests to Database"
+      />
 
       <ReferrerModal
         isOpen={isReferrerModalOpen}
