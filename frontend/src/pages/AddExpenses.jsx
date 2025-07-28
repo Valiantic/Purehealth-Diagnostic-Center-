@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
-import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 import CategoryModal from '../components/add-expenses/CategoryModal';
 import useAuth from '../hooks/auth/useAuth'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,9 +23,20 @@ const AddExpenses = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(''); 
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const datePickerRef = useRef(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleDateChange = (e) => {
+    const inputDate = e.target.value;
+    const selectedDate = new Date(inputDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) {
+      return;
+    }
+    setSelectedDate(inputDate);
+  };
 
   const [errors, setErrors] = useState({
     firstName: '',
@@ -115,62 +126,6 @@ const AddExpenses = () => {
     }
   }, [departments, selectedDepartment]);
 
-  // Calendar date picker
-  const formatDate = (date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const handleDateSelect = (day) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(day);
-    setSelectedDate(newDate);
-    setShowDatePicker(false);
-  };
-
-  const getDaysInMonth = () => {
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    
-    const days = [];
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
-    return days;
-  };
-
-  const prevMonth = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setSelectedDate(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setSelectedDate(newDate);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
-        setShowDatePicker(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   const handleProcessTransaction = () => {
     if (expenses.length > 0) {
       setShowSummaryModal(true);
@@ -183,33 +138,64 @@ const AddExpenses = () => {
 
   const handleConfirmTransaction = async () => {
     try {
+      if (!firstName.trim()) {
+        toast.error('First name is required');
+        return;
+      }
+      
+      if (!lastName.trim()) {
+        toast.error('Last name is required');
+        return;
+      }
+      
+      if (!selectedDepartment) {
+        toast.error('Department is required');
+        return;
+      }
+      
+      if (!selectedDate) {
+        toast.error('Date is required');
+        return;
+      }
+      
+      if (expenses.length === 0) {
+        toast.error('Please add at least one expense item');
+        return;
+      }
+
       const expenseData = {
-        firstName: firstName,
-        lastName: lastName,
-        departmentId: selectedDepartment,
-        date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        departmentId: parseInt(selectedDepartment),
+        date: selectedDate, 
         expenses: expenses.map(exp => ({
-          paidTo: exp.paidTo,
-          purpose: exp.purpose,
-          categoryId: exp.categoryId,
-          amount: exp.amount
+          paidTo: exp.paidTo.trim(),
+          purpose: exp.purpose.trim(),
+          categoryId: parseInt(exp.categoryId),
+          amount: parseFloat(exp.amount)
         })),
         userId: user.userId
       };
       
       const response = await expenseAPI.createExpense(expenseData);
       
-      setShowSummaryModal(false);
-      setExpenses([]);
-      setPaidTo('');
-      setPurpose('');
-      setCategory('');
-      setAmount('');
-      setFirstName('');
-      setLastName('');
-      toast.success('Expense saved successfully');
+      if (response && response.data && response.data.success) {
+        setShowSummaryModal(false);
+        setExpenses([]);
+        setPaidTo('');
+        setPurpose('');
+        setCategory('');
+        setAmount('');
+        setFirstName('');
+        setLastName('');
+        toast.success('Expense saved successfully');
+      } else {
+        toast.error('Failed to save expense - Invalid response');
+      }
     } catch (error) {
-      toast.error('Failed to save expense');
+      console.error('Error saving expense:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error('Failed to save expense: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -394,75 +380,16 @@ const AddExpenses = () => {
                 >
                   Date Created
                 </label>
-                <div className='relative'>
-                  <div className="flex items-center border border-gray-300 rounded-md py-2 px-3"
-                   onClick={() => setShowDatePicker(!showDatePicker)}
-                  >
+                <div className="relative">
                   <input
-                    type="text"
                     id="date-created"
-                    value={formatDate(selectedDate)}
-                    readOnly
-                    className="flex-grow text-gray-700 focus:outline-none"
+                    type="date"
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
+                    placeholder="YYYY-MM-DD"
                   />
-                  <Calendar className="text-gray-500 ml-2" size={20} />
-                  </div>
-
-                   {showDatePicker && (
-                    <div 
-                      ref={datePickerRef}
-                      className="absolute z-10 mt-1 bg-white border border-gray-300 shadow-lg rounded-md p-2 w-full"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <button 
-                          onClick={prevMonth} 
-                          className="p-1 hover:bg-gray-100 rounded-full"
-                          type="button"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <span className="font-medium">
-                          {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </span>
-                        <button 
-                          onClick={nextMonth} 
-                          className="p-1 hover:bg-gray-100 rounded-full"
-                          type="button"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                      
-                      <div className="grid grid-cols-7 gap-1 text-center">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, index) => (
-                          <div key={`header-${index}`} className="text-xs font-medium text-gray-500 py-1">
-                            {day}
-                          </div>
-                        ))}
-                        
-                        {getDaysInMonth().map((day, index) => (
-                          <div key={`day-${index}`} className="text-center">
-                            {day !== null ? (
-                              <button
-                                key={`btn-${day}`}
-                                type="button"
-                                onClick={() => handleDateSelect(day)}
-                                className={`w-8 h-8 rounded-full text-sm ${
-                                  selectedDate.getDate() === day ? 
-                                  'bg-green-600 text-white' : 
-                                  'hover:bg-gray-200'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ) : (
-                              <div key={`empty-${index}`} className="w-8 h-8"></div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -694,7 +621,11 @@ const AddExpenses = () => {
                         </tr>
                         <tr className="border-b">
                           <td className="p-2 pl-4 font-medium border-r border-green-700">Date</td>
-                          <td className="p-2">{formatDate(selectedDate)}</td>
+                          <td className="p-2">{new Date(selectedDate).toLocaleDateString('en-GB', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          }).replace(/\s/g, '-').toUpperCase()}</td>
                         </tr>
                       </tbody>
                     </table>

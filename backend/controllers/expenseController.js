@@ -20,7 +20,9 @@ const createExpense = async (req, res) => {
       departmentId,
       date,
       totalAmount,
-      userId
+      userId,
+      createdAt: selectedDate,
+      updatedAt: selectedDate 
     }, { transaction });
     
      const expenseItems = await Promise.all(
@@ -30,7 +32,9 @@ const createExpense = async (req, res) => {
           paidTo: item.paidTo,
           purpose: item.purpose,
           categoryId: item.categoryId || null,
-          amount: parseFloat(parseFloat(item.amount).toFixed(2))
+          amount: parseFloat(parseFloat(item.amount).toFixed(2)),
+          createdAt: selectedDate, 
+          updatedAt: selectedDate  
         }, { transaction })
       )
     );
@@ -164,7 +168,7 @@ const updateExpense = async (req, res) => {
     try {
       if (date) {
         if (typeof date === 'string') {
-          formattedDate = new Date(date);
+          formattedDate = new Date(date + 'T00:00:00.000Z');
           if (isNaN(formattedDate.getTime())) {
             formattedDate = new Date();
           }
@@ -195,7 +199,9 @@ const updateExpense = async (req, res) => {
       departmentId,
       date: formattedDate,
       totalAmount: formattedTotalAmount,
-      userId
+      userId,
+      createdAt: formattedDate, 
+      updatedAt: formattedDate 
     }, { transaction });
     
     const refundedItems = [];
@@ -231,6 +237,8 @@ const updateExpense = async (req, res) => {
           categoryId: item.categoryId || null,
           amount: formattedAmount,
           status: validStatus,
+          createdAt: formattedDate, 
+          updatedAt: formattedDate,
           ...(item.id && !String(item.id).startsWith('temp-') ? { id: item.id } : {})
         }, { transaction });
       })
