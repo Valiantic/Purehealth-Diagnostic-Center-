@@ -214,7 +214,7 @@ const ReferrerModal = ({
             <button
               onClick={onConfirm}
               disabled={isLoading}
-              className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Processing...' : (mode === "edit" ? 'Save Changes' : 'Confirm')}
             </button>
