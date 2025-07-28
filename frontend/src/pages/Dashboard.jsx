@@ -3,7 +3,7 @@ import { BsTriangleFill } from 'react-icons/bs';
 import { TbTriangleInvertedFilled } from 'react-icons/tb';
 import { RxAvatar } from 'react-icons/rx';
 import Chart from 'chart.js/auto';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/dashboard/Sidebar';
 import DashboardErrorBoundary from '../components/dashboard/DashboardErrorBoundary';
 import DateSelector from '../components/transaction/DateSelector';
 import useUserDisplay from '../hooks/dashboard/useUserDisplay';
