@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/dashboard/Sidebar'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
 import TestQueueModal from '../components/transaction/TestQueueModal'
@@ -397,20 +396,16 @@ const AddIncome = () => {
   };
 
   const handleDateChange = (e) => {
-    const newDate = e.target.value;
-    const selectedDate = new Date(newDate);
+    const selectedDate = new Date(e.target.value);
     const today = new Date();
-    
-    // Set today to start of day for accurate comparison
     today.setHours(0, 0, 0, 0);
     selectedDate.setHours(0, 0, 0, 0);
     
     if (selectedDate > today) {
-      toast.error('Birth date cannot be in the future');
       return;
     }
     
-    setFormData({ ...formData, birthDate: newDate });
+    setFormData({ ...formData, birthDate: e.target.value });
   };
 
   const handleReferrerChange = (e) => {
@@ -879,14 +874,15 @@ const AddIncome = () => {
               <div className="flex flex-col md:flex-row gap-4 mb-4">
                 <div className="flex-1">
                   <label className="block text-green-800 font-medium mb-1">Birth Date</label>
-                  <div className="relative" onClick={() => document.getElementById('birth-date-input').showPicker()}>
+                  <div className="relative">
                     <input
                       id="birth-date-input"
                       type="date"
                       value={formData.birthDate}
                       onChange={handleDateChange}
                       max={new Date().toISOString().split('T')[0]}
-                      className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
+                      className="w-full border-2 border-green-800 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
+                      placeholder="YYYY-MM-DD"
                     />
                     {formData.birthDate && (
                       <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-700 text-sm">
