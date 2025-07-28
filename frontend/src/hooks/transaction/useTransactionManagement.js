@@ -278,7 +278,6 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       selectedDate.setHours(0, 0, 0, 0);
       
       if (selectedDate > today) {
-        toast.error("Birth date cannot be in the future");
         return; 
       }
     }
