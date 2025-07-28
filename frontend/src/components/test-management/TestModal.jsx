@@ -48,13 +48,15 @@ const TestModal = ({
             </div>
             <div>
               <label className="block text-green-800 font-medium mb-1">Date Created</label>
-              <div className="relative" onClick={() => document.getElementById(`${mode}-test-date`).showPicker()}>
+              <div className="relative">
                 <input
                   id={`${mode}-test-date`}
                   type="date"
                   value={testDate}
                   onChange={(e) => handleDateChange(e.target.value)}
-                  className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
+                  placeholder="YYYY-MM-DD"
                 />
               </div>
             </div>

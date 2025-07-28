@@ -118,6 +118,17 @@ const useTestQueue = () => {
   };
 
   const updateFormField = (field, value) => {
+    if (field === 'dateCreated') {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate > today) {
+        return;
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear validation errors when user starts typing in a field

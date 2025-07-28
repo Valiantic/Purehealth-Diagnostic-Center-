@@ -67,14 +67,15 @@ const TestQueueModal = ({
             </div>
             <div>
               <label className="block text-green-800 font-medium mb-1">Date Created</label>
-              <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
+              <div className="relative">
                 <input
                   id="new-test-date"
                   type="date"
                   value={formData.dateCreated ? new Date(formData.dateCreated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                   onChange={(e) => handleInputChange('dateCreated', new Date(e.target.value))}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full border border-gray-300 rounded p-2 cursor-pointer"
+                  className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
+                  placeholder="YYYY-MM-DD"
                 />
               </div>
             </div>
