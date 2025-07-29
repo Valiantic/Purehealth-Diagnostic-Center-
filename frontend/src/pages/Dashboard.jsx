@@ -53,6 +53,14 @@ const DashboardContent = () => {
   // Handle date change
   const handleDateChange = (e) => {
     const newDate = new Date(e.target.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    newDate.setHours(0, 0, 0, 0);
+
+    if (newDate > today){
+      return; 
+    }
+
     if (!isNaN(newDate.getTime())) {
       const month = newDate.getMonth() + 1;
       const year = newDate.getFullYear();
@@ -293,6 +301,7 @@ const DashboardContent = () => {
                 date={selectedDate}
                 onDateChange={handleDateChange}
                 inputRef={dateInputRef}
+                max={new Date().toISOString().split('T')[0]} // Add this line
                 className="relative flex items-center border-0 rounded-md bg-transparent font-bold text-green-700 text-sm md:text-lg flex-1 md:flex-none cursor-pointer p-3"
                 customStyles={{
                   wrapper: "flex-grow",
