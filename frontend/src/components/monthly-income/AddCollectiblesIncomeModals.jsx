@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import DateSelector from '../transaction/DateSelector';
 
 const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
   const [formData, setFormData] = useState({
@@ -9,8 +8,6 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
     totalIncome: '',
     date: new Date().toISOString().split('T')[0]
   });
-
-  const dateInputRef = useRef(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -21,12 +18,18 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
   };
   
   const handleDateChange = (e) => {
-    if (e.preventDefault) e.preventDefault();
-    
-    const newDate = e.target.value;
+    const selectedDate = new Date(e.target.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate > today) {
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
-      date: newDate
+      date: e.target.value
     }));
   };
 
@@ -165,15 +168,14 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
                 onClick={e => e.stopPropagation()} 
                 className="relative"
               >
-                <DateSelector 
-                  date={new Date(formData.date)}
-                  onDateChange={handleDateChange}
-                  inputRef={dateInputRef}
-                  className="w-full border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors px-3 py-2"
-                  wrapperClassName="flex items-center justify-between"
-                  textClassName="text-sm"
-                  iconClassName="w-4 h-4 text-green-600 ml-auto"
-                />
+               <input 
+               type="date" 
+               value={formData.date}
+               onChange={handleDateChange}
+               max={new Date().toISOString().split('T')[0]}
+              className='w-full border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors px-3 py-2'
+              placeholder='YYYY-MM-DD'
+              />
               </div>
             </div>
           </div>
