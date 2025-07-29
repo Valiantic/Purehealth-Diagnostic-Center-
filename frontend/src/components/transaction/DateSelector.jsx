@@ -7,7 +7,8 @@ const DateSelector = ({
   inputRef, 
   className = "relative flex items-center border border-green-800 rounded-md bg-green-50 font-bold text-green-700 text-xs md:text-sm flex-1 md:flex-none cursor-pointer",
   customStyles = {},
-  displayFormat = "full-date" // "full-date" or "month-year"
+  displayFormat = "full-date", // "full-date" or "month-year"
+  max
 }) => {
 
   const openDatePicker = () => {
@@ -55,6 +56,7 @@ const DateSelector = ({
         type="date"
         className="absolute opacity-0 w-full h-full cursor-pointer z-10"
         onChange={onDateChange}
+        max={max}
         value={formatDateForInput(date)}
       />
       <div className={`${wrapperStyles} flex w-full items-center justify-between`}>
