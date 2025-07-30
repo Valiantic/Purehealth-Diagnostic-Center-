@@ -226,3 +226,11 @@ ADD COLUMN lastName VARCHAR(255) AFTER firstName;
 
 -- Remove the old name column (do this after migrating data)
 -- ALTER TABLE Expenses DROP COLUMN name;
+
+-- MySQL version
+ALTER TABLE CollectibleIncome 
+ADD COLUMN dateConducted DATETIME NOT NULL DEFAULT NOW() AFTER totalIncome;
+
+-- Update existing records
+UPDATE CollectibleIncome 
+SET dateConducted = createdAt;
