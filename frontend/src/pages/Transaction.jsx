@@ -6,7 +6,7 @@ import Expense from '../assets/icons/expense_logo.png';
 import { Download } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
 import Loading from '../components/transaction/Loading';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify'; // Added toast import
 import { calculateRefundTotal } from '../utils/transactionUtils';
 import DateSelector from '../components/transaction/DateSelector';
@@ -17,6 +17,7 @@ import TransactionSummaryModal from '../components/transaction/TransactionSummar
 import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
 import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
 import { useTransactionData } from '../hooks/transaction/useTransactionData';
+import { expenseAPI } from '../services/api';
 
 const Transaction = () => {
   const { user, isAuthenticating } = useAuth();
@@ -65,6 +66,19 @@ const Transaction = () => {
     departmentRefundTotals
   } = useTransactionData(selectedDate, expenseDate);
 
+  // Fetch categories for the expense modal
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => expenseAPI.getAllCategories().then(res => res.data),
+    onError: (error) => console.error('Failed to fetch categories:', error),
+  });
+
+  // Process categories data consistently
+  const categories = categoriesData ? 
+    (Array.isArray(categoriesData) ? categoriesData : 
+    (categoriesData.data && Array.isArray(categoriesData.data) ? categoriesData.data : [])) 
+    : [];
+
   // Use the existing transaction management hook
   const {
     openMenuId,
@@ -80,7 +94,6 @@ const Transaction = () => {
     editingId,
     editedTransaction,
     toggleIncomeMenu,
-    toggleExpenseMenu,
     handleDropdownClick,
     handleCancelClick,
     closeConfirmModal, 
@@ -187,21 +200,77 @@ const Transaction = () => {
     setIsExpenseSummaryOpen(true);
   };
   
+  const getExpenseModalData = () => {
+    if (!selectedExpense) return {};
+    
+    const firstName = selectedExpense.firstName || selectedExpense.name?.split(' ')[0] || '';
+    const lastName = selectedExpense.lastName || selectedExpense.name?.split(' ').slice(1).join(' ') || '';
+    
+    const expenses = selectedExpense.ExpenseItems && selectedExpense.ExpenseItems.length > 0 
+      ? selectedExpense.ExpenseItems.map((item, index) => ({
+          id: item.id || index,
+          paidTo: item.paidTo || firstName + ' ' + lastName,
+          purpose: item.purpose || '',
+          categoryId: item.Category?.categoryId || item.categoryId || '',
+          categoryName: item.Category?.name || 'No Category',
+          amount: parseFloat(item.amount || 0)
+        }))
+      : [{
+          id: 1,
+          paidTo: firstName + ' ' + lastName,
+          purpose: selectedExpense.purpose || selectedExpense.description || '',
+          categoryId: selectedExpense.Category?.categoryId || selectedExpense.categoryId || '',
+          categoryName: selectedExpense.Category?.name || 'No Category', 
+          amount: parseFloat(selectedExpense.amount || 0)
+        }];
+    
+    return {
+      firstName,
+      lastName,
+      selectedDepartment: selectedExpense.departmentId || '',
+      selectedDate: expenseDate.toISOString().split('T')[0],
+      expenses
+    };
+  };
+  
+  const calculateExpenseTotal = () => {
+    const modalData = getExpenseModalData();
+    return modalData.expenses ? modalData.expenses.reduce((total, exp) => total + exp.amount, 0) : 0;
+  };
+  
   const closeExpenseSummary = () => {
     setIsExpenseSummaryOpen(false);
     setSelectedExpense(null);
     setIsEditingExpense(false);
   };
 
-  const handleSaveExpenseChanges = async (updatedExpense) => {
-    if (updatedExpense.isEditing !== undefined) {
-      setIsEditingExpense(updatedExpense.isEditing);
-      return;
-    }
-    
-    closeExpenseSummary();
-    
+  const handleSaveExpenseChanges = async (updatedData) => {
     try {
+      const totalAmount = updatedData.expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+      
+      const expenseUpdateData = {
+        firstName: updatedData.firstName,
+        lastName: updatedData.lastName,
+        departmentId: parseInt(updatedData.selectedDepartment),
+        date: updatedData.selectedDate || expenseDate.toISOString().split('T')[0],
+        totalAmount: totalAmount,
+        ExpenseItems: updatedData.expenses.map(exp => ({
+          id: exp.id,
+          paidTo: exp.paidTo,
+          purpose: exp.purpose,
+          categoryId: parseInt(exp.categoryId) || null,
+          amount: parseFloat(exp.amount),
+          status: exp.status || 'pending'
+        })),
+        userId: user.userId
+      };
+
+      const expenseId = selectedExpense?.expenseId || selectedExpense?.id;
+      if (!expenseId) {
+        throw new Error('No expense ID found for updating');
+      }
+
+      await expenseAPI.updateExpense(expenseId, expenseUpdateData);
       
       await refetchExpenseData(expenseDate);
       
@@ -209,14 +278,11 @@ const Transaction = () => {
         queryKey: ['expenses', expenseDate] 
       });
       
-      setTimeout(() => {
-        refetchExpenseData(expenseDate);
-      }, 500);
-      
-      toast.success('Expense data has been updated');
+      toast.success('Expense updated successfully');
+      closeExpenseSummary();
     } catch (error) {
-      console.error('Failed to refresh expense data:', error);
-      toast.error('Failed to refresh expense data');
+      console.error('Failed to update expense:', error);
+      toast.error(`Failed to update expense: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -508,16 +574,24 @@ const Transaction = () => {
         isPending={mutations?.cancelTransaction?.isPending}
       />
 
-      {/* New Expense Summary Modal */}
+      {/* Expense Summary Modal */}
       {isExpenseSummaryOpen && selectedExpense && (
         <ExpenseSummaryModal
           isOpen={isExpenseSummaryOpen}
           onClose={closeExpenseSummary}
-          expense={selectedExpense}
-          isEditing={isEditingExpense}
+          firstName={getExpenseModalData().firstName}
+          lastName={getExpenseModalData().lastName}
+          selectedDepartment={getExpenseModalData().selectedDepartment}
+          selectedDate={getExpenseModalData().selectedDate}
           departments={departments}
+          categories={categories}
+          expenses={getExpenseModalData().expenses}
+          calculateTotal={calculateExpenseTotal}
           onSave={handleSaveExpenseChanges}
           isLoading={false}
+          isEditing={false}
+          onEnterEditMode={() => setIsEditingExpense(true)}
+          mode="edit"
         />
       )}
 

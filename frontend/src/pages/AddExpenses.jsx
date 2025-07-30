@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
 import { X } from 'lucide-react';
 import CategoryModal from '../components/add-expenses/CategoryModal';
+import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
 import useAuth from '../hooks/auth/useAuth'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentAPI, expenseAPI } from '../services/api';
@@ -24,6 +25,7 @@ const AddExpenses = () => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(''); 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleDateChange = (e) => {
     const inputDate = e.target.value;
@@ -138,6 +140,8 @@ const AddExpenses = () => {
 
   const handleConfirmTransaction = async () => {
     try {
+      setIsConfirming(true);
+      
       if (!firstName.trim()) {
         toast.error('First name is required');
         return;
@@ -196,6 +200,8 @@ const AddExpenses = () => {
       console.error('Error saving expense:', error);
       console.error('Error response:', error.response?.data);
       toast.error('Failed to save expense: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -577,108 +583,21 @@ const AddExpenses = () => {
               </button>
             </div>
 
-            {showSummaryModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white w-full max-w-lg rounded-lg shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
-                  {/* Modal Header */}
-                  <div className='bg-[#02542D] text-white p-2 flex justify-between items-center'>
-                    <h2 className="text-lg font-bold ml-2">Expense Summary</h2>
-                    <button 
-                      onClick={handleCloseSummaryModal}
-                      className="text-white hover:text-gray-300"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                  
-                  {/* Header Information */}
-                  <div className="overflow-auto flex-1">
-                    <table className="w-full text-sm border-collapse">
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">First Name</td>
-                          <td className="p-2">{firstName || 'N/A'}</td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Last Name</td>
-                          <td className="p-2">{lastName || 'N/A'}</td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 font-medium border-r border-green-700">Department</td>
-                          <td className="p-2">
-                            {(() => {
-                              if (!selectedDepartment) {
-                                return 'N/A';
-                              }
-                              
-                              const dept = departments.find(d => 
-                                String(d.departmentId) === String(selectedDepartment)
-                              );
-                              
-                              return dept ? dept.departmentName : 'N/A';
-                            })()}
-                          </td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 font-medium border-r border-green-700">Date</td>
-                          <td className="p-2">{new Date(selectedDate).toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          }).replace(/\s/g, '-').toUpperCase()}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    {/* Expense Table with Scrollbar */}
-                    <div className="max-h-[250px] overflow-y-auto border-b">
-                      <table className='w-full border-collapse text-sm'>
-                        <thead className="sticky top-0 bg-green-100">
-                          <tr>
-                            <th className='text-left p-2 pl-4 border-b'>Paid to</th>
-                            <th className='text-left p-2 border-b'>Purpose</th>
-                            <th className='text-left p-2 border-b'>Category</th>
-                            <th className='text-right p-2 pr-4 border-b'>Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {expenses.map((expense) => (
-                            <tr key={expense.id} className='border-b'>
-                              <td className='p-2 pl-4'>{expense.paidTo}</td>
-                              <td className='p-2'>{expense.purpose}</td>
-                              <td className='p-2'>{expense.categoryName}</td>
-                              <td className='p-2 pr-4 text-right'>{expense.amount.toLocaleString()}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    {/* Total Row */}
-                    <div className="px-4 py-3 flex items-center bg-green-100">
-                      <div className="text-sm font-bold text-green-800">TOTAL:</div>
-                      <div className="flex-grow"></div>
-                      <div className="text-sm font-bold text-green-800 text-right">
-                        {calculateTotal().toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className='flex justify-end gap-2 sm:gap-6 p-3'>
-                    <button className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base'>
-                      Export
-                    </button>
-                    <button
-                      onClick={handleConfirmTransaction}
-                      className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base'
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Expense Summary Modal */}
+            <ExpenseSummaryModal
+              isOpen={showSummaryModal}
+              onClose={handleCloseSummaryModal}
+              firstName={firstName}
+              lastName={lastName}
+              selectedDepartment={selectedDepartment}
+              selectedDate={selectedDate}
+              departments={departments}
+              expenses={expenses}
+              calculateTotal={calculateTotal}
+              onConfirm={handleConfirmTransaction}
+              isLoading={isConfirming}
+              mode="confirm"
+            />
           </div>
         </div>
       </div>
@@ -688,9 +607,7 @@ const AddExpenses = () => {
               isOpen={showCategoryModal}
               onClose={() => {
                 setShowCategoryModal(false);
-                // Reset the dropdown selection if user cancels without adding a category
                 if (!category) {
-                  // Category dropdown will reset to empty automatically
                 }
               }}
               onAddCategory={handleAddCategory}
