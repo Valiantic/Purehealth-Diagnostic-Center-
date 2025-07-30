@@ -391,6 +391,9 @@ export const collectibleIncomeAPI = {
   createCollectibleIncome: (incomeData) => {
     return apiClient.post('/collectible-incomes', incomeData);
   },
+  updateCollectibleIncome: (id, incomeData) => {
+    return apiClient.put(`/collectible-incomes/${id}`, incomeData);
+  }
 };
 
 export const monthlyIncomeAPI = {

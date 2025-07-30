@@ -4,5 +4,6 @@ const collectibleIncomeController = require('../controllers/collectibleIncomeCon
 
 router.post('/', collectibleIncomeController.createCollectibleIncome);
 router.get('/', collectibleIncomeController.getCollectibleIncome);
+router.put('/:id', collectibleIncomeController.updateCollectibleIncome); 
 
 module.exports = router;

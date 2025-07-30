@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
-import AddCollectibleIncomeModal from '../components/monthly-income/AddCollectiblesIncomeModals'
+import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -12,6 +12,8 @@ const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('add'); 
+  const [selectedCollectible, setSelectedCollectible] = useState(null);
   const [collectibles, setCollectibles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -140,7 +142,16 @@ const Monthly = () => {
   }
 
   const handleAddCollectibles = () => {
+    setModalMode('add');
+    setSelectedCollectible(null);
     setIsCollectibleModalOpen(true);
+  }
+
+  const handleEditCollectible = (collectible) => {
+    setModalMode('edit');
+    setSelectedCollectible(collectible);
+    setIsCollectibleModalOpen(true);
+    setActiveMenu(null); 
   }
 
   const handleCollectibleSubmit = async (data) => {
@@ -150,8 +161,6 @@ const Monthly = () => {
         ...data,
         currentUserId: user?.userId || user?.id 
       };
-
-      console.log("Submitting collectible with user ID:", collectibleData.currentUserId);
 
       const response = await collectibleIncomeAPI.createCollectibleIncome(collectibleData);
        
@@ -170,20 +179,30 @@ const Monthly = () => {
     }
   }
 
-  const handleDeleteCollectible = async (id) => {
+  const handleCollectibleUpdate = async (data) => {
+    setLoading(true);
     try {
-      const response = await collectibleIncomeAPI.deleteCollectibleIncome(id);
-      if (response && response.success) {
-        toast.success('Collectible income deleted successfully');
+      const updateData = {
+        ...data,
+        currentUserId: user?.userId || user?.id 
+      };
+
+      const response = await collectibleIncomeAPI.updateCollectibleIncome(selectedCollectible.companyId, updateData);
+       
+      if (response?.data?.success) {
+        toast.success('Collectible income updated successfully');
         await fetchCollectibles();
       } else {
-        toast.error(response?.message || 'Failed to delete collectible income');
+        toast.error(response?.data?.message || 'Failed to update collectible income');
       }
     } catch (error) {
-      console.error('Error deleting collectible income:', error);
-      toast.error('An error occurred while deleting collectible income');
+      console.error('Error updating collectible income:', error);
+      toast.error(`Error: ${error.message || 'An unknown error occurred'}`);
+    } finally {
+      setLoading(false);
+      setIsCollectibleModalOpen(false);
+      setSelectedCollectible(null);
     }
-    setActiveMenu(null);
   }
 
   const toggleMenu = (id) => {
@@ -405,7 +424,7 @@ const Monthly = () => {
                           <tr key={`collectible-row-${item.companyId}`} className="border-b border-green-200">
                             <td className="p-1 border-r border-green-200 text-center bg-white">{item.companyName}</td>
                             <td className="p-1 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
-                            <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.createdAt).toLocaleDateString()}</td>
+                            <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.dateConducted).toLocaleDateString()}</td>
                             <td className="p-1 border-r border-green-200 text-center bg-white">
                               {formatCurrency(item.totalIncome)}
                             </td>
@@ -422,10 +441,10 @@ const Monthly = () => {
                                   <ul className="py-1">
                                     <li>
                                       <button 
-                                        onClick={() => handleDeleteCollectible(item.companyId)}
-                                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
+                                        onClick={() => handleEditCollectible(item)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-100"
                                       >
-                                        Delete
+                                        Edit
                                       </button>
                                     </li>
                                   </ul>
@@ -503,11 +522,18 @@ const Monthly = () => {
         </div>
       </div>
 
-      <AddCollectibleIncomeModal
+      <CollectibleIncomeModal
         isOpen={isCollectibleModalOpen}
-        onClose={() => setIsCollectibleModalOpen(false)}
+        onClose={() => {
+          setIsCollectibleModalOpen(false);
+          setSelectedCollectible(null);
+          setModalMode('add');
+        }}
         onSubmit={handleCollectibleSubmit}
-        userId={user?.userId || user?.id} // Pass user ID explicitly to the modal
+        onUpdate={handleCollectibleUpdate}
+        userId={user?.userId || user?.id}
+        mode={modalMode}
+        initialData={selectedCollectible}
       />
       
       {/* Close dropdown menus when clicking outside */}

@@ -20,6 +20,11 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 0.00
         },
+        dateConducted: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            defaultValue: DataTypes.NOW
+        },
 
     }, {
         timestamps: true,
