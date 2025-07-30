@@ -9,6 +9,7 @@ const createExpense = async (req, res) => {
   
   try {
     const { firstName, lastName, departmentId, date, expenses, userId } = req.body;
+    const selectedDate = new Date(date + 'T00:00:00.000Z'); 
     
     const totalAmount = expenses.reduce((sum, item) => 
       sum + parseFloat(parseFloat(item.amount).toFixed(2)), 0).toFixed(2);
@@ -21,8 +22,8 @@ const createExpense = async (req, res) => {
       date,
       totalAmount,
       userId,
-      createdAt: selectedDate,
-      updatedAt: selectedDate 
+      createdAt: selectedDate, 
+      updatedAt: selectedDate  
     }, { transaction });
     
      const expenseItems = await Promise.all(
