@@ -1359,6 +1359,7 @@ const AddIncome = () => {
         setClinicAddress={setReferrerClinicAddress}
         contactNo={referrerContactNo}
         setContactNo={setReferrerContactNo}
+        validateForm={validateReferrerForm}
         onConfirm={handleAddNewReferrer}
         isLoading={addReferrerMutation.isPending}
         title="New Referrer"

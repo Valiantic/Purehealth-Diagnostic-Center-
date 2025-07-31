@@ -57,7 +57,9 @@ const useReferrerForm = () => {
 
     // Show validation errors
     if (errors.length > 0) {
-      toast.error(errors[0]); // Show first error
+      errors.forEach(error => {
+        toast.error(error);
+      });
       return false;
     }
 
