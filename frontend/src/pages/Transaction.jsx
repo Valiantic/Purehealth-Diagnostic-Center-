@@ -589,7 +589,7 @@ const Transaction = () => {
           calculateTotal={calculateExpenseTotal}
           onSave={handleSaveExpenseChanges}
           isLoading={false}
-          isEditing={false}
+          isEditing={isEditingExpense}
           onEnterEditMode={() => setIsEditingExpense(true)}
           mode="edit"
         />
