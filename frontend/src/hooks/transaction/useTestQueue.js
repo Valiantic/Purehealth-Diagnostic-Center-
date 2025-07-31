@@ -171,7 +171,7 @@ const useTestQueue = () => {
       department: formData.department.trim(),
       price: typeof formData.price === 'string' ? formData.price : formData.price.toString(),
       created: formatDate(formData.dateCreated),
-      dateCreated: formData.dateCreated.toISOString()
+      dateCreated: formData.dateCreated 
     };
 
     setQueue(prevQueue => [...prevQueue, newItem]);
