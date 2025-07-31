@@ -34,7 +34,8 @@ const TestQueueModal = ({
     }
     
     try {
-      const selectedDate = new Date(inputValue + 'T00:00:00');
+      const [year, month, day] = inputValue.split('-').map(Number);
+      const selectedDate = new Date(year, month - 1, day); 
       
       if (isNaN(selectedDate.getTime())) {
         console.warn('Invalid date input:', inputValue);
@@ -66,13 +67,24 @@ const TestQueueModal = ({
       if (formData.dateCreated) {
         const date = new Date(formData.dateCreated);
         if (!isNaN(date.getTime())) {
-          return date.toISOString().split('T')[0];
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         }
       }
-      return new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     } catch (error) {
       console.error('Error formatting date:', error);
-      return new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
   };
 
