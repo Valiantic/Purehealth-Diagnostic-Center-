@@ -92,6 +92,8 @@ const DashboardContent = () => {
     monthlyNetProfit: null
   });
 
+  const [dailyIncomeLegend, setDailyIncomeLegend] = useState([]);
+
   // Initialize and render charts with memoized dependencies
   useEffect(() => {
     if (!user || isLoading) return;
@@ -104,8 +106,30 @@ const DashboardContent = () => {
       if (dailyIncomeChartRef.current && dailyIncomeData && !loading.dailyIncome) {
         const dailyIncomeCtx = dailyIncomeChartRef.current.getContext('2d');
         const chartData = transformDailyIncomeData(dailyIncomeData);
-        const chartOptions = getLineChartOptions();
-        
+        const chartOptions = {
+          ...getLineChartOptions(),
+          plugins: {
+            ...getLineChartOptions().plugins,
+            tooltip: {
+              ...getLineChartOptions().plugins.tooltip,
+              callbacks: {
+                label: function(context) {
+                  const label = context.dataset.label || '';
+                  return `${label}: ${formatCurrency(context.parsed.y)}`;
+                }
+              }
+            }
+          }
+        };
+
+        setDailyIncomeLegend(
+          chartData.datasets.map(ds => ({
+            label: ds.label,
+            color: ds.borderColor,
+            borderDash: ds.borderDash || [],
+          }))
+        );
+
         chartInstancesRef.current.dailyIncome = new Chart(dailyIncomeCtx, {
           type: 'line',
           data: chartData,
@@ -331,10 +355,29 @@ const DashboardContent = () => {
                 {showDailyIncomeTooltip && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
                     <p className="font-semibold mb-1">Daily Income Trend</p>
-                    <p>This chart displays your daily income over the past few days. It helps you identify patterns in revenue generation and track day-to-day financial performance.</p>
+                    <p>
+                      This chart displays your daily income over the past few days, including both collected and collectible income. The "Total Income" line represents the sum of collected and collectible income for each day.
+                    </p>
                   </div>
                 )}
               </div>
+            </div>
+            {/* Color legend for daily income trend */}
+            <div className="flex flex-wrap gap-4 mb-2">
+              {dailyIncomeLegend.map((item, idx) => (
+                <div key={idx} className="flex items-center text-xs">
+                  <span
+                    className="inline-block w-4 h-2 mr-2 rounded"
+                    style={{
+                      background: item.color,
+                      borderBottom: item.borderDash.length ? '2px dashed #333' : '2px solid #333',
+                      borderColor: item.color,
+                      borderStyle: item.borderDash.length ? 'dashed' : 'solid'
+                    }}
+                  ></span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </div>
             <div className="h-48">
               {loading.dailyIncome ? (
