@@ -10,7 +10,7 @@ const TestDetails = require('./TestDetails')(sequelize);
 const DepartmentRevenue = require('./DepartmentRevenue')(sequelize);
 const Expense = require('./Expenses')(sequelize);
 const ExpenseItem = require('./ExpenseItems')(sequelize);
-const Category = require('./Categories')(sequelize);
+const Category = require('./Category')(sequelize);
 const CollectibleIncome = require('./CollectibleIncome')(sequelize);
 
 // Relationships

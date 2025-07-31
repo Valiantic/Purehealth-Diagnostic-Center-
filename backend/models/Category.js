@@ -19,7 +19,7 @@ module.exports = (sequelize) => {
         }
     }, {
         timestamps: true,
-        tableName: 'Categories',
+        tableName: 'Category',
         freezeTableName: true,
         indexes: [
             {

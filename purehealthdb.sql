@@ -234,3 +234,6 @@ ADD COLUMN dateConducted DATETIME NOT NULL DEFAULT NOW() AFTER totalIncome;
 -- Update existing records
 UPDATE CollectibleIncome 
 SET dateConducted = createdAt;
+
+-- Rename Categories table to Category due to model mismatch
+ALTER TABLE CATEGORIES RENAME TO CATEGORY;

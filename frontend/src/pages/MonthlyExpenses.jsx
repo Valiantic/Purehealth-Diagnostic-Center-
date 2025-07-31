@@ -313,9 +313,9 @@ const MonthlyExpenses = () => {
                   <thead>
                     <tr className="border-b border-green-800 bg-green-100">
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Paid To</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Department</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Payee</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Purpose</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium">Category</th>
                       <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
                     </tr>
                   </thead>
@@ -330,9 +330,9 @@ const MonthlyExpenses = () => {
                       expenseItemsToDisplay.map((item, index) => (
                         <tr key={item.id || `expense-item-${index}`} className="border-b border-green-100">
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(item.date)}</td>
-                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.department}</td>
                           <td className="p-1 border-r border-green-200 text-center bg-white">{item.paidTo || '-'}</td>
-                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.purpose || '-'}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.department}</td>
+                          <td className="p-1 border-r border-green-200 text-center bg-white">{item.categoryName || '-'}</td>
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(item.amount)}</td>
                           
                         </tr>

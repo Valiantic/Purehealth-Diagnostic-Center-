@@ -1,4 +1,4 @@
-const { Expense, ExpenseItem, Department, sequelize } = require('../models');
+const { Expense, ExpenseItem, Department, Category, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Get all monthly expenses data
@@ -47,7 +47,14 @@ exports.getMonthlyExpenses = async (req, res) => {
         },
         {
           model: ExpenseItem,
-          attributes: ['expenseItemId', 'paidTo', 'purpose', 'amount', 'status']
+          attributes: ['expenseItemId', 'paidTo', 'purpose', 'categoryId', 'amount', 'status'],
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false
+            }
+          ]
         }
       ],
       order: [['date', 'DESC']] 
@@ -97,7 +104,8 @@ exports.getMonthlyExpenses = async (req, res) => {
           dailyExpenses[dateKey].departments[departmentKey].items.push({
             id: item.expenseItemId,
             paidTo: item.paidTo,
-            purpose: item.purpose,
+            categoryId: item.categoryId,
+            categoryName: item.Category?.name || 'Uncategorized',
             amount: itemAmount,
             status: item.status
           });
@@ -181,7 +189,14 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
               [Op.notIn]: ['refunded', 'paid']
             }
           },
-          required: false 
+          required: false,
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false
+            }
+          ]
         }
       ]
     });
