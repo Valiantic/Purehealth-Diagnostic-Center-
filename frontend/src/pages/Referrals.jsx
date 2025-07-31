@@ -1,18 +1,27 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useMemo, useEffect } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
-import { ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, PlusCircle } from 'lucide-react'
 import { referrerAPI, transactionAPI, departmentAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
 import DateSelector from '../components/transaction/DateSelector'
+import ReferrerModal from '../components/referral-management/ReferrerModal'
+import useReferrerForm from '../hooks/referral-management/useReferrerForm'
+import { ToastContainer, toast } from 'react-toastify'
 
 const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sortDirection, setSortDirection] = useState('asc'); 
+  const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
   const incomeDateInputRef = useRef(null);
-  
+  const {
+      firstName, lastName, birthday, sex, clinicName, clinicAddress, contactNo,
+      setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
+      resetForm, validateForm, getFormData
+    } = useReferrerForm();
+
   const { data: departmentsData, isLoading: isDepartmentsLoading } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
@@ -36,7 +45,7 @@ const Referrals = () => {
     return filtered;
   }, [departments])
 
-  const { data: referrersData, isLoading: isReferrersLoading, error: referrersError } = useQuery({
+  const { data: referrersData, isLoading: isReferrersLoading, error: referrersError, refetch: refetchReferrers } = useQuery({
     queryKey: ['referrers'],
     queryFn: async () => {
       const response = await referrerAPI.getAllReferrers(true)
@@ -111,6 +120,28 @@ const Referrals = () => {
   const toggleSortDirection = () => {
     setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
   }
+
+  const handleReferrerSubmit = async () => {
+    try {  
+      const formData = getFormData();
+      const response = await referrerAPI.createReferrer(formData);
+      toast.success('Referrer added successfully');
+
+      if (response?.data?.success || response?.success) {
+        await refetchReferrers();
+        await refetchTransactions();
+        
+        setIsReferrerModalOpen(false);
+        resetForm();
+      } else {
+        console.error('Failed to create referrer:', response);
+        toast.error('Failed to create referrer. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating referrer:', error);
+      toast.error(`Error creating referrer: ${error.message}`);
+    }
+  };
   
   // Filter referrers based on search term
   const filteredReferrers = useMemo(() => {
@@ -315,6 +346,7 @@ const Referrals = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
+      <ToastContainer position="top-right" autoClose={3000} />
      <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
@@ -322,15 +354,27 @@ const Referrals = () => {
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
 
         {/* Search Bar - Now outside the table */}
-        <div className="flex flex-col sm:flex-row justify-between items-center sm:items-center mb-4 gap-2 pr-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 pr-2">
 
-           <button className="ml-2 bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
+         <div className='flex items-center gap-2'>
+
+          <button className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
             Generate Report
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           </button>
 
+          <button
+          onClick={() => setIsReferrerModalOpen(true)}
+          className='w-10 h-10 bg-green-800 text-white rounded-full flex items-center justify-center hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200'
+          title="Add New Referrer"
+          >
+            <PlusCircle size={20}/>
+          </button>
+
+         </div>
+        
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
           
           <div className="relative w-full sm:w-auto">
@@ -543,9 +587,35 @@ const Referrals = () => {
             ))}
           </div>
         )}
-
       
       </div>
+
+       {isReferrerModalOpen && (
+          <ReferrerModal
+          isOpen={isReferrerModalOpen}
+          onClose={() => {
+            setIsReferrerModalOpen(false);
+            resetForm();
+          }}
+          onConfirm={handleReferrerSubmit}
+          firstName={firstName}
+          setFirstName={setFirstName}
+          lastName={lastName}
+          setLastName={setLastName}
+          birthday={birthday}
+          setBirthday={setBirthday}
+          sex={sex}
+          setSex={setSex}
+          clinicName={clinicName}
+          setClinicName={setClinicName}
+          clinicAddress={clinicAddress}
+          setClinicAddress={setClinicAddress}
+          contactNo={contactNo}
+          setContactNo={setContactNo}
+          validateForm={validateForm}
+          />
+         
+        )}
     </div>
   )
 }

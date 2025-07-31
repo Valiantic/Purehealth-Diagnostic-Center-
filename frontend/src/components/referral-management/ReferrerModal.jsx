@@ -19,6 +19,7 @@ const ReferrerModal = ({
   contactNo,
   setContactNo,
   onConfirm,
+  validateForm,
   isLoading = false,
   title = "New Referrer",
   mode = "add", 
@@ -26,6 +27,12 @@ const ReferrerModal = ({
   handleStatusChange = null
 }) => {
   if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (validateForm && validateForm()) {
+      onConfirm();
+    }
+  };
 
   // Handle contact number input - only allow numbers
   const handleContactChange = (e) => {
@@ -212,7 +219,7 @@ const ReferrerModal = ({
           {/* Confirm Button */}
           <div className="flex justify-center">
             <button
-              onClick={onConfirm}
+              onClick={handleConfirm}
               disabled={isLoading}
               className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >

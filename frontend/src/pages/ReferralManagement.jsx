@@ -620,6 +620,7 @@ const ReferralManagement = () => {
               contactNo={contactNo}
               setContactNo={setContactNo}
               onConfirm={handleAddReferrer}
+              validateForm={validateForm}
               isLoading={addReferrerMutation.isPending}
               title="New Referrer"
               mode="add"
@@ -643,6 +644,7 @@ const ReferralManagement = () => {
               contactNo={contactNo}
               setContactNo={setContactNo}
               onConfirm={handleUpdateReferrer}
+              validateForm={validateForm}
               isLoading={updateReferrerMutation.isPending}
               title="Edit Referrer"
               mode="edit"
