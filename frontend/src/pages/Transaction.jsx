@@ -111,7 +111,8 @@ const Transaction = () => {
     toggleRefundMode,
     handleTestDetailChange,
     handleSaveClick,
-    mutations
+    mutations,
+    refundAmounts
   } = useTransactionManagement(user, selectedDate);
 
   // Process and filter transactions
@@ -124,7 +125,6 @@ const Transaction = () => {
   });
 
   // Calculate department totals
-  const departmentTotalsData = calculateDepartmentTotals(filteredTransactions);
   const departmentsWithValues = getDepartmentsWithValues();
   const { totalGross, totalGCash } = calculateTotalValues(filteredTransactions);
 
@@ -135,8 +135,8 @@ const Transaction = () => {
   // Calculate refund total
   const refundInfo = calculateRefundTotal(filteredTransactions);
   const totalRefundAmount = refundInfo.totalRefundAmount;
-  const totalRefundedTests = refundInfo.refundedTestCount;
-  const totalRefundsToDisplay = totalRefundAmount + (pendingRefundAmount || 0);
+  const exceededRefunds = Object.values(refundAmounts || {}).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  const totalRefundsToDisplay = totalRefundAmount + exceededRefunds + (pendingRefundAmount || 0);
 
   const handleDateChange = (e) => {
     const newDate = new Date(e.target.value);

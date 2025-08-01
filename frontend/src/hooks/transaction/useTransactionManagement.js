@@ -540,17 +540,19 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       const refundId = `test-${testCopy.testDetailId}`;
       if (totalPayment > discountedPrice) {
         const refundAmount = totalPayment - discountedPrice;
-        
         // Update refund tracking for this test
         setRefundAmounts(prev => ({
           ...prev,
           [refundId]: refundAmount
         }));
-        
-        // Show warning about refund
-        toast.info(`Payment exceeds price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+        // Debounce the toast: only show after input is complete (onBlur or Enter)
+        if (window) {
+          if (window._refundToastTimeout) clearTimeout(window._refundToastTimeout);
+          window._refundToastTimeout = setTimeout(() => {
+            toast.info(`Payment exceeds price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+          }, 500);
+        }
       } else {
-        // Clear any previously tracked refund for this test
         setRefundAmounts(prev => {
           const newRefunds = {...prev};
           delete newRefunds[refundId];
@@ -591,16 +593,18 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       const refundId = `test-${testCopy.testDetailId}`;
       if (totalPayment > newDiscountedPrice) {
         const refundAmount = totalPayment - newDiscountedPrice;
-        
-        // Update refund tracking
         setRefundAmounts(prev => ({
           ...prev,
           [refundId]: refundAmount
         }));
-        
-        toast.info(`Payment now exceeds discounted price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+        // Debounce the toast: only show after input is complete (onBlur or Enter)
+        if (window) {
+          if (window._refundToastTimeout) clearTimeout(window._refundToastTimeout);
+          window._refundToastTimeout = setTimeout(() => {
+            toast.info(`Payment now exceeds discounted price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+          }, 500);
+        }
       } else {
-        // Clear any previously tracked refund
         setRefundAmounts(prev => {
           const newRefunds = {...prev};
           delete newRefunds[refundId];
@@ -863,6 +867,7 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     editingId,
     editedTransaction,
     pendingRefundAmount,
+    refundAmounts,
 
     // Handlers
     toggleIncomeMenu,
