@@ -244,15 +244,15 @@ const TransactionSummaryModal = ({
                 <table className="min-w-full border-collapse text-sm">
                   <thead className="bg-gray-100 sticky top-0 z-10">
                     <tr>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Original Price</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc. %</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Price</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Balance</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Test Name</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Original Price</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Disc. %</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Discounted Price</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Cash Paid</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">GCash Paid</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Balance</th>
                       {isEditingSummary && isRefundMode && (
-                        <th className="p-1 md:p-2 text-center border-b border-gray-200 font-bold text-red-600">Refund</th>
+                        <th className="p-1 md:p-2 text-center border-b border-gray-200 font-bold text-red-600 text-sm sm:text-xs md:text-sm">Refund</th>
                       )}
                     </tr>
                   </thead>

@@ -23,6 +23,7 @@ const AddIncome = () => {
   const [selectedModalTest, setSelectedModalTest] = useState(null);
   const [basePrice, setBasePrice] = useState(0);
   const [price, setPrice] = useState();
+  const [balance, setBalance] = useState(0);
   const [discount, setDiscount] = useState(20);
   const [cashPaid, setCashPaid] = useState(0);
   const [gCashPaid, setGCashPaid] = useState(0);
