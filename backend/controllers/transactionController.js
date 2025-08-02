@@ -58,13 +58,23 @@ exports.createTransaction = async (req, res) => {
       const cashAmount = parseFloat(item.cashAmount) || 0;
       const gCashAmount = parseFloat(item.gCashAmount) || 0;
       const balanceAmount = parseFloat(item.balanceAmount) || 0;
-      
       totalAmount += originalPrice;
       totalDiscountAmount += (originalPrice - discountedPrice);
       totalCashAmount += cashAmount;
       totalGCashAmount += gCashAmount;
       totalBalanceAmount += balanceAmount;
     });
+
+    // Apply 20% discount for PWD or Senior Citizen
+    const normalizedIdType = (idType || '').trim().toLowerCase();
+    if (normalizedIdType === 'person with disability' || normalizedIdType === 'senior citizen') {
+      const discount = totalAmount * 0.2;
+      totalDiscountAmount = discount; 
+      totalAmount = totalAmount - discount;
+      totalCashAmount = totalCashAmount * 0.8;
+      totalGCashAmount = totalGCashAmount * 0.8;
+      totalBalanceAmount = totalBalanceAmount * 0.8;
+    }
 
     // Generate sequential MC number if not provided
     let generatedMcNo;

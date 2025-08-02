@@ -23,7 +23,8 @@ const TransactionSummaryModal = ({
   mcNoExists,
   isMcNoChecking,
   mutations,
-  handlers
+  handlers,
+  ConfirmButton
 }) => {
   if (!isOpen || !transaction) return null;
 
@@ -272,7 +273,9 @@ const TransactionSummaryModal = ({
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
                           <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-red-500" : ""}`}>
-                            {parseFloat(test.originalPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {test.originalPrice !== undefined && test.originalPrice !== '' && !isNaN(parseFloat(test.originalPrice))
+                              ? parseFloat(test.originalPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : 'N/A'}
                           </div>
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
@@ -290,13 +293,17 @@ const TransactionSummaryModal = ({
                             />
                           ) : (
                             <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-red-500" : ""}`}>
-                              {`${test.discountPercentage}%`}
+                              {test.discountPercentage !== undefined && test.discountPercentage !== ''
+                                ? `${test.discountPercentage}${String(test.discountPercentage).includes('%') ? '' : '%'}`
+                                : 'N/A'}
                             </div>
                           )}
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
                           <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-red-500 line-through" : ""}`}>
-                            {parseFloat(test.discountedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {test.discountedPrice !== undefined && test.discountedPrice !== '' && !isNaN(parseFloat(test.discountedPrice))
+                              ? parseFloat(test.discountedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : 'N/A'}
                             {test.status === 'refunded' && <span className="ml-1 text-red-500">→ 0.00</span>}
                           </div>
                         </td>
@@ -457,6 +464,53 @@ const TransactionSummaryModal = ({
                           </td>
                         )}
                       </tr>
+                      {/* Total Transaction Row */}
+                      <tr className="bg-green-50 font-bold">
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={4}>
+                          TOTAL TRANSACTION
+                          {(() => {
+                            const idType = (isEditingSummary
+                              ? editedTransaction?.originalTransaction?.idType
+                              : transaction?.originalTransaction?.idType
+                            ) || '';
+                            const normalized = idType.trim().toLowerCase();
+                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
+                              return <span className="ml-2 text-xs text-green-700">(20% Discount Applied)</span>;
+                            }
+                            return null;
+                          })()}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
+                          {(() => {
+                            // Calculate total transaction (cash + GCash) excluding refunded tests
+                            let cashTotal = 0;
+                            let gCashTotal = 0;
+                            const testDetails = isEditingSummary
+                              ? editedTransaction?.originalTransaction?.TestDetails
+                              : transaction?.originalTransaction?.TestDetails;
+                            if (testDetails) {
+                              testDetails.forEach(test => {
+                                if (isEditingSummary || test.status !== 'refunded') {
+                                  cashTotal += parseFloat(test.cashAmount || 0);
+                                  gCashTotal += parseFloat(test.gCashAmount || 0);
+                                }
+                              });
+                            }
+                            let total = cashTotal + gCashTotal;
+                            const idType = (isEditingSummary
+                              ? editedTransaction?.originalTransaction?.idType
+                              : transaction?.originalTransaction?.idType
+                            ) || '';
+                            const normalized = idType.trim().toLowerCase();
+                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
+                              // Multiplicative
+                              total = total * 0.8;
+                            }
+                            return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={isEditingSummary && isRefundMode ? 2 : 1}></td>
+                      </tr>
                     </tfoot>
                   )}
                 </table>
@@ -465,7 +519,9 @@ const TransactionSummaryModal = ({
             
             {/* Footer buttons */}
             <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              {isEditingSummary ? (
+              {ConfirmButton ? (
+                ConfirmButton
+              ) : isEditingSummary ? (
                 <>
                   <button
                     className="bg-gray-500 text-white px-8 py-2 rounded hover:bg-gray-600 focus:outline-none"
