@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
+import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
 import TestQueueModal from '../components/transaction/TestQueueModal'
 import useAuth from '../hooks/auth/useAuth'
@@ -1368,137 +1369,67 @@ const AddIncome = () => {
       />
 
       {isTransactionSummaryOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-md w-full max-w-3xl max-h-[85vh] flex flex-col">
-            <div className="bg-green-800 text-white p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
-              <h2 className="text-xl font-bold">Transaction Summary</h2>
-              <button
-                onClick={closeTransactionSummary}
-                className="text-white hover:text-gray-200 focus:outline-none"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 scrollbar-hide"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
-              }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
-                <div className="p-3 md:border-r border-gray-200">
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="font-bold text-green-800">First Name:</div>
-                    <div className="col-span-2 text-green-700">{formData.firstName || 'N/A'}</div>
-
-                    <div className="font-bold text-green-800">Last Name:</div>
-                    <div className="col-span-2 text-green-700">{formData.lastName || 'N/A'}</div>
-
-                    <div className="font-bold text-green-800">Referrer:</div>
-                    <div className="col-span-2 text-green-700">
-                      {(() => {
-                        const selectedReferrerId = formData.referrer;
-
-                        if (!selectedReferrerId) return 'Out Patient';
-
-                        const selectedReferrer = referrers.find(r => String(r.referrerId) === String(selectedReferrerId));
-
-                        if (selectedReferrer) {
-                          return `Dr. ${selectedReferrer.lastName || ''} ${selectedReferrer.firstName || ''}`.trim();
-                        } else {
-                          return 'Out Patient';
-                        }
-                      })()}
-                    </div>
-                    <div className='font-bold text-green-800'>MC #:</div>
-                    <div className="col-span-2 text-green-700">{generatedMcNo || 'N/A'}</div>
-                  </div>
-                </div>
-
-                <div className="p-3">
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="font-bold text-green-800">Birth Date:</div>
-                    <div className="col-span-2 text-green-700">
-                      {formData.birthDate ? (
-                        <>
-                          {new Date(formData.birthDate).toLocaleDateString()}
-                          <span className="ml-1 text-gray-700">
-                            (Age: {calculateAge(formData.birthDate)})
-                          </span>
-                        </>
-                      ) : 'N/A'}
-                    </div>
-
-                    <div className="font-bold text-green-800">Sex:</div>
-                    <div className="col-span-2 text-green-700">{formData.sex}</div>
-
-                    <div className="font-bold text-green-800">ID:</div>
-                    <div className="col-span-2 text-green-700">{formData.id}</div>
-                    <div className="font-bold text-green-800">ID #:</div>
-                    <div className="col-span-2 text-green-700">{formData.idNumber || 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse">
-                  <thead className="bg-gray-100 sticky top-0 z-10">
-                    <tr>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc.</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Bal.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {testsTable.map((test, index) => (
-                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="p-2 border-b border-gray-200">{test.name}</td>
-                        <td className="p-2 border-b border-gray-200">{test.disc}</td>
-                        <td className="p-2 border-b border-gray-200">{parseFloat(test.cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="p-2 border-b border-gray-200">{test.gCash}</td>
-                        <td className="p-2 border-b border-gray-200">{test.bal}</td>
-                      </tr>
-                    ))}
-
-                    {testsTable.length > 0 && (
-                      <tr className="bg-green-100 font-bold">
-                        <td className="p-2 border-b border-gray-200 text-green-800">TOTAL</td>
-                        <td className="p-2 border-b border-gray-200"></td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              <button
-                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
-              >
-                Export
-              </button>
-              <button
-                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
-                onClick={handleConfirmTransaction}
-                disabled={createTransactionMutation.isPending}
-              >
-                {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <TransactionSummaryModal
+          isOpen={isTransactionSummaryOpen}
+          onClose={closeTransactionSummary}
+          transaction={{
+            originalTransaction: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              birthDate: formData.birthDate,
+              sex: formData.sex,
+              idType: formData.id,
+              idNumber: formData.idNumber,
+              referrerId: formData.referrer,
+              TestDetails: testsTable.map(test => {
+                // Find the original test object to get the price
+                const origTest = tests.find(t => t.testName === test.name || t.testId === test.testId);
+                const originalPrice = origTest ? origTest.price : test.price;
+                // Parse discount percentage (remove % if present)
+                let discountPercentage = test.disc;
+                if (typeof discountPercentage === 'string' && discountPercentage.endsWith('%')) {
+                  discountPercentage = discountPercentage.slice(0, -1);
+                }
+                // Calculate discounted price if not present
+                let discountedPrice = test.discountedPrice;
+                if (!discountedPrice && originalPrice && discountPercentage !== undefined) {
+                  const dp = parseFloat(originalPrice) * (1 - (parseFloat(discountPercentage) || 0) / 100);
+                  discountedPrice = isNaN(dp) ? '' : dp.toFixed(2);
+                }
+                return {
+                  testName: test.name,
+                  discountPercentage,
+                  cashAmount: test.cash,
+                  gCashAmount: test.gCash,
+                  balanceAmount: test.bal,
+                  originalPrice,
+                  discountedPrice
+                };
+              })
+            },
+            id: generatedMcNo
+          }}
+          isEditingSummary={false}
+          editedTransaction={null}
+          isLoading={false}
+          isRefundMode={false}
+          selectedRefunds={{}}
+          referrers={referrers}
+          idTypeOptions={[]}
+          mcNoExists={false}
+          isMcNoChecking={false}
+          mutations={{}}
+          handlers={{}}
+          ConfirmButton={
+            <button
+              className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+              onClick={handleConfirmTransaction}
+              disabled={createTransactionMutation.isPending}
+            >
+              {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
+            </button>
+          }
+        />
       )}
 
       {/* Add Discount Modal */}
