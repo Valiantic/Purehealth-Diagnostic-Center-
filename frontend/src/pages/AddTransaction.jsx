@@ -576,6 +576,13 @@ const AddIncome = () => {
         toast.error("Birth date cannot be in the future");
         return;
       }
+      
+      // Validate birth year using the same logic as calculateAge
+      const age = calculateAge(formData.birthDate);
+      if (age === "Invalid Year" || age === "Invalid Date" || age === "Future Date" || age === "Invalid Age") {
+        toast.error("Please enter a valid birth date with a realistic year");
+        return;
+      }
     }
 
     if (missingFields.length > 0) {
@@ -703,17 +710,36 @@ const AddIncome = () => {
     
     const today = new Date();
     const birthDate = new Date(birthdate);
-    let age = today.getFullYear() - birthDate.getFullYear();
+    
+    // Validate that the birth date is a valid date
+    if (isNaN(birthDate.getTime())) {
+      return "Invalid Date";
+    }
+    
+    const birthYear = birthDate.getFullYear();
+    const currentYear = today.getFullYear();
+    
+    // Validate realistic birth year range (1900 to current year)
+    if (birthYear < 1900 || birthYear > currentYear) {
+      return "Invalid Year";
+    }
+    
+    // Check if birth date is in the future
+    if (birthDate > today) {
+      return "Future Date";
+    }
+    
+    let age = currentYear - birthYear;
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
 
-    if (age <= 0) {
-      return "N/A";
+    if (age < 0 || age > 150) {
+      return "Invalid Age";
     }
     
-    return age >= 0 ? age : null;
+    return age;
   };
 
  
