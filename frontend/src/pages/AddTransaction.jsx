@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
+import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
 import TestQueueModal from '../components/transaction/TestQueueModal'
 import useAuth from '../hooks/auth/useAuth'
@@ -152,11 +153,19 @@ const AddIncome = () => {
       setTestsTable(newTestsTable);
     } else {
       const testPrice = parseFloat(test.price) || 0;
-      const roundedPrice = roundToTwoDecimals(testPrice);
+      
+      // Check if discount should be applied based on current ID type
+      const shouldApplyDiscount = formData.id === "Senior Citizen" || formData.id === "Person with Disability";
+      const discountPercentage = shouldApplyDiscount ? 20 : 0;
+      const discountMultiplier = shouldApplyDiscount ? 0.8 : 1.0;
+      
+      const finalPrice = testPrice * discountMultiplier;
+      const roundedPrice = roundToTwoDecimals(finalPrice);
+      
       const newTest = {
         testId: test.testId,
         name: test.testName,
-        disc: '0%',
+        disc: `${discountPercentage}%`,
         cash: roundedPrice.toFixed(2),
         gCash: '0.00',
         bal: '0.00'
@@ -409,6 +418,68 @@ const AddIncome = () => {
     setFormData({ ...formData, birthDate: e.target.value });
   };
 
+  // Handler for ID type change with automatic discount application
+  const handleIdTypeChange = (e) => {
+    const newIdType = e.target.value;
+    setFormData({ ...formData, id: newIdType });
+    
+    // Apply 20% discount for PWD or Senior Citizen, 0% for others
+    if (testsTable.length > 0) {
+      const shouldApplyDiscount = newIdType === "Senior Citizen" || newIdType === "Person with Disability";
+      const discountPercentage = shouldApplyDiscount ? 20 : 0;
+      const discountMultiplier = shouldApplyDiscount ? 0.8 : 1.0;
+      
+      const updatedTestsTable = testsTable.map((test, index) => {
+        const originalTest = selectedTests[index];
+        const originalPrice = parseFloat(originalTest.price) || 0;
+        
+        // Apply appropriate discount based on ID type
+        const discountedPrice = originalPrice * discountMultiplier;
+        
+        // Adjust payment amounts proportionally
+        const currentCash = parseFloat(test.cash) || 0;
+        const currentGCash = parseFloat(test.gCash) || 0;
+        const currentBal = parseFloat(test.bal) || 0;
+        const totalPayment = currentCash + currentGCash + currentBal;
+        
+        let newCash, newGCash, newBal;
+        
+        if (totalPayment > 0) {
+          // Maintain payment proportions but adjust to discounted price
+          const cashRatio = currentCash / totalPayment;
+          const gCashRatio = currentGCash / totalPayment;
+          const balRatio = currentBal / totalPayment;
+          
+          newCash = (discountedPrice * cashRatio).toFixed(2);
+          newGCash = (discountedPrice * gCashRatio).toFixed(2);
+          newBal = (discountedPrice * balRatio).toFixed(2);
+        } else {
+          // If no payments made, set to balance
+          newCash = '0.00';
+          newGCash = '0.00';
+          newBal = discountedPrice.toFixed(2);
+        }
+        
+        return {
+          ...test,
+          disc: `${discountPercentage}%`,
+          cash: newCash,
+          gCash: newGCash,
+          bal: newBal
+        };
+      });
+      
+      setTestsTable(updatedTestsTable);
+      
+      // Show appropriate message
+      if (shouldApplyDiscount) {
+        toast.info("20% discount applied for PWD/Senior Citizen");
+      } else {
+        toast.info("Regular pricing applied");
+      }
+    }
+  };
+
   const handleReferrerChange = (e) => {
     const value = e.target.value;
     if (value === 'add-referrer') {
@@ -486,7 +557,6 @@ const AddIncome = () => {
     if (!formData.firstName.trim()) missingFields.push("First Name");
     if (!formData.lastName.trim()) missingFields.push("Last Name");
     if (!formData.id) missingFields.push("ID Type");
-    if (!formData.referrer) missingFields.push("Referrer");
     if (!formData.birthDate) missingFields.push("Birth Date");
     if (!formData.sex) missingFields.push("Sex");
     
@@ -569,8 +639,8 @@ const AddIncome = () => {
     }
 
     try {
-      const items = testsTable.map((test, index) => {
-        const originalTest = selectedTests[index];
+      const items = testsTable.map((test) => {
+        const originalTest = selectedTests.find(st => st.testName === test.name);
 
         if (!originalTest?.testId) {
           throw new Error(`Test ID is missing for ${test.name}`);
@@ -587,7 +657,8 @@ const AddIncome = () => {
         const gCashAmount = parseFloat(test.gCash) || 0;
         const balAmount = parseFloat(test.bal) || 0;
 
-        const discountedPrice = cashAmount + gCashAmount + balAmount;
+        // Calculate the actual discounted price based on original price and discount percentage
+        const discountedPrice = originalPrice * (1 - discountPercentage / 100);
 
         return {
           testId: originalTest.testId,
@@ -942,7 +1013,7 @@ const AddIncome = () => {
                   <label className="block text-green-800 font-medium mb-1">ID</label>
                   <select
                     value={formData.id}
-                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                    onChange={handleIdTypeChange}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
                     <option>Regular</option>
@@ -1368,137 +1439,66 @@ const AddIncome = () => {
       />
 
       {isTransactionSummaryOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-md w-full max-w-3xl max-h-[85vh] flex flex-col">
-            <div className="bg-green-800 text-white p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
-              <h2 className="text-xl font-bold">Transaction Summary</h2>
-              <button
-                onClick={closeTransactionSummary}
-                className="text-white hover:text-gray-200 focus:outline-none"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 scrollbar-hide"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
-              }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
-                <div className="p-3 md:border-r border-gray-200">
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="font-bold text-green-800">First Name:</div>
-                    <div className="col-span-2 text-green-700">{formData.firstName || 'N/A'}</div>
-
-                    <div className="font-bold text-green-800">Last Name:</div>
-                    <div className="col-span-2 text-green-700">{formData.lastName || 'N/A'}</div>
-
-                    <div className="font-bold text-green-800">Referrer:</div>
-                    <div className="col-span-2 text-green-700">
-                      {(() => {
-                        const selectedReferrerId = formData.referrer;
-
-                        if (!selectedReferrerId) return 'Out Patient';
-
-                        const selectedReferrer = referrers.find(r => String(r.referrerId) === String(selectedReferrerId));
-
-                        if (selectedReferrer) {
-                          return `Dr. ${selectedReferrer.lastName || ''} ${selectedReferrer.firstName || ''}`.trim();
-                        } else {
-                          return 'Out Patient';
-                        }
-                      })()}
-                    </div>
-                    <div className='font-bold text-green-800'>MC #:</div>
-                    <div className="col-span-2 text-green-700">{generatedMcNo || 'N/A'}</div>
-                  </div>
-                </div>
-
-                <div className="p-3">
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="font-bold text-green-800">Birth Date:</div>
-                    <div className="col-span-2 text-green-700">
-                      {formData.birthDate ? (
-                        <>
-                          {new Date(formData.birthDate).toLocaleDateString()}
-                          <span className="ml-1 text-gray-700">
-                            (Age: {calculateAge(formData.birthDate)})
-                          </span>
-                        </>
-                      ) : 'N/A'}
-                    </div>
-
-                    <div className="font-bold text-green-800">Sex:</div>
-                    <div className="col-span-2 text-green-700">{formData.sex}</div>
-
-                    <div className="font-bold text-green-800">ID:</div>
-                    <div className="col-span-2 text-green-700">{formData.id}</div>
-                    <div className="font-bold text-green-800">ID #:</div>
-                    <div className="col-span-2 text-green-700">{formData.idNumber || 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse">
-                  <thead className="bg-gray-100 sticky top-0 z-10">
-                    <tr>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc.</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Bal.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {testsTable.map((test, index) => (
-                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="p-2 border-b border-gray-200">{test.name}</td>
-                        <td className="p-2 border-b border-gray-200">{test.disc}</td>
-                        <td className="p-2 border-b border-gray-200">{parseFloat(test.cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="p-2 border-b border-gray-200">{test.gCash}</td>
-                        <td className="p-2 border-b border-gray-200">{test.bal}</td>
-                      </tr>
-                    ))}
-
-                    {testsTable.length > 0 && (
-                      <tr className="bg-green-100 font-bold">
-                        <td className="p-2 border-b border-gray-200 text-green-800">TOTAL</td>
-                        <td className="p-2 border-b border-gray-200"></td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              <button
-                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
-              >
-                Export
-              </button>
-              <button
-                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
-                onClick={handleConfirmTransaction}
-                disabled={createTransactionMutation.isPending}
-              >
-                {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <TransactionSummaryModal
+          isOpen={isTransactionSummaryOpen}
+          onClose={closeTransactionSummary}
+          transaction={{
+            originalTransaction: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              birthDate: formData.birthDate,
+              sex: formData.sex,
+              idType: formData.id,
+              idNumber: formData.idNumber,
+              referrerId: formData.referrer,
+              TestDetails: testsTable.map(test => {
+                // Find the original test object to get the original price
+                const origTest = tests.find(t => t.testName === test.name || t.testId === test.testId);
+                const originalPrice = origTest ? origTest.price : test.price;
+                // Parse discount percentage (remove % if present)
+                let discountPercentage = test.disc;
+                if (typeof discountPercentage === 'string' && discountPercentage.endsWith('%')) {
+                  discountPercentage = discountPercentage.slice(0, -1);
+                }
+                
+                // Use the actual calculated discounted price from the payment amounts
+                // The total payment amount (cash + gCash + balance) represents the final discounted price
+                const totalPaymentAmount = (parseFloat(test.cash) || 0) + (parseFloat(test.gCash) || 0) + (parseFloat(test.bal) || 0);
+                
+                return {
+                  testName: test.name,
+                  discountPercentage,
+                  cashAmount: test.cash,
+                  gCashAmount: test.gCash,
+                  balanceAmount: test.bal,
+                  originalPrice,
+                  discountedPrice: totalPaymentAmount.toFixed(2) // Use actual calculated amount
+                };
+              })
+            },
+            id: generatedMcNo
+          }}
+          isEditingSummary={false}
+          editedTransaction={null}
+          isLoading={false}
+          isRefundMode={false}
+          selectedRefunds={{}}
+          referrers={referrers}
+          idTypeOptions={[]}
+          mcNoExists={false}
+          isMcNoChecking={false}
+          mutations={{}}
+          handlers={{}}
+          ConfirmButton={
+            <button
+              className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+              onClick={handleConfirmTransaction}
+              disabled={createTransactionMutation.isPending}
+            >
+              {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
+            </button>
+          }
+        />
       )}
 
       {/* Add Discount Modal */}

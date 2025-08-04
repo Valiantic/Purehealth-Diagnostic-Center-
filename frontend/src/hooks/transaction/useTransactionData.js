@@ -226,7 +226,6 @@ export const useTransactionData = (selectedDate, expenseDate) => {
         } else {
           grossDeposit = parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount);
         }
-        
         let referrerName = 'Out Patient';
         
         if (transaction.referrerId) {
@@ -275,29 +274,13 @@ export const useTransactionData = (selectedDate, expenseDate) => {
     });
     
     filteredTransactions.forEach((transaction) => {
-      if (transaction.status === 'cancelled') {
+      // Only process non-cancelled transactions for totals
+      if (transaction.status !== 'cancelled') {
+        // Use the departmentRevenues amounts that were already calculated correctly in processTransactions
         Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
-          departmentTotals[deptId] = (departmentTotals[deptId] || 0) - data.amount;
+          departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
+          departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + (data.balanceAmount || 0);
         });
-      } else {
-        if (transaction.originalTransaction?.TestDetails) {
-          transaction.originalTransaction.TestDetails.forEach(test => {
-            const deptId = test.departmentId;
-            if (test.status === 'refunded') {
-              // Refunds are handled separately
-            } else {
-              const testPrice = parseFloat(test.discountedPrice || 0);
-              const balanceAmount = parseFloat(test.balanceAmount) || 0;
-              departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + balanceAmount;
-              departmentTotals[deptId] = (departmentTotals[deptId] || 0) + (testPrice - balanceAmount);
-            }
-          });
-        } else {
-          Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
-            departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
-            departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + (data.balanceAmount || 0);
-          });
-        }
       }
     });
 
@@ -324,14 +307,14 @@ export const useTransactionData = (selectedDate, expenseDate) => {
       }
 
       if (transaction.originalTransaction?.TestDetails?.length > 0) {
-        const transactionTotal = transaction.originalTransaction.TestDetails
+        let transactionTotal = transaction.originalTransaction.TestDetails
           .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
           .reduce((testSum, test) => {
+            // Always use discountedPrice to honor any applied discounts (including 20% for PWD/Senior)
             const price = parseFloat(test.discountedPrice || 0);
             const balance = parseFloat(test.balanceAmount || 0);
             return testSum + (price - balance);
           }, 0);
-        
         return sum + transactionTotal;
       }
       
@@ -350,7 +333,11 @@ export const useTransactionData = (selectedDate, expenseDate) => {
       if (transaction.originalTransaction?.TestDetails?.length > 0) {
         const gCashTotal = transaction.originalTransaction.TestDetails
           .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
-          .reduce((testSum, test) => testSum + parseFloat(test.gCashAmount || 0), 0);
+          .reduce((testSum, test) => {
+            // Always use the actual recorded gCashAmount which should reflect any discount
+            const gCashAmount = parseFloat(test.gCashAmount || 0);
+            return testSum + gCashAmount;
+          }, 0);
         
         return sum + gCashTotal;
       }

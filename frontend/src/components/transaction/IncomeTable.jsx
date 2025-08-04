@@ -26,7 +26,7 @@ const TransactionRow = ({
       key={transaction.id} 
       className={transaction.status === 'cancelled' 
         ? 'bg-gray-100 text-gray-500' 
-        : getRefundedTestsInfo(transaction).count > 0 ? 'bg-red-50' : 'bg-white'
+        : 'bg-white'
       }
     >
       <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">
@@ -40,11 +40,6 @@ const TransactionRow = ({
         ) : (
           <span className={transaction.status === 'cancelled' ? 'line-through' : ''}>
             {transaction.id}
-            {getRefundedTestsInfo(transaction).count > 0 && (
-              <span className="ml-1 text-xs text-red-600 font-medium">
-                ({getRefundedTestsInfo(transaction).count} refunded: ₱{getRefundedTestsInfo(transaction).amount.toFixed(2)})
-              </span>
-            )}
           </span>
         )}
       </td>

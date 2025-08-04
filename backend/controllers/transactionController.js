@@ -58,14 +58,17 @@ exports.createTransaction = async (req, res) => {
       const cashAmount = parseFloat(item.cashAmount) || 0;
       const gCashAmount = parseFloat(item.gCashAmount) || 0;
       const balanceAmount = parseFloat(item.balanceAmount) || 0;
-      
-      totalAmount += originalPrice;
+    
+      // Use the already calculated values from frontend
+      totalAmount += discountedPrice; 
       totalDiscountAmount += (originalPrice - discountedPrice);
       totalCashAmount += cashAmount;
       totalGCashAmount += gCashAmount;
-      totalBalanceAmount += balanceAmount;
+      totalBalanceAmount += balanceAmount;  
     });
 
+    // Note: PWD/Senior Citizen discount is already applied in frontend calculations
+    // No need to apply additional discount here
     // Generate sequential MC number if not provided
     let generatedMcNo;
     if (mcNo) {
@@ -231,8 +234,8 @@ exports.getAllTransactions = async (req, res) => {
     
     includes.push({
       model: TestDetails,
-      attributes: ['testName', 'departmentId', 'originalPrice', 'discountPercentage', 
-                  'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount']
+      attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 'discountPercentage', 
+                  'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount', 'status']
     });
     
     if (includeDetails === 'true') {
@@ -433,7 +436,8 @@ exports.updateTransaction = async (req, res) => {
       idNumber,
       userId,
       testDetails,
-      isRefundProcessing
+      isRefundProcessing,
+      excessRefunds
     } = req.body;
     
     const transaction = await Transaction.findByPk(id);
@@ -461,13 +465,16 @@ exports.updateTransaction = async (req, res) => {
 
     await transaction.update(updateData, { transaction: t });
 
+    // Initialize variables outside the scope to avoid reference errors
+    let totalCashAmount = 0;
+    let totalGCashAmount = 0;
+    let totalBalanceAmount = 0;
+    let totalRefundAmount = 0;
+    let totalDiscountAmount = 0;
+    let totalExcessRefundAmount = 0;
+
     // Update test details if provided
     if (testDetails && Array.isArray(testDetails)) {
-      let totalCashAmount = 0;
-      let totalGCashAmount = 0;
-      let totalBalanceAmount = 0;
-      let totalRefundAmount = 0;
-      let totalDiscountAmount = 0;
       
       // Process each test detail and update department revenue
       for (const detail of testDetails) {
@@ -582,6 +589,13 @@ exports.updateTransaction = async (req, res) => {
         }
       }
       
+      // Calculate total excess refunds from overpayment adjustments
+      if (excessRefunds && typeof excessRefunds === 'object') {
+        totalExcessRefundAmount = Object.values(excessRefunds).reduce((sum, amount) => {
+          return sum + (parseFloat(amount) || 0);
+        }, 0);
+      }
+      
       // Update transaction totals
       await transaction.update({
         totalCashAmount,
@@ -592,6 +606,8 @@ exports.updateTransaction = async (req, res) => {
           ...JSON.parse(transaction.metadata || '{}'),
           totalRefundAmount,
           totalDiscountAmount,
+          excessRefundAmount: totalExcessRefundAmount,
+          excessRefunds: excessRefunds || {},
           refundProcessed: isRefundProcessing ? true : false,
           updatedAt: new Date().toISOString()
         })
@@ -599,12 +615,24 @@ exports.updateTransaction = async (req, res) => {
     }
 
     // Log activity
+    let activityDetails = `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`;
+    
+    // Add excess refund information to activity log if present
+    if (totalExcessRefundAmount > 0) {
+      activityDetails += `. Excess refund amount: ₱${totalExcessRefundAmount.toFixed(2)} due to payment adjustments`;
+    }
+    
     await ActivityLog.create({
       action: 'UPDATE',
-      details: `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`,
+      details: activityDetails,
       resourceType: 'TRANSACTION',
       entityId: id,
-      userId: userId || transaction.userId
+      userId: userId || transaction.userId,
+      metadata: JSON.stringify({
+        totalExcessRefundAmount,
+        excessRefunds: excessRefunds || {},
+        hasExcessRefunds: totalExcessRefundAmount > 0
+      })
     }, { transaction: t });
 
     await t.commit();
