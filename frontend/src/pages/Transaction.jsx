@@ -111,6 +111,7 @@ const Transaction = () => {
     toggleRefundMode,
     handleTestDetailChange,
     handleSaveClick,
+    clearRefundAmounts,
     mutations,
     refundAmounts
   } = useTransactionManagement(user, selectedDate);
@@ -124,7 +125,8 @@ const Transaction = () => {
     );
   });
 
-  // Calculate department totals
+  // Calculate department totals with filtered transactions
+  const calculatedTotals = calculateDepartmentTotals(filteredTransactions);
   const departmentsWithValues = getDepartmentsWithValues();
   const { totalGross, totalGCash } = calculateTotalValues(filteredTransactions);
 
@@ -365,7 +367,9 @@ const Transaction = () => {
     handleCancelEdit,
     handleEnterEditMode,
     toggleRefundMode,
-    handleRefundSelection
+    handleRefundSelection,
+    clearRefundAmounts,
+    refundAmounts
   };
 
   const refundDisplay = (
@@ -427,7 +431,7 @@ const Transaction = () => {
           <IncomeTable
             filteredTransactions={filteredTransactions}
             departmentsWithValues={departmentsWithValues}
-            departmentTotals={departmentTotals}
+            departmentTotals={calculatedTotals.departmentTotals}
             totalGross={totalGross}
             editingId={editingId}
             editedTransaction={editedTransaction}
@@ -473,7 +477,7 @@ const Transaction = () => {
                       DEPOSIT
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {Math.max(0, totalGross - totalGCash).toLocaleString(undefined, { 
+                      {Math.max(0, totalGross - totalRefundsToDisplay - totalGCash).toLocaleString(undefined, { 
                         minimumFractionDigits: 2, 
                         maximumFractionDigits: 2 
                       })}
