@@ -66,8 +66,15 @@ const Monthly = () => {
         const allCollectibles = response.data.data || [];
         setTotalPages(Math.ceil(allCollectibles.length / itemsPerPage));
         
+        const filteredCollectibles = allCollectibles.filter(item => {
+          const itemDate = new Date(item.dateConducted);
+          return itemDate.getMonth() + 1 === currentDate.month && 
+                  itemDate.getFullYear() === currentDate.year;
+        })
+
+        setTotalPages(Math.ceil(filteredCollectibles.length / itemsPerPage));
         const startIndex = (currentPage - 1) * itemsPerPage;
-        const paginatedCollectibles = allCollectibles.slice(startIndex, startIndex + itemsPerPage);
+        const paginatedCollectibles = filteredCollectibles.slice(startIndex, startIndex + itemsPerPage);
         setCollectibles(paginatedCollectibles);
       } else {
         console.error("Failed response:", response);
