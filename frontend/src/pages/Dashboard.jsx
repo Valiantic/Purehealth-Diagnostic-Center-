@@ -212,24 +212,24 @@ const DashboardContent = () => {
                 {revenueComparison ? (
                   revenueComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" 
-                      title={`Up ${revenueComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600 cursor-help" 
+                      title={`Up ${revenueComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : revenueComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" 
-                      title={`Down ${revenueComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600 cursor-help" 
+                      title={`Down ${revenueComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full"
-                      title="No change from last month"
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full cursor-help"
+                      title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded"
-                    title="No previous month data available"
+                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded cursor-help"
+                    title="No previous month data available for comparison"
                   ></div>
                 )}
                 <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
@@ -245,24 +245,24 @@ const DashboardContent = () => {
                 {expensesComparison ? (
                   expensesComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" 
-                      title={`Up ${expensesComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600 cursor-help" 
+                      title={`Up ${expensesComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : expensesComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" 
-                      title={`Down ${expensesComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600 cursor-help" 
+                      title={`Down ${expensesComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full"
-                      title="No change from last month"
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full cursor-help"
+                      title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded"
-                    title="No previous month data available"
+                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded cursor-help"
+                    title="No previous month data available for comparison"
                   ></div>
                 )}
                 <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
@@ -280,24 +280,24 @@ const DashboardContent = () => {
                 {netProfitComparison ? (
                   netProfitComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" 
-                      title={`Up ${netProfitComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600 cursor-help" 
+                      title={`Up ${netProfitComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : netProfitComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" 
-                      title={`Down ${netProfitComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600 cursor-help" 
+                      title={`Down ${netProfitComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full"
-                      title="No change from last month"
+                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full cursor-help"
+                      title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded"
-                    title="No previous month data available"
+                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded cursor-help"
+                    title="No previous month data available for comparison"
                   ></div>
                 )}
                 <h1 className={`font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
