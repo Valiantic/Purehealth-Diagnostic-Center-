@@ -12,6 +12,7 @@ const Expense = require('./Expenses')(sequelize);
 const ExpenseItem = require('./ExpenseItems')(sequelize);
 const Category = require('./Category')(sequelize);
 const CollectibleIncome = require('./CollectibleIncome')(sequelize);
+const ReferrerRebate = require('./ReferrerRebate')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
@@ -154,6 +155,16 @@ ExpenseItem.belongsTo(Expense, {
   foreignKey: 'expenseId' 
 });
 
+Referrer.hasMany(ReferrerRebate, { 
+  foreignKey: 'referrerId',
+  onDelete: 'CASCADE'
+});
+
+ReferrerRebate.belongsTo(Referrer, { 
+  foreignKey: 'referrerId',
+  onDelete: 'CASCADE'
+});
+
 module.exports = {
   sequelize,
   User,
@@ -168,5 +179,6 @@ module.exports = {
   Expense,
   ExpenseItem,
   Category,
-  CollectibleIncome
+  CollectibleIncome,
+  ReferrerRebate
 };

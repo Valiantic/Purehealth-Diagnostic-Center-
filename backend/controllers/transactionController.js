@@ -1,6 +1,7 @@
 const { Transaction, TestDetails, ActivityLog, Department, DepartmentRevenue, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Fix: use CommonJS require syntax instead of ES Module import
 const socketManager = require('../utils/socketManager');
+const RebateService = require('../services/rebateService');
 
 // Create a new transaction with items and track department revenue
 exports.createTransaction = async (req, res) => {
@@ -160,6 +161,15 @@ exports.createTransaction = async (req, res) => {
         console.error(`Error creating test detail:`, itemError);
         console.error('Item data:', JSON.stringify(item));
         throw itemError; // Rethrow to trigger transaction rollback
+      }
+    }
+
+    // Calculate rebates for this transaction (after all test details are created)
+    if (transaction.referrerId) {
+      try {
+        await RebateService.calculateAndRecordRebate(transaction, testDetails);
+      } catch (rebateError) {
+        console.error('Error calculating rebates:', rebateError);
       }
     }
 
@@ -349,7 +359,7 @@ exports.updateTransactionStatus = async (req, res) => {
       }
     );
 
-    // For cancellations, handle department revenue records
+    // For cancellations, handle department revenue records and rebate adjustments
     if (status === 'cancelled') {
       // Get all department revenues for this transaction
       const departmentRevenues = await DepartmentRevenue.findAll({
@@ -381,6 +391,15 @@ exports.updateTransactionStatus = async (req, res) => {
           status: 'cancelled',
           metadata: JSON.stringify(metadata)
         }, { transaction: t });
+      }
+
+      // Handle rebate adjustments for cancelled transactions
+      try {
+        // Pass the database transaction to the rebate service
+        await RebateService.handleTransactionCancellation(id, currentUserId, t);
+      } catch (rebateError) {
+        console.error('Error adjusting rebates for cancelled transaction:', rebateError);
+        // Don't fail the transaction cancellation if rebate adjustment fails
       }
     }
 
@@ -472,6 +491,7 @@ exports.updateTransaction = async (req, res) => {
     let totalRefundAmount = 0;
     let totalDiscountAmount = 0;
     let totalExcessRefundAmount = 0;
+    let refundedTestDetails = []; // Track refunded test details for rebate adjustment
 
     // Update test details if provided
     if (testDetails && Array.isArray(testDetails)) {
@@ -500,6 +520,13 @@ exports.updateTransaction = async (req, res) => {
           let isRefunded = !!detail.isRefunded;
           
           if (isRefunded) {
+            // Track refunded test details for rebate adjustment
+            refundedTestDetails.push({
+              testDetailId: detail.testDetailId,
+              departmentId: originalTestDetail.departmentId,
+              discountedPrice: parseFloat(originalTestDetail.discountedPrice) || 0,
+              testName: originalTestDetail.testName
+            });
         
             refundAmount = parseFloat(originalTestDetail.originalPrice) || 0;
             totalRefundAmount += refundAmount;
@@ -594,6 +621,16 @@ exports.updateTransaction = async (req, res) => {
         totalExcessRefundAmount = Object.values(excessRefunds).reduce((sum, amount) => {
           return sum + (parseFloat(amount) || 0);
         }, 0);
+      }
+      
+      // Handle rebate adjustments for refunded test details
+      if (refundedTestDetails.length > 0) {
+        try {
+          await RebateService.handleTestDetailRefund(id, refundedTestDetails, userId || transaction.userId, t);
+        } catch (rebateError) {
+          console.error('Error adjusting rebates for refunded test details:', rebateError);
+          // Don't fail the transaction update if rebate adjustment fails
+        }
       }
       
       // Update transaction totals
