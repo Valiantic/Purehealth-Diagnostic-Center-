@@ -1,4 +1,18 @@
--- Users Table
+-- =============================================================================
+-- PUREHEALTH DIAGNOSTIC CENTER DATABASE SCHEMA
+-- =============================================================================
+-- Database: purehealthdb
+-- Version: 1.0
+-- Description: Complete database schema for Purehealth Diagnostic Center
+--              including user management, authentication, test management,
+--              transactions, revenue tracking, and expense management
+-- =============================================================================
+
+-- =============================================================================
+-- USER MANAGEMENT TABLES
+-- =============================================================================
+
+-- Users Table: Stores system users (admin and receptionist)
 CREATE TABLE `Users` (
   `userId` int NOT NULL AUTO_INCREMENT,
   `email` varchar(255) NOT NULL,
@@ -12,9 +26,9 @@ CREATE TABLE `Users` (
   `updatedAt` datetime NOT NULL,
   PRIMARY KEY (`userId`),
   UNIQUE KEY `email` (`email`)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Authenticators Table
+-- Authenticators Table: Stores WebAuthn authentication data for passwordless login
 CREATE TABLE `Authenticators` (
   `id` int NOT NULL AUTO_INCREMENT,
   `userId` int NOT NULL,
@@ -30,17 +44,59 @@ CREATE TABLE `Authenticators` (
   PRIMARY KEY (`id`),
   KEY `userId` (`userId`),
   CONSTRAINT `Authenticators_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE Department (
-  departmentId INT PRIMARY KEY AUTO_INCREMENT,
-  departmentName VARCHAR(255) NOT NULL UNIQUE,
-  testQuantity INT DEFAULT 0,
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+-- =============================================================================
+-- DEPARTMENT AND TEST MANAGEMENT TABLES
+-- =============================================================================
 
+-- Department Table: Stores medical departments/categories
+CREATE TABLE `Department` (
+  `departmentId` INT PRIMARY KEY AUTO_INCREMENT,
+  `departmentName` VARCHAR(255) NOT NULL UNIQUE,
+  `testQuantity` INT DEFAULT 0,
+  `status` ENUM('active', 'inactive') DEFAULT 'active',
+  `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Tests Table: Stores medical tests offered by the diagnostic center
+CREATE TABLE `tests` (
+  `testId` INT AUTO_INCREMENT PRIMARY KEY,
+  `testName` VARCHAR(255) NOT NULL,
+  `departmentId` INT NOT NULL,
+  `price` DECIMAL(10, 2) NOT NULL,
+  `status` ENUM('active', 'inactive') DEFAULT 'active',
+  `dateCreated` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`departmentId`) REFERENCES `Department`(`departmentId`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- =============================================================================
+-- REFERRER MANAGEMENT TABLES
+-- =============================================================================
+
+-- Referrers Table: Stores doctors/clinics that refer patients
+CREATE TABLE `referrers` (
+    `referrerId` INT PRIMARY KEY AUTO_INCREMENT,
+    `firstName` VARCHAR(255) NOT NULL,
+    `lastName` VARCHAR(255) NOT NULL,
+    `birthday` DATE,
+    `sex` ENUM('Male', 'Female') NOT NULL,
+    `clinicName` VARCHAR(255),
+    `clinicAddress` TEXT,
+    `contactNo` VARCHAR(20),
+    `status` ENUM('active', 'inactive') DEFAULT 'active',
+    `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- =============================================================================
+-- ACTIVITY LOGGING TABLES
+-- =============================================================================
+
+-- Activity Logs Table: Tracks all user actions for audit purposes
 CREATE TABLE `ActivityLogs` (
   `logId` int NOT NULL AUTO_INCREMENT,
   `userId` int DEFAULT NULL,
@@ -60,94 +116,108 @@ CREATE TABLE `ActivityLogs` (
   CONSTRAINT `activitylogs_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `tests` (
-  `testId` INT AUTO_INCREMENT PRIMARY KEY,
+-- =============================================================================
+-- TRANSACTION AND TEST DETAILS TABLES
+-- =============================================================================
+
+-- Transactions Table: Stores patient transaction records
+CREATE TABLE `Transactions` (
+  `transactionId` VARCHAR(5) PRIMARY KEY,
+  `mcNo` VARCHAR(10) NOT NULL,
+  `firstName` VARCHAR(255) NOT NULL,
+  `lastName` VARCHAR(255) NOT NULL,
+  `idType` VARCHAR(255) NOT NULL DEFAULT 'Regular',
+  `idNumber` VARCHAR(255) NOT NULL DEFAULT 'XXXX-XXXX',
+  `referrerId` INT,
+  `birthDate` DATE,
+  `sex` VARCHAR(255) NOT NULL DEFAULT 'Male',
+  `transactionDate` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `totalAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `totalDiscountAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `totalCashAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `totalGCashAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `totalBalanceAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `status` VARCHAR(255) NOT NULL DEFAULT 'active',
+  `userId` INT NOT NULL,
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`referrerId`) REFERENCES `referrers`(`referrerId`) ON DELETE SET NULL,
+  FOREIGN KEY (`userId`) REFERENCES `Users`(`userId`) ON DELETE RESTRICT,
+  INDEX `idx_referrer` (`referrerId`),
+  INDEX `idx_user` (`userId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- Test Details Table: Stores individual test details for each transaction
+CREATE TABLE `TestDetails` (
+  `testDetailId` VARCHAR(5) PRIMARY KEY,
+  `transactionId` VARCHAR(5) NOT NULL,
+  `testId` INT NOT NULL,
   `testName` VARCHAR(255) NOT NULL,
   `departmentId` INT NOT NULL,
-  `price` DECIMAL(10, 2) NOT NULL,
-  `status` ENUM('active', 'inactive') DEFAULT 'active',
-  `dateCreated` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`departmentId`) REFERENCES `Departments`(`departmentId`) ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- Create Transactions table
-CREATE TABLE "Transactions" (
-  "transactionId" VARCHAR(5) PRIMARY KEY,
-  "mcNo" VARCHAR(10) NOT NULL CHECK ("mcNo" ~ '^[0-9]{5,10}$'),
-  "firstName" VARCHAR(255) NOT NULL,
-  "lastName" VARCHAR(255) NOT NULL,
-  "idType" VARCHAR(255) NOT NULL DEFAULT 'Regular',
-  "idNumber" VARCHAR(255) NOT NULL DEFAULT 'XXXX-XXXX',
-  "referrerId" UUID,
-  "birthDate" DATE,
-  "sex" VARCHAR(255) NOT NULL DEFAULT 'Male',
-  "transactionDate" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  "totalAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "totalDiscountAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "totalCashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "totalGCashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "totalBalanceAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "status" VARCHAR(255) NOT NULL DEFAULT 'active',
-  "userId" UUID NOT NULL,
-  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create indexes
-CREATE INDEX "idx_referrer" ON "Transactions" ("referrerId");
-CREATE INDEX "idx_user" ON "Transactions" ("userId");
+  `originalPrice` DECIMAL(10, 2) NOT NULL,
+  `discountPercentage` INTEGER NOT NULL DEFAULT 0,
+  `discountedPrice` DECIMAL(10, 2) NOT NULL,
+  `cashAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `gCashAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `balanceAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `status` VARCHAR(255) NOT NULL DEFAULT 'active',
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`transactionId`) REFERENCES `Transactions`(`transactionId`) ON DELETE CASCADE,
+  FOREIGN KEY (`testId`) REFERENCES `tests`(`testId`) ON DELETE RESTRICT,
+  FOREIGN KEY (`departmentId`) REFERENCES `Department`(`departmentId`) ON DELETE RESTRICT,
+  INDEX `idx_transaction` (`transactionId`),
+  INDEX `idx_test` (`testId`),
+  INDEX `idx_department` (`departmentId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
--- Create TestDetails table
-CREATE TABLE "TestDetails" (
-  "testDetailId" VARCHAR(5) PRIMARY KEY,
-  "transactionId" VARCHAR(5) NOT NULL,
-  "testId" UUID NOT NULL,
-  "testName" VARCHAR(255) NOT NULL,
-  "departmentId" UUID NOT NULL,
-  "originalPrice" DECIMAL(10, 2) NOT NULL,
-  "discountPercentage" INTEGER NOT NULL DEFAULT 0,
-  "discountedPrice" DECIMAL(10, 2) NOT NULL,
-  "cashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "gCashAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "balanceAmount" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  "status" VARCHAR(255) NOT NULL DEFAULT 'active',
-  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- =============================================================================
+-- REVENUE TRACKING TABLES
+-- =============================================================================
 
--- Create indexes
-CREATE INDEX "idx_transaction" ON "TestDetails" ("transactionId");
-CREATE INDEX "idx_test" ON "TestDetails" ("testId");
-CREATE INDEX "idx_department" ON "TestDetails" ("departmentId");
+-- Department Revenues Table: Tracks revenue generated by each department
+CREATE TABLE `DepartmentRevenues` (
+  `revenueId` INT PRIMARY KEY AUTO_INCREMENT,
+  `departmentId` INT NOT NULL,
+  `transactionId` VARCHAR(5) NOT NULL,
+  `testDetailId` VARCHAR(5) NOT NULL,
+  `amount` DECIMAL(10, 2) NOT NULL,
+  `revenueDate` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`departmentId`) REFERENCES `Department`(`departmentId`) ON DELETE RESTRICT,
+  FOREIGN KEY (`transactionId`) REFERENCES `Transactions`(`transactionId`) ON DELETE CASCADE,
+  FOREIGN KEY (`testDetailId`) REFERENCES `TestDetails`(`testDetailId`) ON DELETE CASCADE,
+  INDEX `idx_dept_revenue` (`departmentId`),
+  INDEX `idx_trans_revenue` (`transactionId`),
+  INDEX `idx_testdetail_revenue` (`testDetailId`),
+  INDEX `idx_revenue_date` (`revenueDate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- =============================================================================
+-- EXPENSE MANAGEMENT TABLES
+-- =============================================================================
 
--- Create DepartmentRevenues table
-CREATE TABLE "DepartmentRevenues" (
-  "revenueId" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "departmentId" UUID NOT NULL,
-  "transactionId" VARCHAR(5) NOT NULL,
-  "testDetailId" VARCHAR(5) NOT NULL,
-  "amount" DECIMAL(10, 2) NOT NULL,
-  "revenueDate" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- Categories Table: Stores expense categories for better organization
+CREATE TABLE `Category` (
+    `categoryId` INT PRIMARY KEY AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL UNIQUE,
+    `status` ENUM('active', 'inactive') DEFAULT 'active',
+    `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_category_name` (`name`),
+    INDEX `idx_category_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Create indexes for better query performance
-CREATE INDEX "idx_dept_revenue" ON "DepartmentRevenues" ("departmentId");
-CREATE INDEX "idx_trans_revenue" ON "DepartmentRevenues" ("transactionId");
-CREATE INDEX "idx_testdetail_revenue" ON "DepartmentRevenues" ("testDetailId");
-CREATE INDEX "idx_revenue_date" ON "DepartmentRevenues" ("revenueDate");
-
--- Create Expenses table
+-- Expenses Table: Stores expense records with person and department information
 CREATE TABLE `Expenses` (
   `expenseId` INT NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
+  `firstName` VARCHAR(255) NOT NULL,
+  `lastName` VARCHAR(255) NOT NULL,
   `departmentId` INT,
-  `date` DATE NOT NULL DEFAULT CURRENT_DATE,
+  `date` DATE NOT NULL DEFAULT (CURRENT_DATE),
   `totalAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
   `userId` INT NOT NULL,
   `status` VARCHAR(255) NOT NULL DEFAULT 'active',
@@ -158,13 +228,14 @@ CREATE TABLE `Expenses` (
   INDEX `idx_expense_user` (`userId`),
   CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`userId`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`departmentId`) REFERENCES `Department` (`departmentId`) ON DELETE SET NULL ON UPDATE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Create ExpenseItems table
+-- Expense Items Table: Stores individual expense line items
 CREATE TABLE `ExpenseItems` (
   `expenseItemId` INT NOT NULL AUTO_INCREMENT,
   `expenseId` INT NOT NULL,
   `paidTo` VARCHAR(255) NOT NULL,
+  `categoryId` INT,
   `purpose` VARCHAR(255) NOT NULL,
   `amount` DECIMAL(10, 2) NOT NULL,
   `status` enum('pending','paid','refunded') NOT NULL DEFAULT 'pending',
@@ -172,68 +243,61 @@ CREATE TABLE `ExpenseItems` (
   `updatedAt` DATETIME NOT NULL,
   PRIMARY KEY (`expenseItemId`),
   INDEX `idx_expense_item_expense` (`expenseId`),
-  CONSTRAINT `expenseitems_ibfk_1` FOREIGN KEY (`expenseId`) REFERENCES `Expenses` (`expenseId`) ON DELETE CASCADE ON UPDATE CASCADE
-);
+  INDEX `idx_expense_item_category` (`categoryId`),
+  CONSTRAINT `expenseitems_ibfk_1` FOREIGN KEY (`expenseId`) REFERENCES `Expenses` (`expenseId`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_expense_item_category` FOREIGN KEY (`categoryId`) REFERENCES `Category`(`categoryId`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- =============================================================================
+-- COLLECTIBLE INCOME TABLES
+-- =============================================================================
+
+-- Collectible Income Table: Tracks income from external companies/partners
 CREATE TABLE `CollectibleIncome` (
-  `companyId` INTEGER NOT NULL auto_increment,
+  `companyId` INTEGER NOT NULL AUTO_INCREMENT,
   `companyName` VARCHAR(255) NOT NULL,
   `coordinatorName` VARCHAR(255) NOT NULL,
   `totalIncome` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `dateConducted` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `createdAt` DATETIME NOT NULL,
   `updatedAt` DATETIME NOT NULL,
   PRIMARY KEY (`companyId`)
-) 
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci; 
 
--- mcNo/OrNo Bug fixed
-ALTER TABLE Transactions 
-MODIFY COLUMN mcNo VARCHAR(10) NOT NULL;
+-- =============================================================================
+-- HISTORICAL DATA MIGRATION NOTES
+-- =============================================================================
 
+-- Note: The following commented sections were used for schema migrations
+-- and data updates during development. They are kept for reference.
 
--- Create Categories table
-CREATE TABLE Categories (
-    categoryId INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    status ENUM('active', 'inactive') DEFAULT 'active',
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_category_name (name),
-    INDEX idx_category_status (status)
-);
+/*
+-- mcNo/OrNo Bug fix - already applied in main table definition
 
--- Add categoryId to ExpenseItems table
-ALTER TABLE ExpenseItems
-ADD COLUMN categoryId INT AFTER PAIDTO;
-ALTER TABLE ExpenseItems
-ADD INDEX idx_expense_item_category (categoryId);
+-- ALTER TABLE Transactions MODIFY COLUMN mcNo VARCHAR(10) NOT NULL;
 
--- Add foreign key constraint (optional, but recommended)
-ALTER TABLE ExpenseItems 
-ADD CONSTRAINT fk_expense_item_category 
-FOREIGN KEY (categoryId) REFERENCES Categories(categoryId) 
-ON DELETE SET NULL ON UPDATE CASCADE;
+-- Expense table name field split - already applied in main table definition
 
--- Split name field in Expenses table
-ALTER TABLE Expenses 
-ADD COLUMN firstName VARCHAR(255) AFTER name,
-ADD COLUMN lastName VARCHAR(255) AFTER firstName;
-
--- Update existing records if you have existing data
--- UPDATE Expenses SET 
---   firstName = TRIM(SUBSTRING_INDEX(name, ' ', 1)), 
---   lastName = TRIM(SUBSTRING_INDEX(name, ' ', -1)) 
+-- ALTER TABLE Expenses ADD COLUMN firstName VARCHAR(255) AFTER name;
+-- ALTER TABLE Expenses ADD COLUMN lastName VARCHAR(255) AFTER firstName;
+-- UPDATE Expenses SET firstName = TRIM(SUBSTRING_INDEX(name, ' ', 1)), 
+--                   lastName = TRIM(SUBSTRING_INDEX(name, ' ', -1)) 
 -- WHERE name IS NOT NULL AND name != '';
-
--- Remove the old name column (do this after migrating data)
 -- ALTER TABLE Expenses DROP COLUMN name;
 
--- MySQL version
-ALTER TABLE CollectibleIncome 
-ADD COLUMN dateConducted DATETIME NOT NULL DEFAULT NOW() AFTER totalIncome;
+-- Category field addition to ExpenseItems - already applied in main table definition
 
--- Update existing records
-UPDATE CollectibleIncome 
-SET dateConducted = createdAt;
+-- ALTER TABLE ExpenseItems ADD COLUMN categoryId INT AFTER paidTo;
+-- ALTER TABLE ExpenseItems ADD INDEX idx_expense_item_category (categoryId);
+-- ALTER TABLE ExpenseItems ADD CONSTRAINT fk_expense_item_category 
+-- FOREIGN KEY (categoryId) REFERENCES Category(categoryId) ON DELETE SET NULL ON UPDATE CASCADE;
 
--- Rename Categories table to Category due to model mismatch
-ALTER TABLE CATEGORIES RENAME TO CATEGORY;
+-- CollectibleIncome dateConducted field - already applied in main table definition
+
+-- ALTER TABLE CollectibleIncome ADD COLUMN dateConducted DATETIME NOT NULL DEFAULT NOW() AFTER totalIncome;
+-- UPDATE CollectibleIncome SET dateConducted = createdAt;
+
+-- Categories table rename - handled in main table definition as Category
+
+-- ALTER TABLE Categories RENAME TO Category;
+*/
