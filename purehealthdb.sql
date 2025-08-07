@@ -265,6 +265,28 @@ CREATE TABLE `CollectibleIncome` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci; 
 
 -- =============================================================================
+-- REFERRERE REBATES TABLES
+-- =============================================================================
+
+-- Referrer Rebates Table: Stores rebate records for referrers
+CREATE TABLE `ReferrerRebates` (
+  `rebateId` INT PRIMARY KEY AUTO_INCREMENT,
+  `referrerId` INT NOT NULL,
+  `firstName` VARCHAR(255) NOT NULL,
+  `lastName` VARCHAR(255) NOT NULL,
+  `rebateDate` DATE NOT NULL,
+  `totalRebateAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `transactionCount` INT NOT NULL DEFAULT 0,
+  `status` ENUM('active', 'inactive') DEFAULT 'active',
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`referrerId`) REFERENCES `referrers`(`referrerId`) ON DELETE CASCADE,
+  UNIQUE KEY `unique_referrer_date` (`referrerId`, `rebateDate`),
+  INDEX `idx_rebate_date` (`rebateDate`),
+  INDEX `idx_rebate_referrer` (`referrerId`)
+);
+
+-- =============================================================================
 -- HISTORICAL DATA MIGRATION NOTES
 -- =============================================================================
 

@@ -384,6 +384,27 @@ export const expenseAPI = {
   }
 };
 
+export const rebateAPI = {
+  getRebatesByDate: (date) => {
+    return apiClient.get(`/rebates/by-date?date=${date}`);
+  },
+  
+  getMonthlyRebates: (month, year) => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (year) params.append('year', year);
+    return apiClient.get(`/rebates/monthly?${params}`);
+  },
+  
+  getRebatesByReferrer: (referrerId, startDate, endDate) => {
+    const params = new URLSearchParams();
+    params.append('referrerId', referrerId);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return apiClient.get(`/rebates/by-referrer?${params}`);
+  }
+};
+
 export const collectibleIncomeAPI = {
   getAllCollectibleIncome: (params = {}) => {
     return apiClient.get('/collectible-incomes', { params });
