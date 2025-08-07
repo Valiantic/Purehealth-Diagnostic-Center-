@@ -1,6 +1,7 @@
 const { Transaction, TestDetails, ActivityLog, Department, DepartmentRevenue, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Fix: use CommonJS require syntax instead of ES Module import
 const socketManager = require('../utils/socketManager');
+const RebateService = require('../services/rebateService');
 
 // Create a new transaction with items and track department revenue
 exports.createTransaction = async (req, res) => {
@@ -58,14 +59,17 @@ exports.createTransaction = async (req, res) => {
       const cashAmount = parseFloat(item.cashAmount) || 0;
       const gCashAmount = parseFloat(item.gCashAmount) || 0;
       const balanceAmount = parseFloat(item.balanceAmount) || 0;
-      
-      totalAmount += originalPrice;
+    
+      // Use the already calculated values from frontend
+      totalAmount += discountedPrice; 
       totalDiscountAmount += (originalPrice - discountedPrice);
       totalCashAmount += cashAmount;
       totalGCashAmount += gCashAmount;
-      totalBalanceAmount += balanceAmount;
+      totalBalanceAmount += balanceAmount;  
     });
 
+    // Note: PWD/Senior Citizen discount is already applied in frontend calculations
+    // No need to apply additional discount here
     // Generate sequential MC number if not provided
     let generatedMcNo;
     if (mcNo) {
@@ -160,6 +164,15 @@ exports.createTransaction = async (req, res) => {
       }
     }
 
+    // Calculate rebates for this transaction (after all test details are created)
+    if (transaction.referrerId) {
+      try {
+        await RebateService.calculateAndRecordRebate(transaction, testDetails);
+      } catch (rebateError) {
+        console.error('Error calculating rebates:', rebateError);
+      }
+    }
+
     // Log activity
     await ActivityLog.create({
       action: 'CREATE',
@@ -231,8 +244,8 @@ exports.getAllTransactions = async (req, res) => {
     
     includes.push({
       model: TestDetails,
-      attributes: ['testName', 'departmentId', 'originalPrice', 'discountPercentage', 
-                  'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount']
+      attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 'discountPercentage', 
+                  'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount', 'status']
     });
     
     if (includeDetails === 'true') {
@@ -346,7 +359,7 @@ exports.updateTransactionStatus = async (req, res) => {
       }
     );
 
-    // For cancellations, handle department revenue records
+    // For cancellations, handle department revenue records and rebate adjustments
     if (status === 'cancelled') {
       // Get all department revenues for this transaction
       const departmentRevenues = await DepartmentRevenue.findAll({
@@ -378,6 +391,15 @@ exports.updateTransactionStatus = async (req, res) => {
           status: 'cancelled',
           metadata: JSON.stringify(metadata)
         }, { transaction: t });
+      }
+
+      // Handle rebate adjustments for cancelled transactions
+      try {
+        // Pass the database transaction to the rebate service
+        await RebateService.handleTransactionCancellation(id, currentUserId, t);
+      } catch (rebateError) {
+        console.error('Error adjusting rebates for cancelled transaction:', rebateError);
+        // Don't fail the transaction cancellation if rebate adjustment fails
       }
     }
 
@@ -433,7 +455,8 @@ exports.updateTransaction = async (req, res) => {
       idNumber,
       userId,
       testDetails,
-      isRefundProcessing
+      isRefundProcessing,
+      excessRefunds
     } = req.body;
     
     const transaction = await Transaction.findByPk(id);
@@ -461,13 +484,17 @@ exports.updateTransaction = async (req, res) => {
 
     await transaction.update(updateData, { transaction: t });
 
+    // Initialize variables outside the scope to avoid reference errors
+    let totalCashAmount = 0;
+    let totalGCashAmount = 0;
+    let totalBalanceAmount = 0;
+    let totalRefundAmount = 0;
+    let totalDiscountAmount = 0;
+    let totalExcessRefundAmount = 0;
+    let refundedTestDetails = []; // Track refunded test details for rebate adjustment
+
     // Update test details if provided
     if (testDetails && Array.isArray(testDetails)) {
-      let totalCashAmount = 0;
-      let totalGCashAmount = 0;
-      let totalBalanceAmount = 0;
-      let totalRefundAmount = 0;
-      let totalDiscountAmount = 0;
       
       // Process each test detail and update department revenue
       for (const detail of testDetails) {
@@ -493,6 +520,13 @@ exports.updateTransaction = async (req, res) => {
           let isRefunded = !!detail.isRefunded;
           
           if (isRefunded) {
+            // Track refunded test details for rebate adjustment
+            refundedTestDetails.push({
+              testDetailId: detail.testDetailId,
+              departmentId: originalTestDetail.departmentId,
+              discountedPrice: parseFloat(originalTestDetail.discountedPrice) || 0,
+              testName: originalTestDetail.testName
+            });
         
             refundAmount = parseFloat(originalTestDetail.originalPrice) || 0;
             totalRefundAmount += refundAmount;
@@ -582,6 +616,23 @@ exports.updateTransaction = async (req, res) => {
         }
       }
       
+      // Calculate total excess refunds from overpayment adjustments
+      if (excessRefunds && typeof excessRefunds === 'object') {
+        totalExcessRefundAmount = Object.values(excessRefunds).reduce((sum, amount) => {
+          return sum + (parseFloat(amount) || 0);
+        }, 0);
+      }
+      
+      // Handle rebate adjustments for refunded test details
+      if (refundedTestDetails.length > 0) {
+        try {
+          await RebateService.handleTestDetailRefund(id, refundedTestDetails, userId || transaction.userId, t);
+        } catch (rebateError) {
+          console.error('Error adjusting rebates for refunded test details:', rebateError);
+          // Don't fail the transaction update if rebate adjustment fails
+        }
+      }
+      
       // Update transaction totals
       await transaction.update({
         totalCashAmount,
@@ -592,6 +643,8 @@ exports.updateTransaction = async (req, res) => {
           ...JSON.parse(transaction.metadata || '{}'),
           totalRefundAmount,
           totalDiscountAmount,
+          excessRefundAmount: totalExcessRefundAmount,
+          excessRefunds: excessRefunds || {},
           refundProcessed: isRefundProcessing ? true : false,
           updatedAt: new Date().toISOString()
         })
@@ -599,12 +652,24 @@ exports.updateTransaction = async (req, res) => {
     }
 
     // Log activity
+    let activityDetails = `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`;
+    
+    // Add excess refund information to activity log if present
+    if (totalExcessRefundAmount > 0) {
+      activityDetails += `. Excess refund amount: ₱${totalExcessRefundAmount.toFixed(2)} due to payment adjustments`;
+    }
+    
     await ActivityLog.create({
       action: 'UPDATE',
-      details: `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`,
+      details: activityDetails,
       resourceType: 'TRANSACTION',
       entityId: id,
-      userId: userId || transaction.userId
+      userId: userId || transaction.userId,
+      metadata: JSON.stringify({
+        totalExcessRefundAmount,
+        excessRefunds: excessRefunds || {},
+        hasExcessRefunds: totalExcessRefundAmount > 0
+      })
     }, { transaction: t });
 
     await t.commit();

@@ -458,7 +458,6 @@ const Referrals = () => {
                               No Departments Found
                             </th>
                           )}
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -467,11 +466,6 @@ const Referrals = () => {
                           [...allReferrerTransactions[referrer.referrerId]]
                             .sort(sortTransactions)
                             .map(transaction => {
-                              // Calculate transaction total from test details instead of department revenues
-                              const transactionTotal = transaction.TestDetails?.reduce(
-                                (sum, test) => sum + parseFloat(test.discountedPrice || 0), 0
-                              ) || 0;
-                              
                               return (
                                 <tr key={transaction.transactionId} className="border-b border-green-200">
                                   <td className="p-1 text-center border-r border-green-200 bg-white">{transaction.mcNo}</td>
@@ -508,9 +502,6 @@ const Referrals = () => {
                                       </td>
                                     );
                                   })}
-                                  <td className="p-1 bg-white text-center font-medium">
-                                    {transactionTotal.toFixed(2)}
-                                  </td>
                                 </tr>
                               );
                             })
@@ -529,15 +520,14 @@ const Referrals = () => {
                               )) : (
                                 <td className="p-1 border-r border-green-200 bg-white text-center text-gray-500">No departments found</td>
                               )}
-                              <td className="p-1 border-r border-green-200 bg-white"></td>
                             </>
                           </tr>
                         )}
                         
-                        {/* Total rebates row as part of the same table */}
-                        <tr className="bg-green-100 border-t border-green-800">
+                        {/* Total and Rebates row as part of the same table */}
+                        <tr className="border-t border-green-800">
                           <td colSpan="2" className="p-1 border-r border-green-800 font-bold text-green-800">
-                            TOTAL REBATES:
+                            TOTAL:
                           </td>
                           
                           {(() => {
@@ -570,16 +560,71 @@ const Referrals = () => {
                                     </td>
                                   );
                                 })}
-                                
-                                {/* Grand total column */}
-                                <td className="p-1 text-center font-bold text-green-800">
-                                  {allReferrerTransactions[referrer.referrerId]?.length ? grandTotal.toFixed(2) : "0.00"}
-                                </td>
                               </>
                             );
                           })()}
                         </tr>
-                      </tbody>
+
+                        <tr className="bg-green-100 border-t border-green-800">
+                          <td colSpan="2" className="p-1 border-r border-green-800 font-bold text-green-800">
+                            REBATES (20%):
+                          </td>
+                          
+                          {(() => {
+                            // Get the data whether there are transactions or not
+                            const { testDetailTotals, testDetailsByDepartment } = allReferrerTransactions[referrer.referrerId]?.length 
+                              ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
+                              : { testDetailTotals: {}, testDetailsByDepartment: {} };
+                            
+                            // Calculate department rebates (20% of each department total)
+                            let totalRebates = 0;
+                            
+                            return (
+                              <>
+                                {/* Department rebate columns */}
+                                {renderableDepartments.map(department => {
+                                  const deptId = String(department.departmentId);
+                                  const deptTotal = testDetailTotals[deptId] || 0;
+                                  const deptRebate = deptTotal * 0.20; // 20% of department total
+                                  totalRebates += deptRebate;
+                                  
+                                  return (
+                                    <td 
+                                      key={`rebate-${deptId}`}
+                                      className="p-1 border-r border-green-800 text-center font-bold text-green-800"
+                                      style={{ minWidth: '100px' }}
+                                    >
+                                      {/* Display department rebate if greater than 0, otherwise render &nbsp; to prevent cell collapse */}
+                                      {deptRebate > 0 ? deptRebate.toFixed(2) : <>&nbsp;</>}
+                                    </td>
+                                  );
+                                })}
+                                
+                                {/* Store total rebates for the next row */}
+                                <script>window.tempRebates = {totalRebates}</script>
+                              </>
+                            );
+                          })()}
+                        </tr>
+
+                        <tr className="bg-yellow-200 border-t border-green-800">
+                          <td colSpan={2 + renderableDepartments.length} className="p-1 text-right font-bold text-green-800 pr-4">
+                            {(() => {
+                              // Calculate total rebates for this referrer
+                              const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
+                                ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
+                                : { testDetailTotals: {} };
+                              
+                              const grandTotal = Object.values(testDetailTotals).reduce(
+                                (sum, amount) => sum + parseFloat(amount || 0), 0
+                              );
+                              
+                              const totalRebates = grandTotal * 0.20; // 20% of grand total
+                              
+                              return `TOTAL REBATES: ${totalRebates.toFixed(2)}`;
+                            })()}
+                          </td>
+                        </tr>                      </tbody>
                     </table>
                   </div>
                 </div>

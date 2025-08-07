@@ -1,4 +1,5 @@
 const { Transaction, Expense, Department, TestDetails, ExpenseItem, CollectibleIncome, sequelize } = require('../models');
+const RebateService = require('../services/rebateService');
 const { Op } = require('sequelize');
 
 const dashboardController = {
@@ -79,7 +80,11 @@ const dashboardController = {
       const revenueAmount = parseFloat(monthlyRevenueResult[0]?.totalRevenue || 0);
       const collectibleAmount = parseFloat(monthlyCollectibleIncome || 0);
       const totalRevenue = revenueAmount + collectibleAmount;
-      const netProfit = totalRevenue - (monthlyExpenses || 0);
+
+      const monthlyRebates = await RebateService.getMonthlyRebateSummary(month, year);
+      const rebateExpenses = parseFloat(monthlyRebates.totalRebates || 0);
+      const totalMonthlyExpenses = (parseFloat(monthlyExpenses || 0)) + rebateExpenses;
+      const netProfit = totalRevenue - totalMonthlyExpenses;
 
       res.json({
         success: true,
@@ -88,6 +93,8 @@ const dashboardController = {
           transactionRevenue: revenueAmount,
           collectibleIncome: collectibleAmount,
           monthlyExpenses: monthlyExpenses || 0,
+          totalExpenses: totalMonthlyExpenses,
+          rebateExpenses: rebateExpenses,
           netProfit: netProfit,
           month: month,
           year: year
@@ -393,10 +400,15 @@ const dashboardController = {
           }
         });
 
+        // Get rebate expenses for this month
+        const monthlyRebates = await RebateService.getMonthlyRebateSummary(month, year);
+        const rebateExpenses = parseFloat(monthlyRebates.totalRebates || 0);
+
         const transactionRevenue = parseFloat(revenueResult[0]?.totalRevenue || 0);
         const collectibleAmount = parseFloat(collectibleIncome || 0);
         const totalRevenue = transactionRevenue + collectibleAmount;
-        const profit = totalRevenue - (expenses || 0);
+        const totalExpenses = (expenses || 0) + rebateExpenses;
+        const profit = totalRevenue - totalExpenses;
         
         monthlyData.push({
           month: month,
@@ -405,6 +417,8 @@ const dashboardController = {
           transactionRevenue: transactionRevenue,
           collectibleIncome: collectibleAmount,
           expenses: expenses || 0,
+          rebateExpenses: rebateExpenses,
+          totalExpenses: totalExpenses,
           profit: profit
         });
       }
