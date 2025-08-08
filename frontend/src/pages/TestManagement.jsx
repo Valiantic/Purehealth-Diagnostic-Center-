@@ -337,10 +337,10 @@ const Test = () => {
         searchTerm,
         selectedDepartmentFilter
       );
-      toast.success('Test List report generated successfully!');
+      toast.success('Test List Report Generated Successfully!');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      toast.error('Failed to generate Test List report');
+      toast.error('Failed to generate Test List Report');
     }
   };
 
