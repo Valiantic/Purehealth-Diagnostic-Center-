@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, CirclePlus } from 'lucide-react'
 import useAuth from '../hooks/auth/useAuth'
 import { monthlyExpenseAPI, departmentAPI } from '../services/api'
 import { toast } from 'react-toastify'
+import { exportMonthlyExpensesToExcel } from '../utils/monthlyExpensesExporter'
 
 const MonthlyExpenses = () => {
   const { user, isAuthenticating } = useAuth()
@@ -206,6 +207,24 @@ const MonthlyExpenses = () => {
     navigate('/monthly-income');
   }
 
+  const handleGenerateExpenseReport = async () => {
+    try {
+      await exportMonthlyExpensesToExcel(
+        departmentsList,
+        monthlyData,
+        currentMonth,
+        getExpenseItemsByDepartment,
+        getExpenseItemsWithNoDepartment,
+        calculateDepartmentTotal,
+        calculateOtherExpensesTotal
+      );
+      toast.success('Monthly Expenses Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting expense report:', error);
+      toast.error('Failed to export expense report. Please try again.');
+    }
+  };
+
   if (isAuthenticating) {
     return null;
   }
@@ -396,7 +415,10 @@ const MonthlyExpenses = () => {
 
           {/* Generate Report Button */}
           <div className="flex justify-end p-2">
-            <button className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
+            <button 
+              onClick={handleGenerateExpenseReport}
+              className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+            >
               Generate Report
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
