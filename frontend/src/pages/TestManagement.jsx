@@ -11,6 +11,7 @@ import { departmentAPI, testAPI } from '../services/api'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { exportTestManagementToExcel } from '../utils/testManagementExporter'
 
 const Test = () => {
   const { user, isAuthenticating } = useAuth()
@@ -328,6 +329,21 @@ const Test = () => {
     setActiveDropdown(activeDropdown === testId ? null : testId);
   };
 
+  const handleExportToExcel = async () => {
+    try {
+      await exportTestManagementToExcel(
+        tests,
+        departments,
+        searchTerm,
+        selectedDepartmentFilter
+      );
+      toast.success('Test List Report Generated Successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to generate Test List Report');
+    }
+  };
+
   if (isAuthenticating) {
     return null;
   }
@@ -572,7 +588,10 @@ const Test = () => {
                 
                 <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
                   <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                    <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                    <button 
+                      onClick={handleExportToExcel}
+                      className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                    >
                       Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
                     </button>
                   </div>

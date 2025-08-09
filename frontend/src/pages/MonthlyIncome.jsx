@@ -6,6 +6,7 @@ import useAuth from '../hooks/auth/useAuth'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify';
+import { exportMonthlyIncomeToExcel } from '../utils/monthlyIncomeExporter';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Monthly = () => {
@@ -235,6 +236,29 @@ const Monthly = () => {
       return { month: newMonth, year: newYear };
     });
   }
+
+  const handleGenerateReport = async () => {
+    try {
+      // Get all collectibles for the current month (not paginated)
+      const response = await collectibleIncomeAPI.getAllCollectibleIncome();
+      let allCollectibles = [];
+      
+      if (response && response.data && response.data.success) {
+        const allData = response.data.data || [];
+        allCollectibles = allData.filter(item => {
+          const itemDate = new Date(item.dateConducted);
+          return itemDate.getMonth() + 1 === currentDate.month && 
+                 itemDate.getFullYear() === currentDate.year;
+        });
+      }
+
+      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, allCollectibles, currentMonth);
+      toast.success('Monthly Income Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      toast.error('Failed to export report. Please try again.');
+    }
+  };
 
   // Format currency values
   const formatCurrency = (value) => {
@@ -519,7 +543,10 @@ const Monthly = () => {
 
           {/* Generate Report Button */}
           <div className="flex justify-end p-2">
-            <button className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
+            <button 
+              onClick={handleGenerateReport}
+              className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+            >
               Generate Report
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

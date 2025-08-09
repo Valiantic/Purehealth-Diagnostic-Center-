@@ -8,6 +8,7 @@ import DateSelector from '../components/transaction/DateSelector'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
 import useReferrerForm from '../hooks/referral-management/useReferrerForm'
 import { ToastContainer, toast } from 'react-toastify'
+import { exportReferralsToExcel } from '../utils/referralsExporter'
 
 const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
@@ -140,6 +141,23 @@ const Referrals = () => {
     } catch (error) {
       console.error('Error creating referrer:', error);
       toast.error(`Error creating referrer: ${error.message}`);
+    }
+  };
+
+  const handleGenerateReferralsReport = async () => {
+    try {
+      await exportReferralsToExcel(
+        filteredReferrers,
+        allReferrerTransactions,
+        renderableDepartments,
+        selectedDate,
+        calculateReferrerTotals,
+        getTestsForDepartment
+      );
+      toast.success('Rebate Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting rebate report:', error);
+      toast.error('Failed to export rebate report. Please try again.');
     }
   };
   
@@ -358,7 +376,10 @@ const Referrals = () => {
 
          <div className='flex items-center gap-2'>
 
-          <button className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
+          <button 
+            onClick={handleGenerateReferralsReport}
+            className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+          >
             Generate Report
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

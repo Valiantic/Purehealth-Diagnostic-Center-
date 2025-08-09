@@ -18,6 +18,8 @@ import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
 import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
 import { useTransactionData } from '../hooks/transaction/useTransactionData';
 import { expenseAPI } from '../services/api';
+import { exportIncomeToExcel } from '../utils/incomeExcelExporter';
+import { exportExpenseToExcel } from '../utils/expenseExcelExporter';
 
 const Transaction = () => {
   const { user, isAuthenticating } = useAuth();
@@ -166,6 +168,40 @@ const Transaction = () => {
   
   const handleNewExpenses = () => navigate('/add-expenses');
   const handleNewIncome = () => navigate('/add-transaction');
+
+  // Handle Excel export
+  const handleGenerateReport = async () => {
+    try {
+      await exportIncomeToExcel(
+        filteredTransactions,
+        departmentsWithValues,
+        calculatedTotals.departmentTotals,
+        totalGross,
+        totalGCash,
+        totalRefundsToDisplay,
+        selectedDate
+      );
+      toast.success('Income report exported successfully!');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export income report. Please try again.');
+    }
+  };
+
+  // Handle Expense Excel export
+  const handleGenerateExpenseReport = async () => {
+    try {
+      await exportExpenseToExcel(
+        filteredExpenses,
+        totalExpense,
+        expenseDate
+      );
+      toast.success('Expense report exported successfully!');
+    } catch (error) {
+      console.error('Expense export failed:', error);
+      toast.error('Failed to export expense report. Please try again.');
+    }
+  };
 
   const [localExpenseMenuId, setLocalExpenseMenuId] = useState(null);
 
@@ -443,7 +479,10 @@ const Transaction = () => {
           <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
             <div className="flex flex-wrap items-center mb-4 md:mb-0">
               {filteredTransactions.length > 0 && (
-                <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                <button 
+                  onClick={handleGenerateReport}
+                  className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                >
                   Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
                 </button>
               )}
@@ -547,6 +586,18 @@ const Transaction = () => {
             onEditExpense={handleEditExpense}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`} 
           />
+
+          {/* Expense Generate Report Button */}
+          <div className="mt-2 flex justify-start p-2">
+            {filteredExpenses.length > 0 && (
+              <button 
+                onClick={handleGenerateExpenseReport}
+                className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center text-sm md:text-base hover:bg-green-600"
+              >
+                Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       

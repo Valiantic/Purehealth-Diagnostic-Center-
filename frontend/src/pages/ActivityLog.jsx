@@ -7,6 +7,9 @@ import TabNavigation from '../components/dashboard/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { activityLogAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
+import { exportActivityLogToExcel } from '../utils/activityLogExporter'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const ActivityLog = () => {
   const { user, isAuthenticating } = useAuth()
@@ -87,6 +90,16 @@ const ActivityLog = () => {
     setSelectedDate('');
   };
 
+  const handleGenerateActivityLogReport = async () => {
+    try {
+      await exportActivityLogToExcel(logsData, selectedDate, debouncedSearchTerm);
+      toast.success('Activity Log Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting activity log report:', error);
+      toast.error('Failed to export activity log report. Please try again.');
+    }
+  };
+
   const totalPages = Math.ceil(logsData?.logs?.length / itemsPerPage);
 
   const indexOfLastLog = currentPage * itemsPerPage;
@@ -97,6 +110,17 @@ const ActivityLog = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000} 
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
@@ -367,7 +391,10 @@ const ActivityLog = () => {
                 {/* Generate Report button */}
                 <div className="mt-4 flex flex-col md:flex-row justify-end">
                   <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                    <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                    <button 
+                      onClick={handleGenerateActivityLogReport}
+                      className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                    >
                       Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
                     </button>
                   </div>
