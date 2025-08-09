@@ -1,4 +1,4 @@
-const { Transaction, Expense, Department, TestDetails, ExpenseItem, CollectibleIncome, sequelize } = require('../models');
+const { Transaction, Expense, Department, TestDetails, ExpenseItem, CollectibleIncome, Category, sequelize } = require('../models');
 const RebateService = require('../services/rebateService');
 const { Op } = require('sequelize');
 
@@ -276,6 +276,11 @@ const dashboardController = {
               }
             ],
             attributes: []
+          },
+          {
+            model: Category,
+            attributes: ['name', 'categoryId'],
+            required: false
           }
         ],
         where: {
@@ -283,7 +288,13 @@ const dashboardController = {
             [Op.notIn]: ['paid', 'refunded']
           }
         },
-        group: ['Expense.departmentId', 'Expense->Department.departmentId', 'Expense->Department.departmentName'],
+        group: [
+          'Expense.departmentId', 
+          'Expense->Department.departmentId', 
+          'Expense->Department.departmentName',
+          'Category.categoryId',
+          'Category.name'
+        ],
         having: sequelize.literal('SUM(ExpenseItem.amount) > 0'),
         raw: true
       });
@@ -293,15 +304,25 @@ const dashboardController = {
 
       const chartData = expensesByDept.map(item => {
         
-        // Try different possible paths for department name
-        const departmentName = item['Expense.Department.departmentName'] || 
-                              item['Expense->Department.departmentName'] || 
-                              item['Department.departmentName'] ||
-                              item.departmentName ||
-                              'Other';
+        // Check if this expense item has a category (like rebates)
+        const categoryName = item['Category.name'] || item['Category->name'];
+        
+        // Special handling for rebates - if category is "Rebates", use that as the display name
+        let displayName;
+        if (categoryName === 'Rebates') {
+          displayName = 'Rebates';
+        } else if (categoryName) {
+          displayName = categoryName;
+        } else {
+          displayName = item['Expense.Department.departmentName'] || 
+                       item['Expense->Department.departmentName'] || 
+                       item['Department.departmentName'] ||
+                       item.departmentName ||
+                       'Other';
+        }
         
         return {
-          department: departmentName,
+          department: displayName,
           amount: parseFloat(item.totalAmount || 0),
           percentage: total > 0 ? parseFloat(((parseFloat(item.totalAmount || 0) / total) * 100).toFixed(2)) : 0
         };

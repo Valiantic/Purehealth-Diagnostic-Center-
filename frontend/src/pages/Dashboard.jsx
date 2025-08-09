@@ -207,7 +207,22 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Revenue */}
-              <h2 className="font-medium mb-2 sm:mb-3 lg:mb-4 text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Revenue</h2>
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
+                <h2 className="font-medium text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Revenue</h2>
+                <div 
+                  className="w-4 h-4 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative group"
+                >
+                  i
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <p className="font-semibold mb-1">Total Monthly Revenue</p>
+                    <p>
+                      This represents the total income generated from all transactions for the selected month. 
+                      It includes all patient payments (cash and GCash) minus any outstanding balances. 
+                      PWD/Senior citizen discounts are already applied to the final amounts.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {revenueComparison ? (
                   revenueComparison.direction === 'up' ? (
@@ -240,7 +255,22 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Expenses */}
-              <h2 className="font-medium mb-2 sm:mb-3 lg:mb-4 text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Expenses</h2>
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
+                <h2 className="font-medium text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Expenses</h2>
+                <div 
+                  className="w-4 h-4 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative group"
+                >
+                  i
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <p className="font-semibold mb-1">Total Monthly Expenses</p>
+                    <p>
+                      This shows the sum of all recorded expenses for the selected month across all departments. 
+                      It includes operational costs, rebate payments to referrers, equipment purchases, 
+                      salaries, utilities, and other business-related expenditures.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {expensesComparison ? (
                   expensesComparison.direction === 'up' ? (
@@ -273,9 +303,24 @@ const DashboardContent = () => {
 
             <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
               {/* Net Profit */}
-              <h2 className="font-medium mb-2 sm:mb-3 lg:mb-4 text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">
-                {netProfit >= 0 ? 'Net Profit' : 'Net Loss'}
-              </h2>
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
+                <h2 className="font-medium text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">
+                  {netProfit >= 0 ? 'Net Profit' : 'Net Loss'}
+                </h2>
+                <div 
+                  className="w-4 h-4 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative group"
+                >
+                  i
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <p className="font-semibold mb-1">Net Profit/Loss</p>
+                    <p>
+                      This is calculated as: <strong>Total Monthly Revenue - Total Monthly Expenses</strong>. 
+                      A positive value indicates profit (revenue exceeds expenses), while a negative value 
+                      indicates a loss (expenses exceed revenue). This is your actual financial performance for the month.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {netProfitComparison ? (
                   netProfitComparison.direction === 'up' ? (
