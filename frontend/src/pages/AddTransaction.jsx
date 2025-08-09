@@ -153,19 +153,12 @@ const AddIncome = () => {
       setTestsTable(newTestsTable);
     } else {
       const testPrice = parseFloat(test.price) || 0;
-      
-      // Check if discount should be applied based on current ID type
-      const shouldApplyDiscount = formData.id === "Senior Citizen" || formData.id === "Person with Disability";
-      const discountPercentage = shouldApplyDiscount ? 20 : 0;
-      const discountMultiplier = shouldApplyDiscount ? 0.8 : 1.0;
-      
-      const finalPrice = testPrice * discountMultiplier;
-      const roundedPrice = roundToTwoDecimals(finalPrice);
+      const roundedPrice = roundToTwoDecimals(testPrice);
       
       const newTest = {
         testId: test.testId,
         name: test.testName,
-        disc: `${discountPercentage}%`,
+        disc: '0%',
         cash: roundedPrice.toFixed(2),
         gCash: '0.00',
         bal: '0.00'
@@ -418,66 +411,10 @@ const AddIncome = () => {
     setFormData({ ...formData, birthDate: e.target.value });
   };
 
-  // Handler for ID type change with automatic discount application
+  // Handler for ID type change
   const handleIdTypeChange = (e) => {
     const newIdType = e.target.value;
     setFormData({ ...formData, id: newIdType });
-    
-    // Apply 20% discount for PWD or Senior Citizen, 0% for others
-    if (testsTable.length > 0) {
-      const shouldApplyDiscount = newIdType === "Senior Citizen" || newIdType === "Person with Disability";
-      const discountPercentage = shouldApplyDiscount ? 20 : 0;
-      const discountMultiplier = shouldApplyDiscount ? 0.8 : 1.0;
-      
-      const updatedTestsTable = testsTable.map((test, index) => {
-        const originalTest = selectedTests[index];
-        const originalPrice = parseFloat(originalTest.price) || 0;
-        
-        // Apply appropriate discount based on ID type
-        const discountedPrice = originalPrice * discountMultiplier;
-        
-        // Adjust payment amounts proportionally
-        const currentCash = parseFloat(test.cash) || 0;
-        const currentGCash = parseFloat(test.gCash) || 0;
-        const currentBal = parseFloat(test.bal) || 0;
-        const totalPayment = currentCash + currentGCash + currentBal;
-        
-        let newCash, newGCash, newBal;
-        
-        if (totalPayment > 0) {
-          // Maintain payment proportions but adjust to discounted price
-          const cashRatio = currentCash / totalPayment;
-          const gCashRatio = currentGCash / totalPayment;
-          const balRatio = currentBal / totalPayment;
-          
-          newCash = (discountedPrice * cashRatio).toFixed(2);
-          newGCash = (discountedPrice * gCashRatio).toFixed(2);
-          newBal = (discountedPrice * balRatio).toFixed(2);
-        } else {
-          // If no payments made, set to balance
-          newCash = '0.00';
-          newGCash = '0.00';
-          newBal = discountedPrice.toFixed(2);
-        }
-        
-        return {
-          ...test,
-          disc: `${discountPercentage}%`,
-          cash: newCash,
-          gCash: newGCash,
-          bal: newBal
-        };
-      });
-      
-      setTestsTable(updatedTestsTable);
-      
-      // Show appropriate message
-      if (shouldApplyDiscount) {
-        toast.info("20% discount applied for PWD/Senior Citizen");
-      } else {
-        toast.info("Regular pricing applied");
-      }
-    }
   };
 
   const handleReferrerChange = (e) => {
@@ -1481,15 +1418,23 @@ const AddIncome = () => {
                 // Find the original test object to get the original price
                 const origTest = tests.find(t => t.testName === test.name || t.testId === test.testId);
                 const originalPrice = origTest ? origTest.price : test.price;
+                
+                // Get the actual discount percentage from the test table
                 // Parse discount percentage (remove % if present)
                 let discountPercentage = test.disc;
                 if (typeof discountPercentage === 'string' && discountPercentage.endsWith('%')) {
                   discountPercentage = discountPercentage.slice(0, -1);
                 }
+                discountPercentage = parseInt(discountPercentage) || 0;
                 
-                // Use the actual calculated discounted price from the payment amounts
-                // The total payment amount (cash + gCash + balance) represents the final discounted price
-                const totalPaymentAmount = (parseFloat(test.cash) || 0) + (parseFloat(test.gCash) || 0) + (parseFloat(test.bal) || 0);
+                // For display purposes, use original price as discounted price
+                // The PWD/Senior discount is applied only at total transaction level
+                const discountedPrice = parseFloat(originalPrice);
+                
+                // Get payment amounts from the table (these represent the actual amounts paid at original prices)
+                const cashAmount = parseFloat(test.cash) || 0;
+                const gCashAmount = parseFloat(test.gCash) || 0;
+                const balanceAmount = parseFloat(test.bal) || 0;
                 
                 return {
                   testName: test.name,
@@ -1498,7 +1443,7 @@ const AddIncome = () => {
                   gCashAmount: test.gCash,
                   balanceAmount: test.bal,
                   originalPrice,
-                  discountedPrice: totalPaymentAmount.toFixed(2) // Use actual calculated amount
+                  discountedPrice: discountedPrice.toFixed(2)
                 };
               })
             },
