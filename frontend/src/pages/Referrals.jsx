@@ -125,7 +125,7 @@ const Referrals = () => {
   const handleReferrerSubmit = async () => {
     try {  
       const formData = getFormData();
-      const response = await referrerAPI.createReferrer(formData);
+      const response = await referrerAPI.createReferrer(formData, user.userId);
       toast.success('Referrer added successfully');
 
       if (response?.data?.success || response?.success) {
@@ -376,15 +376,17 @@ const Referrals = () => {
 
          <div className='flex items-center gap-2'>
 
-          <button 
-            onClick={handleGenerateReferralsReport}
-            className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
-          >
-            Generate Report
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </button>
+          {filteredReferrers.length > 0 && (
+            <button 
+              onClick={handleGenerateReferralsReport}
+              className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+            >
+              Generate Report
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+          )}
 
           <button
           onClick={() => setIsReferrerModalOpen(true)}

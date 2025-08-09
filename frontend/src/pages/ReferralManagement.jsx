@@ -609,16 +609,18 @@ const ReferralManagement = () => {
               </div>
             )}
 
-            <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
-              <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                <button 
-                  onClick={handleExportToExcel}
-                  className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
-                >
-                  Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                </button>
+            {filteredReferrers.length > 0 && (
+              <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
+                <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                  <button 
+                    onClick={handleExportToExcel}
+                    className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                  >
+                    Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <ReferrerModal
               isOpen={isAddModalOpen}

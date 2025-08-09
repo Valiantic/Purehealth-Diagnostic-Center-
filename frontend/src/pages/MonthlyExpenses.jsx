@@ -413,18 +413,23 @@ const MonthlyExpenses = () => {
             </div>
           )}
 
-          {/* Generate Report Button */}
-          <div className="flex justify-end p-2">
-            <button 
-              onClick={handleGenerateExpenseReport}
-              className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
-            >
-              Generate Report
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </button>
-          </div>
+          {/* Generate Report Button - Only show if there's expense data */}
+          {(departmentsList.some(dept => {
+            const departmentItems = getExpenseItemsByDepartment(dept.departmentId || dept.id);
+            return departmentItems.length > 0;
+          }) || otherExpensesItems.length > 0) && (
+            <div className="flex justify-end p-2">
+              <button 
+                onClick={handleGenerateExpenseReport}
+                className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+              >
+                Generate Report
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
       

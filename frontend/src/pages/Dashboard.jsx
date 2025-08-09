@@ -203,104 +203,104 @@ const DashboardContent = () => {
         <div className='flex flex-col lg:flex-row items-start justify-start gap-4 mb-6'>
 
           {/* Main metrics container */}
-          <div className='flex-1 w-full text-center grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-3 gap-4'>
+          <div className='flex-1 w-full text-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
 
-            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
+            <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Revenue */}
-              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">Total Monthly Revenue</h2>
-              <div className="flex items-center gap-2 md:gap-4">
+              <h2 className="font-medium mb-2 sm:mb-3 lg:mb-4 text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Revenue</h2>
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {revenueComparison ? (
                   revenueComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600 cursor-help" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600 cursor-help flex-shrink-0" 
                       title={`Up ${revenueComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : revenueComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600 cursor-help" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-red-600 cursor-help flex-shrink-0" 
                       title={`Down ${revenueComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full cursor-help"
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 bg-gray-400 rounded-full cursor-help flex-shrink-0"
                       title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded cursor-help"
+                    className="w-3 h-1 sm:w-4 sm:h-1 lg:w-6 lg:h-1 bg-gray-400 rounded cursor-help flex-shrink-0"
                     title="No previous month data available for comparison"
                   ></div>
                 )}
-                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
+                <h1 className="text-green-800 font-medium text-sm sm:text-lg lg:text-2xl xl:text-3xl truncate">
                   {loading.monthlyData ? 'Loading...' : formatCurrency(monthlyRevenue)}
                 </h1>
               </div>
             </div>
 
-            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
+            <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Expenses */}
-              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">Total Monthly Expenses</h2>
-              <div className="flex items-center gap-2 md:gap-4">
+              <h2 className="font-medium mb-2 sm:mb-3 lg:mb-4 text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Expenses</h2>
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {expensesComparison ? (
                   expensesComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600 cursor-help" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-red-600 cursor-help flex-shrink-0" 
                       title={`Up ${expensesComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : expensesComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600 cursor-help" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600 cursor-help flex-shrink-0" 
                       title={`Down ${expensesComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full cursor-help"
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 bg-gray-400 rounded-full cursor-help flex-shrink-0"
                       title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded cursor-help"
+                    className="w-3 h-1 sm:w-4 sm:h-1 lg:w-6 lg:h-1 bg-gray-400 rounded cursor-help flex-shrink-0"
                     title="No previous month data available for comparison"
                   ></div>
                 )}
-                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
+                <h1 className="text-green-800 font-medium text-sm sm:text-lg lg:text-2xl xl:text-3xl truncate">
                   {loading.monthlyData ? 'Loading...' : formatCurrency(monthlyExpenses)}
                 </h1>
               </div>
             </div>
 
-            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
+            <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
               {/* Net Profit */}
-              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm sm:text-xs md:text-xs lg:text-lg">
+              <h2 className="font-medium mb-2 sm:mb-3 lg:mb-4 text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">
                 {netProfit >= 0 ? 'Net Profit' : 'Net Loss'}
               </h2>
-              <div className="flex items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {netProfitComparison ? (
                   netProfitComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600 cursor-help" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600 cursor-help flex-shrink-0" 
                       title={`Up ${netProfitComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : netProfitComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600 cursor-help" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-red-600 cursor-help flex-shrink-0" 
                       title={`Down ${netProfitComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full cursor-help"
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 bg-gray-400 rounded-full cursor-help flex-shrink-0"
                       title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded cursor-help"
+                    className="w-3 h-1 sm:w-4 sm:h-1 lg:w-6 lg:h-1 bg-gray-400 rounded cursor-help flex-shrink-0"
                     title="No previous month data available for comparison"
                   ></div>
                 )}
-                <h1 className={`font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
+                <h1 className={`font-medium text-sm sm:text-lg lg:text-2xl xl:text-3xl truncate ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
                   {loading.monthlyData ? 'Loading...' : formatCurrency(netProfit)}
                 </h1>
               </div>

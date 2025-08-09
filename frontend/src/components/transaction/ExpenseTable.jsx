@@ -331,6 +331,12 @@ const ExpenseTable = ({
           </tbody>
         </table>
       </div>
+
+      <div className="flex justify-end mt-4 px-2">
+        <div className="text-sm text-gray-600">
+            Showing {filteredExpenses.length} {filteredExpenses.length === 1 ? 'expense' : 'expenses'}
+        </div>
+      </div>
     </div>
   );
 };

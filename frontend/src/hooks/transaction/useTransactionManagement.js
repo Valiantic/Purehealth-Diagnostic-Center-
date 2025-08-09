@@ -830,6 +830,13 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           refetchType: 'all'
         });
         
+        // Invalidate expenses queries to refresh expense modal data after referrer changes
+        queryClient.invalidateQueries({
+          queryKey: ['expenses'],
+          exact: false,
+          refetchType: 'all'
+        });
+        
         if (hasRefunds) {
           const newRefundTotal = Object.keys(selectedRefunds).reduce((total, testDetailId) => {
             const test = editedSummaryTransaction.originalTransaction.TestDetails.find(

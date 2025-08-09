@@ -97,6 +97,17 @@ class RebateService {
    */
   static async recordRebateAsExpense(referrer, rebateAmount, expenseDate, userId, transaction) {
     try {
+      // Find or create "Rebates" category
+      const { Category } = require('../models');
+      const [rebateCategory] = await Category.findOrCreate({
+        where: { name: 'Rebates' },
+        defaults: {
+          name: 'Rebates',
+          status: 'active'
+        },
+        transaction
+      });
+
       // Create or find expense record for rebates (using Pure Health as the name)
       const [expense, expenseCreated] = await Expense.findOrCreate({
         where: {
@@ -123,15 +134,16 @@ class RebateService {
         defaults: {
           amount: rebateAmount,
           status: 'pending', // Mark as pending payment
-          categoryId: null // You might want to create a specific category for rebates
+          categoryId: rebateCategory.categoryId // Set category to "Rebates"
         },
         transaction
       });
 
-      // If expense item already existed, update the amount
+      // If expense item already existed, update the amount and ensure correct category
       if (!itemCreated) {
         await expenseItem.update({
-          amount: parseFloat(expenseItem.amount) + rebateAmount
+          amount: parseFloat(expenseItem.amount) + rebateAmount,
+          categoryId: rebateCategory.categoryId // Ensure category is set to "Rebates"
         }, { transaction });
       }
 
@@ -408,21 +420,423 @@ class RebateService {
         });
 
         if (expenseItem) {
-          // Reduce the expense item amount (don't set status to cancelled)
+          // Calculate new expense item amount
           const newItemAmount = Math.max(0, parseFloat(expenseItem.amount) - rebateAmount);
-          await expenseItem.update({
-            amount: newItemAmount
-          }, { transaction });
+          
+          // If amount becomes zero or we're removing the referrer completely, delete the expense item
+          if (newItemAmount === 0 || rebateAmount === 0) {
+            await expenseItem.destroy({ transaction });
+            console.log(`Deleted expense item for Dr. ${referrer.lastName}`);
+          } else {
+            // Otherwise, just reduce the amount
+            await expenseItem.update({
+              amount: newItemAmount
+            }, { transaction });
+          }
 
           // Update the expense total amount
           const newExpenseTotal = Math.max(0, parseFloat(expense.totalAmount) - rebateAmount);
           await expense.update({
             totalAmount: newExpenseTotal
           }, { transaction });
+          
+          // If the expense has no more items, we could also delete the entire expense record
+          const remainingItems = await ExpenseItem.count({
+            where: { expenseId: expense.expenseId },
+            transaction
+          });
+          
+          if (remainingItems === 0) {
+            await expense.destroy({ transaction });
+            console.log(`Deleted entire expense record for Pure Health as no items remain`);
+          }
         }
       }
     } catch (error) {
       console.error('Error cancelling rebate expenses:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle referrer changes in transactions and update rebate expenses accordingly
+   * @param {number} transactionId - The ID of the transaction
+   * @param {number|null} oldReferrerId - The previous referrer ID (null if was out patient)
+   * @param {number|null} newReferrerId - The new referrer ID (null if becoming out patient) 
+   * @param {number} userId - The user making the change
+   * @param {Object} dbTransaction - The database transaction to use
+   */
+  static async handleReferrerChange(transactionId, oldReferrerId, newReferrerId, userId, dbTransaction = null) {
+    const t = dbTransaction || await sequelize.transaction();
+    const shouldCommit = !dbTransaction;
+    
+    try {
+      // Get the transaction with test details
+      const transaction = await Transaction.findByPk(transactionId, {
+        include: [
+          {
+            model: TestDetails,
+            where: { status: 'active' }, // Only include active tests
+            required: false
+          }
+        ],
+        transaction: t
+      });
+
+      if (!transaction) {
+        if (shouldCommit) await t.rollback();
+        return;
+      }
+
+      const transactionDate = new Date(transaction.transactionDate).toISOString().split('T')[0];
+
+      // If changing FROM a referrer TO out patient (removing referrer)
+      if (oldReferrerId && !newReferrerId) {
+        await this.removeRebateExpenseForTransaction(transaction, oldReferrerId, transactionDate, userId, t);
+        console.log(`Removed rebate expenses for transaction ${transactionId}: referrer changed to Out Patient`);
+      }
+      // If changing FROM out patient TO a referrer (adding referrer)
+      else if (!oldReferrerId && newReferrerId) {
+        await this.createRebateExpenseForTransaction(transaction, newReferrerId, transactionDate, userId, t);
+      }
+      // If changing FROM one referrer TO another referrer
+      else if (oldReferrerId && newReferrerId && oldReferrerId !== newReferrerId) {
+        // Check if there's an existing expense item we can update the paidTo for
+        const expense = await Expense.findOne({
+          where: {
+            firstName: "Pure",
+            lastName: "Health",
+            date: transactionDate,
+            departmentId: null
+          },
+          transaction: t
+        });
+
+        // Get old referrer info
+        const oldReferrer = await Referrer.findByPk(oldReferrerId, { transaction: t });
+        
+        if (expense && oldReferrer) {
+          // Check if there's an existing expense item for the old referrer
+          const existingExpenseItem = await ExpenseItem.findOne({
+            where: {
+              expenseId: expense.expenseId,
+              paidTo: `Dr. ${oldReferrer.lastName}`,
+              purpose: `Referrer Rebate - 20% of department totals`
+            },
+            transaction: t
+          });
+
+          if (existingExpenseItem) {
+            // Update the existing expense item's paidTo field instead of removing and creating new
+            await this.updateExpenseItemPaidTo(transactionId, oldReferrerId, newReferrerId, transactionDate, t);
+            
+            // Update the rebate records
+            await this.updateRebateRecordsForReferrerChange(transactionId, oldReferrerId, newReferrerId, transactionDate, t);
+          } else {
+            // No existing expense item, use the old remove/create approach
+            await this.removeRebateExpenseForTransaction(transaction, oldReferrerId, transactionDate, userId, t);
+            await this.createRebateExpenseForTransaction(transaction, newReferrerId, transactionDate, userId, t);
+          }
+        } else {
+          // Fallback to remove/create approach
+          await this.removeRebateExpenseForTransaction(transaction, oldReferrerId, transactionDate, userId, t);
+          await this.createRebateExpenseForTransaction(transaction, newReferrerId, transactionDate, userId, t);
+        }
+      }
+
+      if (shouldCommit) await t.commit();
+    } catch (error) {
+      if (shouldCommit) await t.rollback();
+      console.error('Error handling referrer change:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove rebate expense for a specific transaction and referrer
+   */
+  static async removeRebateExpenseForTransaction(transaction, referrerId, transactionDate, userId, dbTransaction) {
+    try {
+      // Get referrer information
+      const referrer = await Referrer.findByPk(referrerId, { transaction: dbTransaction });
+      if (!referrer) return;
+
+      // Calculate the rebate amount to remove
+      const departmentTotals = {};
+      
+      transaction.TestDetails.forEach(test => {
+        if (test.status === 'active') {
+          const deptId = String(test.departmentId);
+          if (!departmentTotals[deptId]) {
+            departmentTotals[deptId] = 0;
+          }
+          departmentTotals[deptId] += parseFloat(test.discountedPrice) || 0;
+        }
+      });
+
+      let totalRebateToRemove = 0;
+      Object.keys(departmentTotals).forEach(deptId => {
+        const deptTotal = departmentTotals[deptId];
+        const deptRebate = deptTotal * 0.20;
+        totalRebateToRemove += deptRebate;
+      });
+
+      if (totalRebateToRemove > 0) {
+        // Find and update the rebate record
+        const rebateRecord = await ReferrerRebate.findOne({
+          where: {
+            referrerId: referrerId,
+            rebateDate: transactionDate,
+            status: 'active'
+          },
+          transaction: dbTransaction
+        });
+
+        if (rebateRecord) {
+          const newRebateAmount = Math.max(0, parseFloat(rebateRecord.totalRebateAmount) - totalRebateToRemove);
+          const newTransactionCount = Math.max(0, rebateRecord.transactionCount - 1);
+          
+          await rebateRecord.update({
+            totalRebateAmount: newRebateAmount,
+            transactionCount: newTransactionCount,
+            status: newRebateAmount === 0 ? 'cancelled' : 'active'
+          }, { transaction: dbTransaction });
+        }
+
+        // Remove from expense items
+        await this.cancelRebateExpenses(referrer, totalRebateToRemove, transactionDate, userId, dbTransaction);
+
+        console.log(`Removed rebate expense for referrer change - Dr. ${referrer.lastName}: ₱${totalRebateToRemove.toFixed(2)}`);
+      } else {
+        // Even if no rebate amount, still try to remove any existing expense items for this referrer
+        await this.cancelRebateExpenses(referrer, 0, transactionDate, userId, dbTransaction);
+        console.log(`Cleaned up any existing rebate expense items for Dr. ${referrer.lastName}`);
+      }
+    } catch (error) {
+      console.error('Error removing rebate expense for transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update expense item paidTo field when referrer changes
+   * @param {number} transactionId - The ID of the transaction
+   * @param {number} oldReferrerId - The old referrer ID
+   * @param {number} newReferrerId - The new referrer ID
+   * @param {string} transactionDate - The transaction date
+   * @param {Object} dbTransaction - The database transaction to use
+   */
+  static async updateExpenseItemPaidTo(transactionId, oldReferrerId, newReferrerId, transactionDate, dbTransaction) {
+    try {
+      // Get both referrer information
+      const [oldReferrer, newReferrer] = await Promise.all([
+        Referrer.findByPk(oldReferrerId, { transaction: dbTransaction }),
+        Referrer.findByPk(newReferrerId, { transaction: dbTransaction })
+      ]);
+
+      if (!oldReferrer || !newReferrer) return;
+
+      // Find the expense record for rebates
+      const expense = await Expense.findOne({
+        where: {
+          firstName: "Pure",
+          lastName: "Health",
+          date: transactionDate,
+          departmentId: null
+        },
+        transaction: dbTransaction
+      });
+
+      if (expense) {
+        // Find the old expense item for the old referrer
+        const expenseItem = await ExpenseItem.findOne({
+          where: {
+            expenseId: expense.expenseId,
+            paidTo: `Dr. ${oldReferrer.lastName}`,
+            purpose: `Referrer Rebate - 20% of department totals`
+          },
+          transaction: dbTransaction
+        });
+
+        if (expenseItem) {
+          // Update the paidTo field to the new referrer
+          await expenseItem.update({
+            paidTo: `Dr. ${newReferrer.lastName}`
+          }, { transaction: dbTransaction });
+
+          console.log(`Updated expense item paidTo from Dr. ${oldReferrer.lastName} to Dr. ${newReferrer.lastName}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating expense item paidTo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update rebate records when referrer changes (without removing/creating new records)
+   * @param {number} transactionId - The ID of the transaction
+   * @param {number} oldReferrerId - The old referrer ID
+   * @param {number} newReferrerId - The new referrer ID
+   * @param {string} transactionDate - The transaction date
+   * @param {Object} dbTransaction - The database transaction to use
+   */
+  static async updateRebateRecordsForReferrerChange(transactionId, oldReferrerId, newReferrerId, transactionDate, dbTransaction) {
+    try {
+      // Get the transaction to calculate rebate amount
+      const transaction = await Transaction.findByPk(transactionId, {
+        include: [
+          {
+            model: TestDetails,
+            where: { status: 'active' },
+            required: false
+          }
+        ],
+        transaction: dbTransaction
+      });
+
+      if (!transaction) return;
+
+      // Calculate the rebate amount
+      const departmentTotals = {};
+      transaction.TestDetails.forEach(test => {
+        if (test.status === 'active') {
+          const deptId = String(test.departmentId);
+          if (!departmentTotals[deptId]) {
+            departmentTotals[deptId] = 0;
+          }
+          departmentTotals[deptId] += parseFloat(test.discountedPrice) || 0;
+        }
+      });
+
+      let totalRebateAmount = 0;
+      Object.keys(departmentTotals).forEach(deptId => {
+        const deptTotal = departmentTotals[deptId];
+        const deptRebate = deptTotal * 0.20;
+        totalRebateAmount += deptRebate;
+      });
+
+      if (totalRebateAmount > 0) {
+        // Get referrer information
+        const [oldReferrer, newReferrer] = await Promise.all([
+          Referrer.findByPk(oldReferrerId, { transaction: dbTransaction }),
+          Referrer.findByPk(newReferrerId, { transaction: dbTransaction })
+        ]);
+
+        if (!oldReferrer || !newReferrer) return;
+
+        // Find and update the old referrer's rebate record
+        const oldRebateRecord = await ReferrerRebate.findOne({
+          where: {
+            referrerId: oldReferrerId,
+            rebateDate: transactionDate,
+            status: 'active'
+          },
+          transaction: dbTransaction
+        });
+
+        if (oldRebateRecord) {
+          const newOldAmount = Math.max(0, parseFloat(oldRebateRecord.totalRebateAmount) - totalRebateAmount);
+          const newOldCount = Math.max(0, oldRebateRecord.transactionCount - 1);
+          
+          await oldRebateRecord.update({
+            totalRebateAmount: newOldAmount,
+            transactionCount: newOldCount,
+            status: newOldAmount === 0 ? 'cancelled' : 'active'
+          }, { transaction: dbTransaction });
+        }
+
+        // Find or create rebate record for the new referrer
+        const [newRebateRecord, created] = await ReferrerRebate.findOrCreate({
+          where: {
+            referrerId: newReferrerId,
+            rebateDate: transactionDate
+          },
+          defaults: {
+            firstName: newReferrer.firstName,
+            lastName: newReferrer.lastName,
+            totalRebateAmount: totalRebateAmount,
+            transactionCount: 1,
+            status: 'active'
+          },
+          transaction: dbTransaction
+        });
+
+        if (!created) {
+          await newRebateRecord.update({
+            totalRebateAmount: parseFloat(newRebateRecord.totalRebateAmount) + totalRebateAmount,
+            transactionCount: newRebateRecord.transactionCount + 1
+          }, { transaction: dbTransaction });
+        }
+
+        console.log(`Updated rebate records for referrer change - From Dr. ${oldReferrer.lastName} to Dr. ${newReferrer.lastName}: ₱${totalRebateAmount.toFixed(2)}`);
+      }
+    } catch (error) {
+      console.error('Error updating rebate records for referrer change:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create rebate expense for a specific transaction and referrer
+   */
+  static async createRebateExpenseForTransaction(transaction, referrerId, transactionDate, userId, dbTransaction) {
+    try {
+      // Get referrer information
+      const referrer = await Referrer.findByPk(referrerId, { transaction: dbTransaction });
+      if (!referrer) return;
+
+      // Calculate the rebate amount to add
+      const departmentTotals = {};
+      
+      transaction.TestDetails.forEach(test => {
+        if (test.status === 'active') {
+          const deptId = String(test.departmentId);
+          if (!departmentTotals[deptId]) {
+            departmentTotals[deptId] = 0;
+          }
+          departmentTotals[deptId] += parseFloat(test.discountedPrice) || 0;
+        }
+      });
+
+      let totalRebateToAdd = 0;
+      Object.keys(departmentTotals).forEach(deptId => {
+        const deptTotal = departmentTotals[deptId];
+        const deptRebate = deptTotal * 0.20;
+        totalRebateToAdd += deptRebate;
+      });
+
+      if (totalRebateToAdd > 0) {
+        // Find or create rebate record
+        const [rebateRecord, created] = await ReferrerRebate.findOrCreate({
+          where: {
+            referrerId: referrerId,
+            rebateDate: transactionDate
+          },
+          defaults: {
+            firstName: referrer.firstName,
+            lastName: referrer.lastName,
+            totalRebateAmount: totalRebateToAdd,
+            transactionCount: 1,
+            status: 'active'
+          },
+          transaction: dbTransaction
+        });
+
+        if (!created) {
+          await rebateRecord.update({
+            totalRebateAmount: parseFloat(rebateRecord.totalRebateAmount) + totalRebateToAdd,
+            transactionCount: rebateRecord.transactionCount + 1
+          }, { transaction: dbTransaction });
+        }
+
+        // Add to expense items
+        await this.recordRebateAsExpense(referrer, totalRebateToAdd, transactionDate, userId, dbTransaction);
+
+        console.log(`Added rebate expense for referrer change - Dr. ${referrer.lastName}: ₱${totalRebateToAdd.toFixed(2)}`);
+      }
+    } catch (error) {
+      console.error('Error creating rebate expense for transaction:', error);
       throw error;
     }
   }

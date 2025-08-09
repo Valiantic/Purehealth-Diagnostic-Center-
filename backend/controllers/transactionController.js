@@ -1,4 +1,4 @@
-const { Transaction, TestDetails, ActivityLog, Department, DepartmentRevenue, sequelize } = require('../models');
+const { Transaction, TestDetails, ActivityLog, Department, DepartmentRevenue, Referrer, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Fix: use CommonJS require syntax instead of ES Module import
 const socketManager = require('../utils/socketManager');
 const RebateService = require('../services/rebateService');
@@ -468,6 +468,11 @@ exports.updateTransaction = async (req, res) => {
       });
     }
 
+    // Track referrer change for rebate adjustments
+    const oldReferrerId = transaction.referrerId;
+    const newReferrerId = referrerId === "Out Patient" || referrerId === "" ? null : referrerId;
+    const referrerChanged = oldReferrerId !== newReferrerId;
+
     // Update transaction with provided values
     const updateData = {};
     if (mcNo !== undefined) updateData.mcNo = mcNo;
@@ -633,6 +638,16 @@ exports.updateTransaction = async (req, res) => {
         }
       }
       
+      // Handle referrer changes and update rebate expenses
+      if (referrerChanged) {
+        try {
+          await RebateService.handleReferrerChange(id, oldReferrerId, newReferrerId, userId || transaction.userId, t);
+        } catch (rebateError) {
+          console.error('Error handling referrer change for rebates:', rebateError);
+          // Don't fail the transaction update if rebate adjustment fails
+        }
+      }
+      
       // Update transaction totals
       await transaction.update({
         totalCashAmount,
@@ -653,6 +668,17 @@ exports.updateTransaction = async (req, res) => {
 
     // Log activity
     let activityDetails = `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`;
+    
+    // Add referrer change information to activity log if present
+    if (referrerChanged) {
+      const oldReferrerName = oldReferrerId ? 
+        (await Referrer.findByPk(oldReferrerId))?.lastName ? `Dr. ${(await Referrer.findByPk(oldReferrerId)).lastName}` : 'Unknown' 
+        : 'Out Patient';
+      const newReferrerName = newReferrerId ? 
+        (await Referrer.findByPk(newReferrerId))?.lastName ? `Dr. ${(await Referrer.findByPk(newReferrerId)).lastName}` : 'Unknown'
+        : 'Out Patient';
+      activityDetails += `. Referrer changed from ${oldReferrerName} to ${newReferrerName}`;
+    }
     
     // Add excess refund information to activity log if present
     if (totalExcessRefundAmount > 0) {
