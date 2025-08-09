@@ -299,14 +299,10 @@ const TransactionSummaryModal = ({
                           ) : (
                             <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
                               {(() => {
-                                // Display 20% for PWD or Senior Citizen when not editing, otherwise show actual discount
-                                const idType = (transaction?.originalTransaction?.idType || '').trim().toLowerCase();
-                                if (idType === 'person with disability' || idType === 'senior citizen') {
-                                  return '20%';
-                                }
+                                // Always show the actual discount percentage from the test data, not forced 20%
                                 return test.discountPercentage !== undefined && test.discountPercentage !== ''
                                   ? `${test.discountPercentage}${String(test.discountPercentage).includes('%') ? '' : '%'}`
-                                  : 'N/A';
+                                  : '0%';
                               })()}
                             </div>
                           )}
@@ -315,19 +311,10 @@ const TransactionSummaryModal = ({
                           {isEditingSummary ? (
                             <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-gray-400 line-through" : ""}`}>
                               {(() => {
-                                // Auto-calculate discounted price for PWD or Senior Citizen when editing
-                                const idType = (editedTransaction?.originalTransaction?.idType || '').trim().toLowerCase();
-                                
-                                let discountedPrice = parseFloat(test.discountedPrice || 0);
-                                
-                                if (idType === 'person with disability' || idType === 'senior citizen') {
-                                  const originalPrice = parseFloat(test.originalPrice || 0);
-                                  const discountPercent = parseFloat(test.discountPercentage || 20);
-                                  discountedPrice = originalPrice * (1 - discountPercent / 100);
-                                } else {
-                                  // For non-PWD/Senior, use existing discounted price
-                                  discountedPrice = parseFloat(test.discountedPrice || 0);
-                                }
+                                // Calculate discounted price based on individual test discount percentage
+                                const originalPrice = parseFloat(test.originalPrice || 0);
+                                const discountPercent = parseFloat(test.discountPercentage || 0);
+                                const discountedPrice = originalPrice * (1 - discountPercent / 100);
                                 
                                 return discountedPrice > 0 
                                   ? discountedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -338,9 +325,10 @@ const TransactionSummaryModal = ({
                           ) : (
                             <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-gray-400 line-through" : ""}`}>
                               {(() => {
-                                // Use the actual discounted price passed from AddTransaction.jsx
-                                // No need to recalculate since it's already correctly calculated
-                                const discountedPrice = parseFloat(test.discountedPrice || 0);
+                                // Calculate discounted price based on individual test discount percentage
+                                const originalPrice = parseFloat(test.originalPrice || 0);
+                                const discountPercent = parseFloat(test.discountPercentage || 0);
+                                const discountedPrice = originalPrice * (1 - discountPercent / 100);
                                 
                                 return discountedPrice > 0 
                                   ? discountedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -370,24 +358,6 @@ const TransactionSummaryModal = ({
                                 placeholder="0.00"
                                 disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
                               />
-                              {(() => {
-                                // Show refund amount if cash exceeds discounted price
-                                const idType = (editedTransaction?.originalTransaction?.idType || '').trim().toLowerCase();
-                                let discountedPrice = parseFloat(test.discountedPrice || 0);
-                                
-                                if (idType === 'person with disability' || idType === 'senior citizen') {
-                                  const originalPrice = parseFloat(test.originalPrice || 0);
-                                  const discountPercent = parseFloat(test.discountPercentage || 20);
-                                  discountedPrice = originalPrice * (1 - discountPercent / 100);
-                                } else {
-                                  const originalPrice = parseFloat(test.originalPrice || 0);
-                                  const discountPercent = parseFloat(test.discountPercentage || 0);
-                                  discountedPrice = originalPrice * (1 - discountPercent / 100);
-                                }
-                                
-                                const currentCashAmount = parseFloat(test.cashAmount || 0);
-                                return null;
-                              })()}
                             </div>
                           ) : (
                             <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
@@ -415,27 +385,6 @@ const TransactionSummaryModal = ({
                                 placeholder="0.00"
                                 disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
                               />
-                              {(() => {
-                                // Show refund amount if total payments exceed discounted price
-                                const idType = (editedTransaction?.originalTransaction?.idType || '').trim().toLowerCase();
-                                let discountedPrice = parseFloat(test.discountedPrice || 0);
-                                
-                                if (idType === 'person with disability' || idType === 'senior citizen') {
-                                  const originalPrice = parseFloat(test.originalPrice || 0);
-                                  const discountPercent = parseFloat(test.discountPercentage || 20);
-                                  discountedPrice = originalPrice * (1 - discountPercent / 100);
-                                } else {
-                                  const originalPrice = parseFloat(test.originalPrice || 0);
-                                  const discountPercent = parseFloat(test.discountPercentage || 0);
-                                  discountedPrice = originalPrice * (1 - discountPercent / 100);
-                                }
-                                
-                                const currentCashAmount = parseFloat(test.cashAmount || 0);
-                                const currentGCashAmount = parseFloat(test.gCashAmount || 0);
-                                const totalPayments = currentCashAmount + currentGCashAmount;                                
-
-                                return null;
-                              })()}
                             </div>
                           ) : (
                             <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
@@ -582,37 +531,50 @@ const TransactionSummaryModal = ({
                               : transaction?.originalTransaction?.idType
                             ) || '';
                             const normalized = idType.trim().toLowerCase();
+                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
+                              return ' (20% PWD/Senior Discount Applied)';
+                            }
                             return null;
                           })()}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
                           {(() => {
-                            // Calculate total transaction (cash + GCash - balance) excluding refunded tests
-                            let cashTotal = 0;
-                            let gCashTotal = 0;
-                            let balanceTotal = 0;
+                            // Calculate subtotal based on individual test discounts first
+                            let subtotal = 0;
                             const testDetails = isEditingSummary
                               ? editedTransaction?.originalTransaction?.TestDetails
                               : transaction?.originalTransaction?.TestDetails;
+                              
                             if (testDetails) {
                               testDetails.forEach(test => {
                                 if (test.status !== 'refunded') {
-                                  // Get cash and GCash payments directly
+                                  // Calculate discounted price for each test based on its individual discount
+                                  const originalPrice = parseFloat(test.originalPrice || 0);
+                                  const discountPercent = parseFloat(test.discountPercentage || 0);
+                                  const testDiscountedPrice = originalPrice * (1 - discountPercent / 100);
+                                  
+                                  // Use the actual payment amounts (cash + gCash) which should match the discounted price
                                   const cashAmount = parseFloat(test.cashAmount || 0);
                                   const gCashAmount = parseFloat(test.gCashAmount || 0);
-                                  const balanceAmount = parseFloat(test.balanceAmount || 0);
+                                  const actualPaid = cashAmount + gCashAmount;
                                   
-                                  cashTotal += cashAmount;
-                                  gCashTotal += gCashAmount;
-                                  balanceTotal += balanceAmount;
+                                  subtotal += actualPaid;
                                 }
                               });
                             }
                             
-                            // Total paid is cash + GCash (balance is excluded as it's not yet paid)
-                            let totalPaid = cashTotal + gCashTotal;
+                            // Apply 20% PWD/Senior discount on the subtotal
+                            const idType = (isEditingSummary
+                              ? editedTransaction?.originalTransaction?.idType
+                              : transaction?.originalTransaction?.idType
+                            ) || '';
+                            const normalized = idType.trim().toLowerCase();
+                            let finalTotal = subtotal;
+                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
+                              finalTotal = subtotal * 0.8; // Apply 20% discount on subtotal
+                            }
                             
-                            return totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800" colSpan={isEditingSummary && isRefundMode ? 2 : 1}></td>

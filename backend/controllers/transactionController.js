@@ -47,7 +47,7 @@ exports.createTransaction = async (req, res) => {
     t = await sequelize.transaction();
 
     // Calculate totals from items
-    let totalAmount = 0;
+    let subtotalAmount = 0;
     let totalDiscountAmount = 0;
     let totalCashAmount = 0;
     let totalGCashAmount = 0;
@@ -60,16 +60,20 @@ exports.createTransaction = async (req, res) => {
       const gCashAmount = parseFloat(item.gCashAmount) || 0;
       const balanceAmount = parseFloat(item.balanceAmount) || 0;
     
-      // Use the already calculated values from frontend
-      totalAmount += discountedPrice; 
+      // Sum up individual test prices (after individual test discounts)
+      subtotalAmount += discountedPrice; 
       totalDiscountAmount += (originalPrice - discountedPrice);
       totalCashAmount += cashAmount;
       totalGCashAmount += gCashAmount;
       totalBalanceAmount += balanceAmount;  
     });
 
-    // Note: PWD/Senior Citizen discount is already applied in frontend calculations
-    // No need to apply additional discount here
+    // Apply PWD/Senior Citizen 20% discount to the final transaction total
+    let totalAmount = subtotalAmount;
+    if (idType && (idType.toLowerCase().trim() === 'person with disability' || idType.toLowerCase().trim() === 'senior citizen')) {
+      totalAmount = subtotalAmount * 0.8; // Apply 20% discount to subtotal
+      totalDiscountAmount += (subtotalAmount * 0.2); // Add PWD/Senior discount to total discount amount
+    }
     // Generate sequential MC number if not provided
     let generatedMcNo;
     if (mcNo) {
