@@ -14,4 +14,9 @@ router.post('/registration/verify', webauthnController.registrationVerify);
 router.post('/authentication/options', webauthnController.authenticationOptions);
 router.post('/authentication/verify', webauthnController.authenticationVerify);
 
+// Passkey management routes
+router.get('/passkeys/:userId', webauthnController.getUserPasskeys);
+router.delete('/passkeys/:passkeyId', webauthnController.deletePasskey);
+router.put('/passkeys/:passkeyId/primary', webauthnController.setPrimaryPasskey);
+
 module.exports = router;

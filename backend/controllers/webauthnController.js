@@ -358,11 +358,183 @@ async function authenticationVerify(req, res) {
   }
 }
 
+// Get user's passkeys
+async function getUserPasskeys(req, res) {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Find the user
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Get all authenticators for the user
+    const authenticators = await Authenticator.findAll({
+      where: { userId },
+      order: [['isPrimary', 'DESC'], ['createdAt', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      passkeys: authenticators
+    });
+  } catch (error) {
+    console.error('Error fetching user passkeys:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching passkeys',
+      error: error.message
+    });
+  }
+}
+
+// Delete a passkey
+async function deletePasskey(req, res) {
+  try {
+    const { passkeyId } = req.params;
+
+    if (!passkeyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passkey ID is required'
+      });
+    }
+
+    // Find the passkey
+    const passkey = await Authenticator.findByPk(passkeyId);
+    if (!passkey) {
+      return res.status(404).json({
+        success: false,
+        message: 'Passkey not found'
+      });
+    }
+
+    // Check if this is the only passkey for the user
+    const userPasskeyCount = await Authenticator.count({
+      where: { userId: passkey.userId }
+    });
+
+    if (userPasskeyCount === 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete the only remaining passkey'
+      });
+    }
+
+    // If deleting primary passkey, make another one primary
+    if (passkey.isPrimary) {
+      const otherPasskey = await Authenticator.findOne({
+        where: { 
+          userId: passkey.userId, 
+          id: { [require('sequelize').Op.ne]: passkeyId }
+        }
+      });
+      
+      if (otherPasskey) {
+        await otherPasskey.update({ isPrimary: true });
+      }
+    }
+
+    // Delete the passkey
+    await passkey.destroy();
+
+    // Log activity
+    await logActivity({
+      userId: passkey.userId,
+      action: 'DELETE_PASSKEY',
+      resourceType: 'AUTHENTICATOR',
+      resourceId: passkeyId,
+      details: 'Passkey deleted',
+      ipAddress: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'Passkey deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting passkey:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting passkey',
+      error: error.message
+    });
+  }
+}
+
+// Set passkey as primary
+async function setPrimaryPasskey(req, res) {
+  try {
+    const { passkeyId } = req.params;
+
+    if (!passkeyId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passkey ID is required'
+      });
+    }
+
+    // Find the passkey
+    const passkey = await Authenticator.findByPk(passkeyId);
+    if (!passkey) {
+      return res.status(404).json({
+        success: false,
+        message: 'Passkey not found'
+      });
+    }
+
+    // Update all passkeys for this user to not be primary
+    await Authenticator.update(
+      { isPrimary: false },
+      { where: { userId: passkey.userId } }
+    );
+
+    // Set the selected passkey as primary
+    await passkey.update({ isPrimary: true });
+
+    // Log activity
+    await logActivity({
+      userId: passkey.userId,
+      action: 'SET_PRIMARY_PASSKEY',
+      resourceType: 'AUTHENTICATOR',
+      resourceId: passkeyId,
+      details: 'Passkey set as primary',
+      ipAddress: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'Primary passkey updated successfully'
+    });
+  } catch (error) {
+    console.error('Error setting primary passkey:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error setting primary passkey',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   tempRegistrationOptions,
   tempRegistrationVerify,
   registrationOptions,
   registrationVerify,
   authenticationOptions,
-  authenticationVerify
+  authenticationVerify,
+  getUserPasskeys,
+  deletePasskey,
+  setPrimaryPasskey
 };
