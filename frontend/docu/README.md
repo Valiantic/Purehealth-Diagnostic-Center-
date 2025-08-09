@@ -291,8 +291,182 @@ feature/Socket-io-Package-Install-BE
 
 devpatch6 - Merge Conflict
 
-feature/Build-Dashboard-Functionality-With-Socket.io-Package-BE
+feature/Build-Dashboard-Functionality-With-Socket.io-Package-BE -- will not used instead use devpatch-pre-prod merge fixed branch
 
+devpatch7 - New Core Branch Creation due to Conflict
+
+feature/Pre-Prod-Merge-Conflict-Resolve-v.1
+
+feature/Pre-Prod-Merge-Conflict-Resolve-v.2
+
+feature/Pre-Prod-Fix-Sequelize-Function-Due-To-PostgreSQL-Database
+
+feature/Pre-Prod-Fix-Sequelize-Extraction-Queries
+
+feature/Pre-Prod-Fix-Sequelize-Extraction-Queries-v.2
+
+feature/Pre-Prod-Fix-Sequelize-Extraction-Queries-v.3
+
+feature/Remove-Console-logs-Dashboard-FE
+
+feature/Pre-Prod-Change-Icon-Tab-To-PNG
+
+feature/Devpatch7-Backend-Packages-Fix
+
+feature/Add-Breakpoint-Responsiveness-Dashboard-Add-Transaction-Page
+
+feature/Remove-Action-Column-on-Monthly-Income-Expenses-Page
+
+feature/Dashboard-Net-Profit-to-Net-loss-Label-Change
+
+feature/Add-Expenses-Department-Types-and-Categories
+# ⚒ What's Changed? 
+- Replace Fullname to First Name and Last Name
+- Add Categories Dropdown and Modal on Add Expenses Page
+- Display First Name and Last Name to Expenses Table
+- Display Categories of Expense Items on Expenses Table 
+- Update First Name, Last Name and Categories on Expense Summary Modal
+
+feature/Activity-Log-Table-Responsiveness-Remove-Zero-Default-Add-Test-Queueing
+
+feature/Collectible-Income-FE-Bug-and-Data-Includes-Dashboard-Recording
+
+feature/Add-Expense-First-Last-Name-Blank-Field-Validator
+
+feature/Transaction-Add-Edit-Birth-Future-Restriction
+
+feature/Frontend-Component-Folder-Restructuring
+
+feature/Modify-Add-Referrer-Modal-Reusable-on-Add-Transaction-and-Referral
+# ⚒ What's Changed? 
+- Make Referrer Modal Reusable to Referral Management and Add Transaction
+- New hook useReferrerForm for Referrer Modal Logic
+
+feature/Modify-Add-Test-Modal-Reusable-Test-Management
+# ⚒ What's Changed? 
+- Make Test Modal Reusable to Test Management
+- New hook useTestForm for Test Modal Logic
+
+feature/Settings-Account-Page-Padding-Left-Bug
+
+feature/Modify-Add-Test-Queuing-Modal-Reusable-Add-Transaction
+
+feature/Add-Test-Queuing-Modal-Future-Date-Restriction
+
+feature/Move-Sidebar-Components-Dashboard-Component-Folder-Add-Referrer-CONFIRM-Button-Label-Change
+
+feature/Remove-UpperCase-CONFIRM-Label-Referrer-Modal
+
+feature/Add-Transaction-Date-Created-Input-Field-Type-Logic
+
+feature/Test-and-Test-Queuing-Modal-Date-Created-Input-Field-Type-Logic
+
+feature/Add-Expense-Date-Future-Restriction
+
+feature/Test-Queuing-Modal-Date-Overload-White-Bug
+
+feature/Transaction-Summary-Modal-Input-Field-Type-Logic
+
+feature/Add-Collectible-Income-Date-Future-Restriction
+
+feature/Dashboard-Date-Navigator-Date-Future-Restriction
+
+feature/Expenses-Summary-Modal-Revamped
+
+feature/Collectible-Income-Edit-Modal
+# ⚒ What's Changed? 
+- Run this sql query due to new column
+ALTER TABLE CollectibleIncome 
+ADD COLUMN dateConducted DATETIME NOT NULL DEFAULT NOW() AFTER totalIncome;
+
+-- Update existing records
+UPDATE CollectibleIncome 
+SET dateConducted = createdAt;
+
+- New Controller for updating Collectible incomes
+
+feature/Edit-Button-Mode-Kebab-Onclick-Expense-Page
+
+feature/Add-Test-Queing-Modal-Date-Queing-Not-Match
+
+feature/Add-Referrer-Button-Referrer-Page-Include-Validate-Form-Props-to-Pages
+# What's Included?
+- Also Include Missing validateForm Props to Add Transaction and Referral Management Page
+- Enables toast error validation for blank fields in Referrer Modals
+
+feature/Monthly-Expenses-Rearrangment-Columns-and-Rename-Categories-to-Category
+# What's Included?
+- run this sql command ALTER TABLE CATEGORIES RENAME TO CATEGORY;
+- table name change from categories to category
+
+feature/Daily-Income-Trend-Collectible-Income-Change-Not-Applied
+# What's Included?
+- Revamp Graph Design with legend and tooltip
+- Line Graph for Total Income, Collected Income and Collectible Income
+- Include Collectible income on the calculation
+
+feature/Transcation-Summary-Modal-Discount-Exceed-Refund-Income-Summary-Box-Bug
+# What's Included?
+- Exceeded Discount not Recording due to missing props and function
+- Fix missing state on Payment Details to Open Modal 
+
+feature/Dashboard-20%-Discount-for-PWD-Senior-Citizen
+# What's Included?
+- Saved the Transaction with totalIncome discounted by 20% due to idType discount from FE to BE
+- Use the Transaction Summary Modal Reusable Component on Add Transaction
+- Add Total Transation Row on Transaction Summary Modal 
+- Fix Gross it now Records the Updated Discount if id type is Senior Citizen and Person with Disability on Income Table
+- Fix Transaction Summary Modal total not updating. if a test is refunded it should exclude it on the total cashpaid and gcash paid 
+- Fix Deposit now includes Refund on calculation
+- Fix Canceled Transaction that has refunded test are no longer calculated on refund display on transactionUtils.js
+- Fix Income Total Table Calculation
+- Fix if a test has a balance it should deduct it on the total.
+- Fix the total cash paid should only calculate the cash paids
+- Fix the total gcash paid should only calculate the gcash paids
+- Fix if the discounted percentag make the discounted price exceeded the cash paid and gcash paid it makes it the same
+
+feature/Add-Transaction-Birth-Date-Bug
+
+feature/Dashboard-Net-Profit-Arrow-Tooltip
+
+feature/Collectible-Income-View-Not-Match-in-Month
+
+feature/Update-SQL-File-Schema-and-Add-PostgreSQL-File-Schema
+
+feature/Add-Transaction-20%-Referrer-Deduction-Expenses
+
+feature/Monthly-Expenses-Department-Table-Redesign
+
+-- devpatch8 -- 
+
+feature/FE-Application-Page-Exports
+
+feature/Expenses-Table-Export-to-Excel
+feature/Monthly-Income-Export-to-Excel
+feature/Monthly-Expenses-Export-to-Excel
+feature/Referrals-Export-to-Excel
+feature/Action-Log-Export-to-Excel
+feature/Test-Departments-Export-to-Excel
+feature/Test-List-Export-to-Excel
+feature/Referrer-List-Export-to-Excel
+feature/Monthly-Income-Export-Header-Responsiveness
+
+feature/Npm-Start-Concurrently-Package
+feature/Npm-i-and-README-Inclusion
+
+feature/Total-Dashboard-Label-Not-Responsive
+feature/20%-Referrer-Deduction-Wrong-Calculation
+feature/Net-profit-Wrong-CALCULATION
+feature/Referrer-Modal-Page-Username-Not-Logged-in-Activity-Log
+feature/Income-Table-Must-Have-Decimals
+feature/Expense-Items-Must-Have-Category-and-Label
+feature/Expense-Items-Updated-Wrong-Referrer
+feature/Test-Details-Discount-Removal-Apply-Only-Total
+
+
+feature/FIDO2-Change-Passkey
+
+feature/FIDO2-User-Create-Update-Cancel-Checkpoint
 
 --LATER--
 feature/Test-Management-Search-Date-Bug
@@ -320,9 +494,28 @@ feature/Transaction-Expenses-Table-Generate-Reports
 feature/Transaction-Income-Table-Functionality
 feature/Transaction-Expenses-Table-Functionality
 
-feature/Add-Transaction
-feature/Add-Expenses
-feature/Dynamic-Dashboard
+feature/Add-Expenses-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Add-Transaction-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Dashboard-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Add-Expenses-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Department-Management-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Monthly-Income-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Referral-Management-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Referrer-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Test-Management-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Transaction-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/View-Account-Component-OverStates-Delegation-to-Custom-Hooks
+
 
 
 - Expenses, Test department iniinclude mga department kahit archived
