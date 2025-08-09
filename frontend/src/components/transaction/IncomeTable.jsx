@@ -78,7 +78,7 @@ const TransactionRow = ({
                   <>
                     {deptData && deptData.amount > 0 ? (
                       <span className={hasBalance ? 'relative' : ''}>
-                        {deptData.amount.toLocaleString(2)}
+                        {deptData.amount.toFixed(2)}
                       </span>
                     ) : ''}
                   </>
@@ -92,7 +92,7 @@ const TransactionRow = ({
         {transaction.status === 'cancelled' ? (
           '' 
         ) : (
-          transaction.grossDeposit.toLocaleString(2)
+          transaction.grossDeposit.toFixed(2)
         )}
       </td>
       <td className="py-0 md:py-1 px-1 md:px-2 border border-green-200 max-w-[80px] md:max-w-[120px]">
@@ -270,14 +270,14 @@ const IncomeTable = ({
                         className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
                       >
                         <div className="font-bold">
-                          {netRevenue > 0 ? netRevenue.toLocaleString(2) : '0.00'}
+                          {netRevenue > 0 ? netRevenue.toFixed(2) : '0.00'}
                         </div>
                       </td>
                     );
                   })}
                     
                   <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold text-green-700">
-                    {totalGross.toLocaleString(2)}
+                    {totalGross.toFixed(2)}
                   </td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>

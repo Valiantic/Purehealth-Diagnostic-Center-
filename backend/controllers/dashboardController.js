@@ -81,9 +81,9 @@ const dashboardController = {
       const collectibleAmount = parseFloat(monthlyCollectibleIncome || 0);
       const totalRevenue = revenueAmount + collectibleAmount;
 
-      const monthlyRebates = await RebateService.getMonthlyRebateSummary(month, year);
-      const rebateExpenses = parseFloat(monthlyRebates.totalRebates || 0);
-      const totalMonthlyExpenses = (parseFloat(monthlyExpenses || 0)) + rebateExpenses;
+      // Total monthly expenses should only be what's actually recorded in ExpenseItems
+      // This already includes rebates when they are properly recorded by the rebate service
+      const totalMonthlyExpenses = parseFloat(monthlyExpenses || 0);
       const netProfit = totalRevenue - totalMonthlyExpenses;
 
       res.json({
@@ -92,9 +92,7 @@ const dashboardController = {
           monthlyRevenue: totalRevenue,
           transactionRevenue: revenueAmount,
           collectibleIncome: collectibleAmount,
-          monthlyExpenses: monthlyExpenses || 0,
-          totalExpenses: totalMonthlyExpenses,
-          rebateExpenses: rebateExpenses,
+          monthlyExpenses: totalMonthlyExpenses,
           netProfit: netProfit,
           month: month,
           year: year
@@ -400,14 +398,12 @@ const dashboardController = {
           }
         });
 
-        // Get rebate expenses for this month
-        const monthlyRebates = await RebateService.getMonthlyRebateSummary(month, year);
-        const rebateExpenses = parseFloat(monthlyRebates.totalRebates || 0);
-
+        // Get rebate expenses for this month - but only if they're recorded as expense items
+        // The expenses query above should already include rebates when properly recorded
         const transactionRevenue = parseFloat(revenueResult[0]?.totalRevenue || 0);
         const collectibleAmount = parseFloat(collectibleIncome || 0);
         const totalRevenue = transactionRevenue + collectibleAmount;
-        const totalExpenses = (expenses || 0) + rebateExpenses;
+        const totalExpenses = expenses || 0; // Only actual recorded expenses
         const profit = totalRevenue - totalExpenses;
         
         monthlyData.push({
@@ -416,9 +412,7 @@ const dashboardController = {
           revenue: totalRevenue,
           transactionRevenue: transactionRevenue,
           collectibleIncome: collectibleAmount,
-          expenses: expenses || 0,
-          rebateExpenses: rebateExpenses,
-          totalExpenses: totalExpenses,
+          expenses: totalExpenses,
           profit: profit
         });
       }
