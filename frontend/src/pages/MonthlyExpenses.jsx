@@ -161,7 +161,35 @@ const MonthlyExpenses = () => {
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
-  // Function to get expense items with no department
+  // Function to get rebate expense items
+  const getRebateExpenseItems = () => {
+    if (!monthlyData.dailyExpenses || monthlyData.dailyExpenses.length === 0) {
+      return [];
+    }
+    
+    const items = [];
+    
+    monthlyData.dailyExpenses.forEach(day => {
+      Object.entries(day.departments).forEach(([deptName, deptData]) => {
+        // Check if this is the rebates department
+        if (deptName === 'Rebates') {
+          deptData.items.forEach(item => {
+            if (item.status !== 'paid') { 
+              items.push({
+                ...item,
+                date: day.date,
+                department: deptName,
+              });
+            }
+          });
+        }
+      });
+    });
+    
+    return items.sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
+  // Function to get expense items with no department (excluding rebates)
   const getExpenseItemsWithNoDepartment = () => {
     if (!monthlyData.dailyExpenses || monthlyData.dailyExpenses.length === 0) {
       return [];
@@ -171,10 +199,10 @@ const MonthlyExpenses = () => {
     
     monthlyData.dailyExpenses.forEach(day => {
       Object.entries(day.departments).forEach(([deptName, deptData]) => {
-        // Check if this department name doesn't match any active department
+        // Check if this department name doesn't match any active department AND is not rebates
         const isKnownDepartment = departmentsList.some(dept => dept.departmentName === deptName);
         
-        if (!isKnownDepartment || deptName === 'Other' || deptName === 'No Department') {
+        if ((!isKnownDepartment || deptName === 'Other' || deptName === 'No Department') && deptName !== 'Rebates') {
           deptData.items.forEach(item => {
             if (item.status !== 'paid') { 
               items.push({
@@ -197,6 +225,12 @@ const MonthlyExpenses = () => {
     return items.reduce((total, item) => total + parseFloat(item.amount || 0), 0);
   };
 
+  // Calculate total for rebate expenses
+  const calculateRebateExpensesTotal = () => {
+    const items = getRebateExpenseItems();
+    return items.reduce((total, item) => total + parseFloat(item.amount || 0), 0);
+  };
+
   // Calculate total for expenses with no department
   const calculateOtherExpensesTotal = () => {
     const items = getExpenseItemsWithNoDepartment();
@@ -216,7 +250,9 @@ const MonthlyExpenses = () => {
         getExpenseItemsByDepartment,
         getExpenseItemsWithNoDepartment,
         calculateDepartmentTotal,
-        calculateOtherExpensesTotal
+        calculateOtherExpensesTotal,
+        getRebateExpenseItems,
+        calculateRebateExpensesTotal
       );
       toast.success('Monthly Expenses Report exported successfully!');
     } catch (error) {
@@ -234,6 +270,7 @@ const MonthlyExpenses = () => {
   }
 
   const otherExpensesItems = getExpenseItemsWithNoDepartment();
+  const rebateExpensesItems = getRebateExpenseItems();
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-cream-50">
@@ -350,6 +387,60 @@ const MonthlyExpenses = () => {
                 );
               })}
 
+              {/* Rebates Table */}
+              {rebateExpensesItems.length > 0 && (
+                <div className="p-2">
+                  <div className="bg-green-800 p-2 rounded-t">
+                    <h1 className='ml-2 font-bold text-white sm:text-xs md:text-xl'>
+                      Rebates
+                    </h1>
+                  </div>
+                  <div className="border border-green-800 rounded-b">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-green-800 bg-green-100">
+                            <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium">Paid To</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium">Category</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rebateExpensesItems.map((item, index) => (
+                            <tr key={item.id || `rebate-item-${index}`} className="border-b border-green-100">
+                              <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(item.date)}</td>
+                              <td className="p-1 border-r border-green-200 text-center bg-white">{item.paidTo || '-'}</td>
+                              <td className="p-1 border-r border-green-200 text-center bg-white">{item.categoryName || '-'}</td>
+                              <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(item.amount)}</td>
+                            </tr>
+                          ))}
+                          
+                          {/* Empty rows to fill space if needed */}
+                          {rebateExpensesItems.length < 5 && 
+                            [...Array(5 - rebateExpensesItems.length)].map((_, index) => (
+                              <tr key={`rebate-empty-${index}`} className="border-b border-green-100">
+                                <td className="p-1 border-r border-green-200 bg-white">&nbsp;</td>
+                                <td className="p-1 border-r border-green-200 bg-white">&nbsp;</td>
+                                <td className="p-1 border-r border-green-200 bg-white">&nbsp;</td>
+                                <td className="p-1 border-r border-green-200 bg-white">&nbsp;</td>
+                              </tr>
+                            ))
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-green-800 bg-green-100 font-bold">
+                            <td className="p-1 text-center border-r border-green-800">TOTAL:</td>
+                            <td colSpan={2} className="p-1 border-r border-green-800"></td>
+                            <td className="p-1 border-r border-green-800 text-center">{formatCurrency(calculateRebateExpensesTotal())}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Other Expenses Table (No Department) */}
               {otherExpensesItems.length > 0 && (
                 <div className="p-2">
@@ -405,7 +496,7 @@ const MonthlyExpenses = () => {
               )}
 
               {/* No Data Message */}
-              {departmentsList.length === 0 && otherExpensesItems.length === 0 && (
+              {departmentsList.length === 0 && otherExpensesItems.length === 0 && rebateExpensesItems.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-gray-600">No expense data available for this month.</p>
                 </div>
@@ -417,7 +508,7 @@ const MonthlyExpenses = () => {
           {(departmentsList.some(dept => {
             const departmentItems = getExpenseItemsByDepartment(dept.departmentId || dept.id);
             return departmentItems.length > 0;
-          }) || otherExpensesItems.length > 0) && (
+          }) || otherExpensesItems.length > 0 || rebateExpensesItems.length > 0) && (
             <div className="flex justify-end p-2">
               <button 
                 onClick={handleGenerateExpenseReport}

@@ -76,7 +76,13 @@ exports.getMonthlyExpenses = async (req, res) => {
         }
       }
       
-      const departmentKey = expense.Department?.departmentName || 'Uncategorized';
+      // Special handling for rebates - use category name instead of department
+      let departmentKey;
+      if (!expense.Department && expense.ExpenseItems.some(item => item.Category?.name === 'Rebates')) {
+        departmentKey = 'Rebates';
+      } else {
+        departmentKey = expense.Department?.departmentName || 'Other';
+      }
 
       if (!dailyExpenses[dateKey]) {
         dailyExpenses[dateKey] = {
@@ -207,7 +213,14 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
 
     expenses.forEach(expense => {
       const deptId = expense.departmentId;
-      const deptName = expense.Department?.departmentName || 'Uncategorized';
+      
+      // Special handling for rebates - use category name instead of department
+      let deptName;
+      if (!expense.Department && expense.ExpenseItems.some(item => item.Category?.name === 'Rebates')) {
+        deptName = 'Rebates';
+      } else {
+        deptName = expense.Department?.departmentName || 'Other';
+      }
       
       if (!departmentTotals[deptId]) {
         departmentTotals[deptId] = {

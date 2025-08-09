@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 
-export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData, currentMonth, getExpenseItemsByDepartment, getExpenseItemsWithNoDepartment, calculateDepartmentTotal, calculateOtherExpensesTotal) => {
+export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData, currentMonth, getExpenseItemsByDepartment, getExpenseItemsWithNoDepartment, calculateDepartmentTotal, calculateOtherExpensesTotal, getRebateExpenseItems, calculateRebateExpensesTotal) => {
   try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Monthly Expenses Report');
@@ -118,6 +118,84 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
 
       currentRow += 3; // Add spacing between departments
     });
+
+    // Process Rebates
+    const rebateExpensesItems = getRebateExpenseItems();
+    if (rebateExpensesItems.length > 0) {
+      // Rebates title
+      worksheet.mergeCells(currentRow, 1, currentRow, 4);
+      const rebateTitleCell = worksheet.getCell(currentRow, 1);
+      rebateTitleCell.value = 'Rebates';
+      rebateTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      rebateTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
+      rebateTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      rebateTitleCell.border = {
+        top: { style: 'thick', color: { argb: 'FF166534' } },
+        left: { style: 'thick', color: { argb: 'FF166534' } },
+        bottom: { style: 'thick', color: { argb: 'FF166534' } },
+        right: { style: 'thick', color: { argb: 'FF166534' } }
+      };
+
+      // Rebates headers
+      currentRow += 1;
+      const headers = ['Date', 'Paid To', 'Category', 'Amount'];
+      headers.forEach((header, index) => {
+        const cell = worksheet.getCell(currentRow, index + 1);
+        cell.value = header;
+        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF166534' } },
+          left: { style: 'thin', color: { argb: 'FF166534' } },
+          bottom: { style: 'thin', color: { argb: 'FF166534' } },
+          right: { style: 'thin', color: { argb: 'FF166534' } }
+        };
+      });
+
+      // Rebates data
+      currentRow += 1;
+      rebateExpensesItems.forEach((item) => {
+        const rowData = [
+          formatDate(item.date),
+          item.paidTo || '-',
+          item.categoryName || '-',
+          formatCurrency(item.amount)
+        ];
+
+        rowData.forEach((data, index) => {
+          const cell = worksheet.getCell(currentRow, index + 1);
+          cell.value = data;
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF166534' } },
+            left: { style: 'thin', color: { argb: 'FF166534' } },
+            bottom: { style: 'thin', color: { argb: 'FF166534' } },
+            right: { style: 'thin', color: { argb: 'FF166534' } }
+          };
+        });
+        currentRow++;
+      });
+
+      // Rebates total
+      const rebateTotal = calculateRebateExpensesTotal();
+      const totalData = ['TOTAL:', '', '', formatCurrency(rebateTotal)];
+      totalData.forEach((data, index) => {
+        const cell = worksheet.getCell(currentRow, index + 1);
+        cell.value = data;
+        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thick', color: { argb: 'FF166534' } },
+          left: { style: 'thin', color: { argb: 'FF166534' } },
+          bottom: { style: 'thick', color: { argb: 'FF166534' } },
+          right: { style: 'thin', color: { argb: 'FF166534' } }
+        };
+      });
+
+      currentRow += 3; // Add spacing after rebates
+    }
 
     // Process Other Expenses (No Department)
     const otherExpensesItems = getExpenseItemsWithNoDepartment();
