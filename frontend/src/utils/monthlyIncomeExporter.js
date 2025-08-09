@@ -5,8 +5,9 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Monthly Income Report');
 
-    // Set column widths
-    const totalColumns = 4 + monthlyData.departments.length; // Day, Gross, Departments, GCash
+  // Set column widths
+  // Total columns = Day + Gross + each Department + GCash
+  const totalColumns = 3 + monthlyData.departments.length; // Day, Gross, Departments..., GCash
     worksheet.columns = [
       { width: 12 }, // Day
       { width: 15 }, // Gross
@@ -14,9 +15,9 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       { width: 15 }, // GCash
     ];
 
-    // Add title - merge only up to GCash column (H) and occupy row 2 space
-    const titleEndColumn = Math.min(totalColumns, 8); // Limit to column H (8th column - GCash)
-    worksheet.mergeCells(1, 1, 2, titleEndColumn); // Merge from A1 to H2
+  // Add title - merge across the entire table width and occupy rows 1-2
+  const titleEndColumn = totalColumns; // Merge to the last column of the table
+  worksheet.mergeCells(1, 1, 2, titleEndColumn); // Merge from A1 to the last header column in row 2
     const titleCell = worksheet.getCell(1, 1);
     titleCell.value = `Monthly Income Report - ${currentMonth}`;
     titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
