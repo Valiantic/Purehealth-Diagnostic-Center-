@@ -102,6 +102,17 @@ export const webauthnAPI = {
   },
   verifyAuthentication: (userId, response) => {
     return apiClient.post('/webauthn/authentication/verify', { userId, response });
+  },
+  
+  // Passkey Management
+  getUserPasskeys: (userId) => {
+    return apiClient.get(`/webauthn/passkeys/${userId}`);
+  },
+  deletePasskey: (passkeyId) => {
+    return apiClient.delete(`/webauthn/passkeys/${passkeyId}`);
+  },
+  setPrimaryPasskey: (passkeyId) => {
+    return apiClient.put(`/webauthn/passkeys/${passkeyId}/primary`);
   }
 };
 
