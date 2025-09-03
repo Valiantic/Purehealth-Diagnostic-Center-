@@ -26,7 +26,7 @@ const TransactionRow = ({
       key={transaction.id} 
       className={transaction.status === 'cancelled' 
         ? 'bg-gray-100 text-gray-500' 
-        : getRefundedTestsInfo(transaction).count > 0 ? 'bg-red-50' : 'bg-white'
+        : 'bg-white'
       }
     >
       <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">
@@ -40,11 +40,6 @@ const TransactionRow = ({
         ) : (
           <span className={transaction.status === 'cancelled' ? 'line-through' : ''}>
             {transaction.id}
-            {getRefundedTestsInfo(transaction).count > 0 && (
-              <span className="ml-1 text-xs text-red-600 font-medium">
-                ({getRefundedTestsInfo(transaction).count} refunded: ₱{getRefundedTestsInfo(transaction).amount.toFixed(2)})
-              </span>
-            )}
           </span>
         )}
       </td>
@@ -83,7 +78,7 @@ const TransactionRow = ({
                   <>
                     {deptData && deptData.amount > 0 ? (
                       <span className={hasBalance ? 'relative' : ''}>
-                        {deptData.amount.toLocaleString(2)}
+                        {deptData.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     ) : ''}
                   </>
@@ -97,7 +92,7 @@ const TransactionRow = ({
         {transaction.status === 'cancelled' ? (
           '' 
         ) : (
-          transaction.grossDeposit.toLocaleString(2)
+          transaction.grossDeposit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         )}
       </td>
       <td className="py-0 md:py-1 px-1 md:px-2 border border-green-200 max-w-[80px] md:max-w-[120px]">
@@ -275,14 +270,14 @@ const IncomeTable = ({
                         className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
                       >
                         <div className="font-bold">
-                          {netRevenue > 0 ? netRevenue.toLocaleString(2) : '0.00'}
+                          {netRevenue > 0 ? netRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                         </div>
                       </td>
                     );
                   })}
                     
                   <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold text-green-700">
-                    {totalGross.toLocaleString(2)}
+                    {totalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>

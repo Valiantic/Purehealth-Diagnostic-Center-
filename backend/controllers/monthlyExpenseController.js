@@ -1,4 +1,4 @@
-const { Expense, ExpenseItem, Department, sequelize } = require('../models');
+const { Expense, ExpenseItem, Department, Category, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Get all monthly expenses data
@@ -47,7 +47,14 @@ exports.getMonthlyExpenses = async (req, res) => {
         },
         {
           model: ExpenseItem,
-          attributes: ['expenseItemId', 'paidTo', 'purpose', 'amount', 'status']
+          attributes: ['expenseItemId', 'paidTo', 'purpose', 'categoryId', 'amount', 'status'],
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false
+            }
+          ]
         }
       ],
       order: [['date', 'DESC']] 
@@ -69,7 +76,13 @@ exports.getMonthlyExpenses = async (req, res) => {
         }
       }
       
-      const departmentKey = expense.Department?.departmentName || 'Uncategorized';
+      // Special handling for rebates - use category name instead of department
+      let departmentKey;
+      if (!expense.Department && expense.ExpenseItems.some(item => item.Category?.name === 'Rebates')) {
+        departmentKey = 'Rebates';
+      } else {
+        departmentKey = expense.Department?.departmentName || 'Other';
+      }
 
       if (!dailyExpenses[dateKey]) {
         dailyExpenses[dateKey] = {
@@ -97,7 +110,8 @@ exports.getMonthlyExpenses = async (req, res) => {
           dailyExpenses[dateKey].departments[departmentKey].items.push({
             id: item.expenseItemId,
             paidTo: item.paidTo,
-            purpose: item.purpose,
+            categoryId: item.categoryId,
+            categoryName: item.Category?.name || 'Uncategorized',
             amount: itemAmount,
             status: item.status
           });
@@ -181,7 +195,14 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
               [Op.notIn]: ['refunded', 'paid']
             }
           },
-          required: false 
+          required: false,
+          include: [
+            {
+              model: Category,
+              attributes: ['categoryId', 'name'],
+              required: false
+            }
+          ]
         }
       ]
     });
@@ -192,7 +213,14 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
 
     expenses.forEach(expense => {
       const deptId = expense.departmentId;
-      const deptName = expense.Department?.departmentName || 'Uncategorized';
+      
+      // Special handling for rebates - use category name instead of department
+      let deptName;
+      if (!expense.Department && expense.ExpenseItems.some(item => item.Category?.name === 'Rebates')) {
+        deptName = 'Rebates';
+      } else {
+        deptName = expense.Department?.departmentName || 'Other';
+      }
       
       if (!departmentTotals[deptId]) {
         departmentTotals[deptId] = {

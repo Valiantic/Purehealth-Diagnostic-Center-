@@ -1,35 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Download, PlusCircle, X, Calendar, MoreVertical, Edit, Check, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react'
-import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
-import TabNavigation from '../components/TabNavigation'
+import { Download, PlusCircle, X, Edit, ArrowUp, ArrowDown } from 'lucide-react'
+import Sidebar from '../components/dashboard/Sidebar'
+import ReferrerModal from '../components/referral-management/ReferrerModal'
+import useAuth from '../hooks/auth/useAuth'
+import useReferrerForm from '../hooks/referral-management/useReferrerForm'
+import TabNavigation from '../components/dashboard/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { referrerAPI } from '../services/api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { exportReferralsListToExcel } from '../utils/referralsListExporter'
 
 const ReferralManagement = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
   const queryClient = useQueryClient()
   
+  // Use custom hook for referrer form management
+  const {
+    firstName, lastName, birthday, sex, clinicName, clinicAddress, contactNo,
+    setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
+    resetForm, validateForm, getFormData, setFormData
+  } = useReferrerForm();
+  
   // State for filtering and search
   const [searchQuery, setSearchQuery] = useState('');
   const [sortDirection, setSortDirection] = useState('asc'); 
   
-  // State for add modal
+  // State for modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [birthday, setBirthday] = useState('');
-  const [sex, setSex] = useState('Male');
-  const [clinicName, setClinicName] = useState('');
-  const [clinicAddress, setClinicAddress] = useState('');
-  const [contactNo, setContactNo] = useState('');
-  
-  // State for edit modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedReferrer, setSelectedReferrer] = useState(null);
   
@@ -123,13 +124,7 @@ const ReferralManagement = () => {
 
   // Open add modal with empty fields
   const openAddModal = () => {
-    setFirstName('');
-    setLastName('');
-    setBirthday('');
-    setSex('Male');
-    setClinicName('');
-    setClinicAddress('');
-    setContactNo('');
+    resetForm();
     setIsAddModalOpen(true);
   };
 
@@ -140,38 +135,25 @@ const ReferralManagement = () => {
 
   // Handle referrer creation
   const handleAddReferrer = async () => {
-    // Validate required fields before submission
-    if (!firstName.trim()) {
-      toast.error('First name is required');
+    // Use hook validation instead of individual checks
+    if (!validateForm()) {
       return;
     }
     
-    if (!lastName.trim()) {
-      toast.error('Last name is required');
-      return;
-    }
-    
-    if (!contactNo.trim()) {
-      toast.error('Contact No. is required');
-      return;
-    }
-    
-    if (!clinicAddress.trim()) {
-      toast.error('Clinic Address is required');
-      return;
-    }
+    // Get form data using hook utility
+    const formData = getFormData();
     
     // Format birthday as YYYY-MM-DD for API
-    const formattedBirthday = birthday ? birthday : null;
+    const formattedBirthday = formData.birthday ? formData.birthday : null;
     
     addReferrerMutation.mutate({
-      firstName,
-      lastName,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
       birthday: formattedBirthday,
-      sex,
-      clinicName,
-      clinicAddress,
-      contactNo
+      sex: formData.sex,
+      clinicName: formData.clinicName,
+      clinicAddress: formData.clinicAddress,
+      contactNo: formData.contactNo
     });
   };
 
@@ -181,14 +163,16 @@ const ReferralManagement = () => {
     const originalReferrer = {...referrer};
     setSelectedReferrer(originalReferrer);
     
-    // Set form field values
-    setFirstName(referrer.firstName);
-    setLastName(referrer.lastName);
-    setBirthday(referrer.birthday ? new Date(referrer.birthday).toISOString().split('T')[0] : '');
-    setSex(referrer.sex || 'Male');
-    setClinicName(referrer.clinicName || '');
-    setClinicAddress(referrer.clinicAddress || '');
-    setContactNo(referrer.contactNo || '');
+    // Set form field values using hook utility
+    setFormData({
+      firstName: referrer.firstName,
+      lastName: referrer.lastName,
+      birthday: referrer.birthday ? new Date(referrer.birthday).toISOString().split('T')[0] : '',
+      sex: referrer.sex || 'Male',
+      clinicName: referrer.clinicName || '',
+      clinicAddress: referrer.clinicAddress || '',
+      contactNo: referrer.contactNo || ''
+    });
     setIsEditModalOpen(true);
     setActiveMenu(null);
   };
@@ -201,24 +185,8 @@ const ReferralManagement = () => {
 
   // Handle referrer update with status
   const handleUpdateReferrer = async () => {
-    // Validate required fields before submission
-    if (!firstName.trim()) {
-      toast.error('First name is required');
-      return;
-    }
-    
-    if (!lastName.trim()) {
-      toast.error('Last name is required');
-      return;
-    }
-    
-    if (!contactNo.trim()) {
-      toast.error('Contact No. is required');
-      return;
-    }
-    
-    if (!clinicAddress.trim()) {
-      toast.error('Clinic Address is required');
+    // Use hook validation instead of individual checks
+    if (!validateForm()) {
       return;
     }
     
@@ -237,17 +205,10 @@ const ReferralManagement = () => {
       status: (selectedReferrer.originalStatus || '').toLowerCase()
     };
     
-    // Normalize form values for more accurate comparison
-    const currentValues = {
-      firstName: firstName || '',
-      lastName: lastName || '',
-      birthday: formattedBirthday,
-      sex: sex || 'Male',
-      clinicName: clinicName || '',
-      clinicAddress: clinicAddress || '',
-      contactNo: contactNo || '',
-      status: (selectedReferrer.status || '').toLowerCase() 
-    };
+    // Get current form values using hook utility
+    const currentValues = getFormData();
+    currentValues.birthday = formattedBirthday;
+    currentValues.status = (selectedReferrer.status || '').toLowerCase();
     
     // Check if anything other than status has changed
     const detailsChanged = 
@@ -407,6 +368,20 @@ const ReferralManagement = () => {
   const totalPages = Math.ceil(filteredReferrers.length / itemsPerPage);
   
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const handleExportToExcel = async () => {
+    try {
+      await exportReferralsListToExcel(
+        filteredReferrers,
+        searchQuery,
+        sortDirection
+      );
+      toast.success('Referrer List Report Generated Successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to generate Referrer List Report');
+    }
+  };
 
   if (isAuthenticating) {
     return null;
@@ -634,279 +609,68 @@ const ReferralManagement = () => {
               </div>
             )}
 
-            <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
-              <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                  Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Add Referrer Modal - Updated positioning */}
-            {isAddModalOpen && (
-              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"> {/* Unchanged */}
-                <div className="bg-white w-full max-w-md rounded shadow-lg"> {/* Removed max-height and overflow */}
-                  <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10"> {/* Unchanged */}
-                    <h3 className="text-xl font-medium">New Referrer</h3>
-                    <button onClick={closeAddModal} className="text-white hover:text-gray-200">
-                      <X size={24} />
-                    </button>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* First Name */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">First Name</label>
-                        <input
-                          type="text"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                          required
-                        />
-                      </div>
-
-                      {/* Birthday */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                        <div className="relative" onClick={() => document.getElementById('add-referrer-date').showPicker()}>
-                          <input
-                            id="add-referrer-date"
-                            type="date"
-                            value={birthday}
-                            onChange={(e) => setBirthday(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Last Name */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Last Name</label>
-                        <input
-                          type="text"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                          required
-                        />
-                      </div>
-
-                      {/* Sex */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Sex</label>
-                        <div className="relative">
-                          <select
-                            value={sex}
-                            onChange={(e) => setSex(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2 appearance-none"
-                          >
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                              <path d="M7 10l5 5 5-5H7z" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Clinic Name */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
-                        <input
-                          type="text"
-                          value={clinicName}
-                          onChange={(e) => setClinicName(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                        />
-                      </div>
-
-                      {/* Contact No. */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Contact No.</label>
-                        <input
-                          type="text"
-                          value={contactNo}
-                          onChange={(e) => setContactNo(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                          required
-                        />
-                      </div>
-
-                      {/* Clinic Address - Full Width */}
-                      <div className="col-span-2">
-                        <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
-                        <input
-                          type="text"
-                          value={clinicAddress}
-                          onChange={(e) => setClinicAddress(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="border-t border-gray-300 my-4"></div>
-
-                    {/* Confirm Button */}
-                    <div className="flex justify-center">
-                      <button
-                        onClick={handleAddReferrer}
-                        className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium"
-                      >
-                        CONFIRM
-                      </button>
-                    </div>
-                  </div>
+            {filteredReferrers.length > 0 && (
+              <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
+                <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                  <button 
+                    onClick={handleExportToExcel}
+                    className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                  >
+                    Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Edit Referrer Modal - Updated positioning */}
-            {isEditModalOpen && selectedReferrer && (
-              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"> {/* Unchanged */}
-                <div className="bg-white w-full max-w-md rounded shadow-lg"> {/* Removed max-height and overflow */}
-                  <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10"> {/* Unchanged */}
-                    <h3 className="text-xl font-medium">Edit Referrer</h3>
-                    <button onClick={closeEditModal} className="text-white hover:text-gray-200">
-                      <X size={24} />
-                    </button>
-                  </div>
+            <ReferrerModal
+              isOpen={isAddModalOpen}
+              onClose={closeAddModal}
+              firstName={firstName}
+              setFirstName={setFirstName}
+              lastName={lastName}
+              setLastName={setLastName}
+              birthday={birthday}
+              setBirthday={setBirthday}
+              sex={sex}
+              setSex={setSex}
+              clinicName={clinicName}
+              setClinicName={setClinicName}
+              clinicAddress={clinicAddress}
+              setClinicAddress={setClinicAddress}
+              contactNo={contactNo}
+              setContactNo={setContactNo}
+              onConfirm={handleAddReferrer}
+              validateForm={validateForm}
+              isLoading={addReferrerMutation.isPending}
+              title="New Referrer"
+              mode="add"
+            />
 
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* First Name */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">First Name</label>
-                        <input
-                          type="text"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                          required
-                        />
-                      </div>
-
-                      {/* Birthday */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                        <div className="relative" onClick={() => document.getElementById('edit-referrer-date').showPicker()}>
-                          <input
-                            id="edit-referrer-date"
-                            type="date"
-                            value={birthday}
-                            onChange={(e) => setBirthday(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Last Name */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Last Name</label>
-                        <input
-                          type="text"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                          required
-                        />
-                      </div>
-
-                      {/* Sex */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Sex</label>
-                        <div className="relative">
-                          <select
-                            value={sex}
-                            onChange={(e) => setSex(e.target.value)}
-                            className="w-full border border-gray-300 rounded p-2 appearance-none"
-                          >
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Clinic Name */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
-                        <input
-                          type="text"
-                          value={clinicName}
-                          onChange={(e) => setClinicName(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                        />
-                      </div>
-
-                      {/* Contact No. */}
-                      <div>
-                        <label className="block text-green-800 font-medium mb-1">Contact No.</label>
-                        <input
-                          type="text"
-                          value={contactNo}
-                          onChange={(e) => setContactNo(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                        />
-                      </div>
-
-                      {/* Clinic Address - Full Width */}
-                      <div className="col-span-2">
-                        <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
-                        <input
-                          type="text"
-                          value={clinicAddress}
-                          onChange={(e) => setClinicAddress(e.target.value)}
-                          className="w-full border border-gray-300 rounded p-2"
-                        />
-                      </div>
-
-                      {/* Status Dropdown */}
-                      <div className="col-span-2">
-                        <label className="block text-green-800 font-medium mb-1">Status</label>
-                        <div className="relative">
-                          <select
-                            value={selectedReferrer.status?.toLowerCase() === 'active' ? 'active' : 'inactive'}
-                            onChange={handleStatusChange}
-                            className="w-full border border-gray-300 rounded p-2 appearance-none"
-                          >
-                            <option value="active">Unarchived</option>
-                            <option value="inactive">Archived</option>
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="border-t border-gray-300 my-4"></div>
-
-                    {/* Save Changes Button */}
-                    <div className="flex justify-center">
-                      <button
-                        onClick={handleUpdateReferrer}
-                        className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <ReferrerModal
+              isOpen={isEditModalOpen}
+              onClose={closeEditModal}
+              firstName={firstName}
+              setFirstName={setFirstName}
+              lastName={lastName}
+              setLastName={setLastName}
+              birthday={birthday}
+              setBirthday={setBirthday}
+              sex={sex}
+              setSex={setSex}
+              clinicName={clinicName}
+              setClinicName={setClinicName}
+              clinicAddress={clinicAddress}
+              setClinicAddress={setClinicAddress}
+              contactNo={contactNo}
+              setContactNo={setContactNo}
+              onConfirm={handleUpdateReferrer}
+              validateForm={validateForm}
+              isLoading={updateReferrerMutation.isPending}
+              title="Edit Referrer"
+              mode="edit"
+              selectedReferrer={selectedReferrer}
+              handleStatusChange={handleStatusChange}
+            />
           </div>
         </div>
       </div>

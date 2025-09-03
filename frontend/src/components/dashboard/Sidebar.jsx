@@ -6,11 +6,11 @@ import {
   Settings, 
   LogOut 
 } from 'lucide-react';
-import dashboardIcon from '../assets/icons/dashboard.png';
-import transactionIcon from '../assets/icons/transaction.png';
-import annualIcon from '../assets/icons/annual.png';
-import referralIcon from '../assets/icons/network.png';
-import PDCHI from '../assets/icons/purehealth_logo.jpg'; 
+import dashboardIcon from '../../assets/icons/dashboard.png';
+import transactionIcon from '../../assets/icons/transaction.png';
+import annualIcon from '../../assets/icons/annual.png';
+import referralIcon from '../../assets/icons/network.png';
+import PDCHI from '../../assets/icons/purehealth_logo.jpg'; 
 
 const Sidebar = () => {
   const navigate = useNavigate();

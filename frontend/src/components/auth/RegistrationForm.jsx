@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { registerUser, registerBackupPasskey } from '../utils/webauthn';
+import { registerUser, registerBackupPasskey } from '../../utils/webauthn';
 
 const RegistrationForm = () => {
   const navigate = useNavigate();

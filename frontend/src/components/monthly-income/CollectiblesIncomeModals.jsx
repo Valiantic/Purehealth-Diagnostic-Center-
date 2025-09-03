@@ -1,86 +1,51 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
-import DateSelector from '../transaction/DateSelector';
+import useCollectibleIncomeModal from '../../hooks/monthly-income/useCollectibleIncomeModal';
 
-const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
-  const [formData, setFormData] = useState({
-    companyName: '',
-    coordinatorName: '',
-    totalIncome: '',
-    date: new Date().toISOString().split('T')[0]
+const CollectibleIncomeModal = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  userId,
+  mode = 'add', 
+  initialData = null,     
+  onUpdate = null         
+}) => {
+  const {
+    formData,
+    isSubmitting,
+    errors,
+    handleInputChange,
+    handleDateChange,
+    handleSubmit,
+    handleClose,
+    getModalTitle,
+    getButtonText
+  } = useCollectibleIncomeModal({
+    isOpen,
+    onClose,
+    onSubmit,
+    onUpdate,
+    userId,
+    mode,
+    initialData
   });
-
-  const dateInputRef = useRef(null);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleDateChange = (e) => {
-    if (e.preventDefault) e.preventDefault();
-    
-    const newDate = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      date: newDate
-    }));
-  };
-
-  
 
   const handleCreateCollectibles = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-    handleSubmit();
-  };
-
-  const handleSubmit = (e) => {
-    if (e) {
-      e.preventDefault(); 
-      e.stopPropagation(); 
-    }
-    
-    if (!formData.companyName || !formData.coordinatorName || !formData.totalIncome || !formData.date) {
-      return; 
-    }
-    
-    onSubmit({
-      ...formData,
-      currentUserId: userId 
-    });
-
-    setFormData({
-      companyName: '',
-      coordinatorName: '',
-      totalIncome: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    onClose();
-  };
-
-  const handleClose = () => {
-    setFormData({
-      companyName: '',
-      coordinatorName: '',
-      totalIncome: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    onClose();
+    handleSubmit(e);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg w-full max-w-md mx-auto shadow-xl" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-green-800 text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Add Collectible Income</h2>
+          <h2 className="text-lg font-semibold">{getModalTitle()}</h2>
           <button
             onClick={handleClose}
             className="text-white hover:text-gray-200 transition-colors"
@@ -103,9 +68,16 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
               value={formData.companyName}
               onChange={handleInputChange}
               placeholder="Company Name"
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
+              className={`w-full px-3 py-2 border-2 rounded-md focus:outline-none transition-colors ${
+                errors.companyName 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-green-500'
+              }`}
               required
             />
+            {errors.companyName && (
+              <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>
+            )}
           </div>
 
           {/* Coordinator Name */}
@@ -120,9 +92,16 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
               value={formData.coordinatorName}
               onChange={handleInputChange}
               placeholder="Coordinator Name"
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
+              className={`w-full px-3 py-2 border-2 rounded-md focus:outline-none transition-colors ${
+                errors.coordinatorName 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-green-500'
+              }`}
               required
             />
+            {errors.coordinatorName && (
+              <p className="text-red-500 text-sm mt-1">{errors.coordinatorName}</p>
+            )}
           </div>
 
           {/* Total Income and Date Row */}
@@ -140,9 +119,16 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
                 value={formData.totalIncome}
                 onChange={handleInputChange}
                 placeholder="0.00"
-                className="no-spinner w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors"
+                className={`no-spinner w-full px-3 py-2 border-2 rounded-md focus:outline-none transition-colors ${
+                  errors.totalIncome 
+                    ? 'border-red-500 focus:border-red-500' 
+                    : 'border-gray-300 focus:border-green-500'
+                }`}
                 required
               />
+              {errors.totalIncome && (
+                <p className="text-red-500 text-sm mt-1">{errors.totalIncome}</p>
+              )}
               <style>{`
                 /* Remove spinner buttons from number inputs */
                 .no-spinner {
@@ -165,15 +151,21 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
                 onClick={e => e.stopPropagation()} 
                 className="relative"
               >
-                <DateSelector 
-                  date={new Date(formData.date)}
-                  onDateChange={handleDateChange}
-                  inputRef={dateInputRef}
-                  className="w-full border-2 border-gray-300 rounded-md focus:border-green-500 focus:outline-none transition-colors px-3 py-2"
-                  wrapperClassName="flex items-center justify-between"
-                  textClassName="text-sm"
-                  iconClassName="w-4 h-4 text-green-600 ml-auto"
-                />
+               <input 
+               type="date" 
+               value={formData.date}
+               onChange={handleDateChange}
+               max={new Date().toISOString().split('T')[0]}
+              className={`w-full border-2 rounded-md focus:outline-none transition-colors px-3 py-2 ${
+                errors.date 
+                  ? 'border-red-500 focus:border-red-500' 
+                  : 'border-gray-300 focus:border-green-500'
+              }`}
+              placeholder='YYYY-MM-DD'
+              />
+              {errors.date && (
+                <p className="text-red-500 text-sm mt-1">{errors.date}</p>
+              )}
               </div>
             </div>
           </div>
@@ -184,9 +176,10 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
             <button
               type="button" 
               onClick={handleCreateCollectibles}
-              className="w-full bg-green-800 text-white py-3 px-4 rounded-md font-semibold hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              disabled={isSubmitting}
+              className="w-full bg-green-800 text-white py-3 px-4 rounded-md font-semibold hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Confirm
+              {isSubmitting ? 'Processing...' : getButtonText()}
             </button>
           </div>
         </div>
@@ -195,4 +188,4 @@ const AddCollectibleIncomeModal = ({ isOpen, onClose, onSubmit, userId }) => {
   );
 };
 
-export default AddCollectibleIncomeModal;
+export default CollectibleIncomeModal;

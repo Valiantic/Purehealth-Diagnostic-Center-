@@ -1,18 +1,28 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
-import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
-import { ArrowUp, ArrowDown } from 'lucide-react'
+import React, { useState, useRef, useMemo, useEffect } from 'react'
+import Sidebar from '../components/dashboard/Sidebar'
+import useAuth from '../hooks/auth/useAuth'
+import { ArrowUp, ArrowDown, PlusCircle } from 'lucide-react'
 import { referrerAPI, transactionAPI, departmentAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
 import DateSelector from '../components/transaction/DateSelector'
+import ReferrerModal from '../components/referral-management/ReferrerModal'
+import useReferrerForm from '../hooks/referral-management/useReferrerForm'
+import { ToastContainer, toast } from 'react-toastify'
+import { exportReferralsToExcel } from '../utils/referralsExporter'
 
 const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sortDirection, setSortDirection] = useState('asc'); 
+  const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
   const incomeDateInputRef = useRef(null);
-  
+  const {
+      firstName, lastName, birthday, sex, clinicName, clinicAddress, contactNo,
+      setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
+      resetForm, validateForm, getFormData
+    } = useReferrerForm();
+
   const { data: departmentsData, isLoading: isDepartmentsLoading } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
@@ -36,7 +46,7 @@ const Referrals = () => {
     return filtered;
   }, [departments])
 
-  const { data: referrersData, isLoading: isReferrersLoading, error: referrersError } = useQuery({
+  const { data: referrersData, isLoading: isReferrersLoading, error: referrersError, refetch: refetchReferrers } = useQuery({
     queryKey: ['referrers'],
     queryFn: async () => {
       const response = await referrerAPI.getAllReferrers(true)
@@ -111,6 +121,45 @@ const Referrals = () => {
   const toggleSortDirection = () => {
     setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
   }
+
+  const handleReferrerSubmit = async () => {
+    try {  
+      const formData = getFormData();
+      const response = await referrerAPI.createReferrer(formData, user.userId);
+      toast.success('Referrer added successfully');
+
+      if (response?.data?.success || response?.success) {
+        await refetchReferrers();
+        await refetchTransactions();
+        
+        setIsReferrerModalOpen(false);
+        resetForm();
+      } else {
+        console.error('Failed to create referrer:', response);
+        toast.error('Failed to create referrer. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating referrer:', error);
+      toast.error(`Error creating referrer: ${error.message}`);
+    }
+  };
+
+  const handleGenerateReferralsReport = async () => {
+    try {
+      await exportReferralsToExcel(
+        filteredReferrers,
+        allReferrerTransactions,
+        renderableDepartments,
+        selectedDate,
+        calculateReferrerTotals,
+        getTestsForDepartment
+      );
+      toast.success('Rebate Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting rebate report:', error);
+      toast.error('Failed to export rebate report. Please try again.');
+    }
+  };
   
   // Filter referrers based on search term
   const filteredReferrers = useMemo(() => {
@@ -315,6 +364,7 @@ const Referrals = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
+      <ToastContainer position="top-right" autoClose={3000} />
      <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
@@ -322,15 +372,32 @@ const Referrals = () => {
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
 
         {/* Search Bar - Now outside the table */}
-        <div className="flex flex-col sm:flex-row justify-between items-center sm:items-center mb-4 gap-2 pr-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 pr-2">
 
-           <button className="ml-2 bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
-            Generate Report
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
+         <div className='flex items-center gap-2'>
+
+          {filteredReferrers.length > 0 && (
+            <button 
+              onClick={handleGenerateReferralsReport}
+              className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+            >
+              Generate Report
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+          )}
+
+          <button
+          onClick={() => setIsReferrerModalOpen(true)}
+          className='w-10 h-10 bg-green-800 text-white rounded-full flex items-center justify-center hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200'
+          title="Add New Referrer"
+          >
+            <PlusCircle size={20}/>
           </button>
 
+         </div>
+        
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
           
           <div className="relative w-full sm:w-auto">
@@ -414,7 +481,6 @@ const Referrals = () => {
                               No Departments Found
                             </th>
                           )}
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -423,11 +489,6 @@ const Referrals = () => {
                           [...allReferrerTransactions[referrer.referrerId]]
                             .sort(sortTransactions)
                             .map(transaction => {
-                              // Calculate transaction total from test details instead of department revenues
-                              const transactionTotal = transaction.TestDetails?.reduce(
-                                (sum, test) => sum + parseFloat(test.discountedPrice || 0), 0
-                              ) || 0;
-                              
                               return (
                                 <tr key={transaction.transactionId} className="border-b border-green-200">
                                   <td className="p-1 text-center border-r border-green-200 bg-white">{transaction.mcNo}</td>
@@ -464,9 +525,6 @@ const Referrals = () => {
                                       </td>
                                     );
                                   })}
-                                  <td className="p-1 bg-white text-center font-medium">
-                                    {transactionTotal.toFixed(2)}
-                                  </td>
                                 </tr>
                               );
                             })
@@ -485,15 +543,14 @@ const Referrals = () => {
                               )) : (
                                 <td className="p-1 border-r border-green-200 bg-white text-center text-gray-500">No departments found</td>
                               )}
-                              <td className="p-1 border-r border-green-200 bg-white"></td>
                             </>
                           </tr>
                         )}
                         
-                        {/* Total rebates row as part of the same table */}
-                        <tr className="bg-green-100 border-t border-green-800">
+                        {/* Total and Rebates row as part of the same table */}
+                        <tr className="border-t border-green-800">
                           <td colSpan="2" className="p-1 border-r border-green-800 font-bold text-green-800">
-                            TOTAL REBATES:
+                            TOTAL:
                           </td>
                           
                           {(() => {
@@ -526,16 +583,71 @@ const Referrals = () => {
                                     </td>
                                   );
                                 })}
-                                
-                                {/* Grand total column */}
-                                <td className="p-1 text-center font-bold text-green-800">
-                                  {allReferrerTransactions[referrer.referrerId]?.length ? grandTotal.toFixed(2) : "0.00"}
-                                </td>
                               </>
                             );
                           })()}
                         </tr>
-                      </tbody>
+
+                        <tr className="bg-green-100 border-t border-green-800">
+                          <td colSpan="2" className="p-1 border-r border-green-800 font-bold text-green-800">
+                            REBATES (20%):
+                          </td>
+                          
+                          {(() => {
+                            // Get the data whether there are transactions or not
+                            const { testDetailTotals, testDetailsByDepartment } = allReferrerTransactions[referrer.referrerId]?.length 
+                              ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
+                              : { testDetailTotals: {}, testDetailsByDepartment: {} };
+                            
+                            // Calculate department rebates (20% of each department total)
+                            let totalRebates = 0;
+                            
+                            return (
+                              <>
+                                {/* Department rebate columns */}
+                                {renderableDepartments.map(department => {
+                                  const deptId = String(department.departmentId);
+                                  const deptTotal = testDetailTotals[deptId] || 0;
+                                  const deptRebate = deptTotal * 0.20; // 20% of department total
+                                  totalRebates += deptRebate;
+                                  
+                                  return (
+                                    <td 
+                                      key={`rebate-${deptId}`}
+                                      className="p-1 border-r border-green-800 text-center font-bold text-green-800"
+                                      style={{ minWidth: '100px' }}
+                                    >
+                                      {/* Display department rebate if greater than 0, otherwise render &nbsp; to prevent cell collapse */}
+                                      {deptRebate > 0 ? deptRebate.toFixed(2) : <>&nbsp;</>}
+                                    </td>
+                                  );
+                                })}
+                                
+                                {/* Store total rebates for the next row */}
+                                <script>window.tempRebates = {totalRebates}</script>
+                              </>
+                            );
+                          })()}
+                        </tr>
+
+                        <tr className="bg-yellow-200 border-t border-green-800">
+                          <td colSpan={2 + renderableDepartments.length} className="p-1 text-right font-bold text-green-800 pr-4">
+                            {(() => {
+                              // Calculate total rebates for this referrer
+                              const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
+                                ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
+                                : { testDetailTotals: {} };
+                              
+                              const grandTotal = Object.values(testDetailTotals).reduce(
+                                (sum, amount) => sum + parseFloat(amount || 0), 0
+                              );
+                              
+                              const totalRebates = grandTotal * 0.20; // 20% of grand total
+                              
+                              return `TOTAL REBATES: ${totalRebates.toFixed(2)}`;
+                            })()}
+                          </td>
+                        </tr>                      </tbody>
                     </table>
                   </div>
                 </div>
@@ -543,9 +655,35 @@ const Referrals = () => {
             ))}
           </div>
         )}
-
       
       </div>
+
+       {isReferrerModalOpen && (
+          <ReferrerModal
+          isOpen={isReferrerModalOpen}
+          onClose={() => {
+            setIsReferrerModalOpen(false);
+            resetForm();
+          }}
+          onConfirm={handleReferrerSubmit}
+          firstName={firstName}
+          setFirstName={setFirstName}
+          lastName={lastName}
+          setLastName={setLastName}
+          birthday={birthday}
+          setBirthday={setBirthday}
+          sex={sex}
+          setSex={setSex}
+          clinicName={clinicName}
+          setClinicName={setClinicName}
+          clinicAddress={clinicAddress}
+          setClinicAddress={setClinicAddress}
+          contactNo={contactNo}
+          setContactNo={setContactNo}
+          validateForm={validateForm}
+          />
+         
+        )}
     </div>
   )
 }

@@ -23,7 +23,8 @@ const TransactionSummaryModal = ({
   mcNoExists,
   isMcNoChecking,
   mutations,
-  handlers
+  handlers,
+  ConfirmButton
 }) => {
   if (!isOpen || !transaction) return null;
 
@@ -35,7 +36,8 @@ const TransactionSummaryModal = ({
     handleCancelEdit,
     handleEnterEditMode, 
     toggleRefundMode, 
-    handleRefundSelection 
+    handleRefundSelection,
+    refundAmounts 
   } = handlers;
 
 
@@ -172,8 +174,8 @@ const TransactionSummaryModal = ({
                             value={editedTransaction.originalTransaction.birthDate ? 
                               new Date(editedTransaction.originalTransaction.birthDate).toISOString().split('T')[0] : ''}
                             onChange={(e) => handleSummaryInputChange(e, 'birthDate')}
+                            max={new Date().toISOString().split('T')[0]}
                             className="w-full px-2 py-1 border border-green-600 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-600"
-                            onClick={(e) => e.target.showPicker()}
                           />
                         </div>
                       ) : (
@@ -244,15 +246,19 @@ const TransactionSummaryModal = ({
                 <table className="min-w-full border-collapse text-sm">
                   <thead className="bg-gray-100 sticky top-0 z-10">
                     <tr>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Original Price</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc. %</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Price</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
-                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800">Balance</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Test Name</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Original Price</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Disc. %</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Discounted Price</th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">
+                        {isEditingSummary ? 'Cash Paid' : 'Cash Pay'}
+                      </th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">
+                        {isEditingSummary ? 'GCash Paid' : 'GCash Pay'}
+                      </th>
+                      <th className="p-1 md:p-2 text-left border-b border-gray-200 font-bold text-green-800 text-sm sm:text-xs md:text-sm">Balance</th>
                       {isEditingSummary && isRefundMode && (
-                        <th className="p-1 md:p-2 text-center border-b border-gray-200 font-bold text-red-600">Refund</th>
+                        <th className="p-1 md:p-2 text-center border-b border-gray-200 font-bold text-red-600 text-sm sm:text-xs md:text-sm">Refund</th>
                       )}
                     </tr>
                   </thead>
@@ -262,17 +268,19 @@ const TransactionSummaryModal = ({
                       : transaction?.originalTransaction?.TestDetails)
                       ?.map((test, index) => (
                       <tr key={index} 
-                          className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${test.status === 'refunded' && !isEditingSummary ? "bg-red-50" : ""}`}>
+                          className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${test.status === 'refunded' ? "bg-gray-200 text-gray-400" : ""}`}>
                         <td className="p-1 md:p-2 border-b border-gray-200">
                           <div className="text-xs md:text-sm">
                             {test.testName}
                             {test.status === 'refunded' && 
-                              <span className="ml-1 text-xs text-red-500 font-medium">(Refunded)</span>}
+                              <span className="ml-1 text-xs text-gray-600 font-medium">(Refunded)</span>}
                           </div>
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
-                          <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-red-500" : ""}`}>
-                            {parseFloat(test.originalPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <div className="text-xs md:text-sm font-medium">
+                            {test.originalPrice !== undefined && test.originalPrice !== '' && !isNaN(parseFloat(test.originalPrice))
+                              ? parseFloat(test.originalPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : 'N/A'}
                           </div>
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
@@ -289,63 +297,97 @@ const TransactionSummaryModal = ({
                               disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
                             />
                           ) : (
-                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-red-500" : ""}`}>
-                              {`${test.discountPercentage}%`}
+                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
+                              {(() => {
+                                // Always show the actual discount percentage from the test data, not forced 20%
+                                return test.discountPercentage !== undefined && test.discountPercentage !== ''
+                                  ? `${test.discountPercentage}${String(test.discountPercentage).includes('%') ? '' : '%'}`
+                                  : '0%';
+                              })()}
                             </div>
                           )}
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
-                          <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-red-500 line-through" : ""}`}>
-                            {parseFloat(test.discountedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            {test.status === 'refunded' && <span className="ml-1 text-red-500">→ 0.00</span>}
-                          </div>
+                          {isEditingSummary ? (
+                            <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-gray-400 line-through" : ""}`}>
+                              {(() => {
+                                // Calculate discounted price based on individual test discount percentage
+                                const originalPrice = parseFloat(test.originalPrice || 0);
+                                const discountPercent = parseFloat(test.discountPercentage || 0);
+                                const discountedPrice = originalPrice * (1 - discountPercent / 100);
+                                
+                                return discountedPrice > 0 
+                                  ? discountedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                  : 'N/A';
+                              })()}
+                              {test.status === 'refunded' && <span className="ml-1 text-red-500">→ 0.00</span>}
+                            </div>
+                          ) : (
+                            <div className={`text-xs md:text-sm font-medium ${test.status === 'refunded' && !isEditingSummary ? "text-gray-400 line-through" : ""}`}>
+                              {(() => {
+                                // Calculate discounted price based on individual test discount percentage
+                                const originalPrice = parseFloat(test.originalPrice || 0);
+                                const discountPercent = parseFloat(test.discountPercentage || 0);
+                                const discountedPrice = originalPrice * (1 - discountPercent / 100);
+                                
+                                return discountedPrice > 0 
+                                  ? discountedPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                  : 'N/A';
+                              })()}
+                              {test.status === 'refunded' && <span className="ml-1 text-red-500">→ 0.00</span>}
+                            </div>
+                          )}
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
                           {isEditingSummary ? (
-                            <input
-                              type="text" 
-                              inputMode="decimal" 
-                              value={test.cashAmount || ''}
-                              onChange={(e) => handleTestDetailChange(index, 'cashAmount', e.target.value)}
-                              onKeyPress={(e) => {
-                                // Allow only numbers and decimal point
-                                const regex = /^[0-9.]*$/;
-                                if (!regex.test(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              style={{...noSpinnerStyle, caretColor: 'auto'}}
-                              className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                              placeholder="0.00"
-                              disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
-                            />
+                            <div>
+                              <input
+                                type="text" 
+                                inputMode="decimal" 
+                                value={test.cashAmount || ''}
+                                onChange={(e) => handleTestDetailChange(index, 'cashAmount', e.target.value)}
+                                onKeyPress={(e) => {
+                                  // Allow only numbers and decimal point
+                                  const regex = /^[0-9.]*$/;
+                                  if (!regex.test(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                style={{...noSpinnerStyle, caretColor: 'auto'}}
+                                className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                                placeholder="0.00"
+                                disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
+                              />
+                            </div>
                           ) : (
-                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-red-500 line-through" : ""}`}>
+                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
                               {parseFloat(test.cashAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           )}
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
                           {isEditingSummary ? (
-                            <input
-                              type="text" 
-                              inputMode="decimal" 
-                              value={test.gCashAmount || ''}
-                              onChange={(e) => handleTestDetailChange(index, 'gCashAmount', e.target.value)}
-                              onKeyPress={(e) => {
-                                // Allow only numbers and decimal point
-                                const regex = /^[0-9.]*$/;
-                                if (!regex.test(e.key)) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              style={{...noSpinnerStyle, caretColor: 'auto'}}
-                              className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                              placeholder="0.00"
-                              disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
-                            />
+                            <div>
+                              <input
+                                type="text" 
+                                inputMode="decimal" 
+                                value={test.gCashAmount || ''}
+                                onChange={(e) => handleTestDetailChange(index, 'gCashAmount', e.target.value)}
+                                onKeyPress={(e) => {
+                                  // Allow only numbers and decimal point
+                                  const regex = /^[0-9.]*$/;
+                                  if (!regex.test(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                style={{...noSpinnerStyle, caretColor: 'auto'}}
+                                className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
+                                placeholder="0.00"
+                                disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
+                              />
+                            </div>
                           ) : (
-                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-red-500 line-through" : ""}`}>
+                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
                               {parseFloat(test.gCashAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           )}
@@ -362,25 +404,41 @@ const TransactionSummaryModal = ({
                               disabled={test.status === 'refunded' || selectedRefunds[test.testDetailId]}
                             />
                           ) : (
-                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-red-500 line-through" : ""}`}>
+                            <div className={`text-xs md:text-sm ${test.status === 'refunded' ? "text-gray-400 line-through" : ""}`}>
                               {parseFloat(test.balanceAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           )}
                         </td>
                         {isEditingSummary && isRefundMode && (
                           <td className="p-1 md:p-2 border-b border-gray-200 text-center">
-                            <input
-                              type="checkbox"
-                              checked={!!selectedRefunds[test.testDetailId] || test.status === 'refunded'}
-                              onChange={() => handleRefundSelection(test.testDetailId)}
-                              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                              disabled={test.status === 'refunded'}
-                            />
-                            {(!!selectedRefunds[test.testDetailId] || test.status === 'refunded') && (
-                              <div className="text-xs text-red-600 mt-1 font-medium">
-                                {test.status === 'refunded' ? 'Already refunded' : 'Will be refunded'}
-                              </div>
-                            )}
+                            {(() => {
+                              const hasBalance = parseFloat(test.balanceAmount || 0) > 0;
+                              const isAlreadyRefunded = test.status === 'refunded';
+                              const isDisabled = isAlreadyRefunded || hasBalance;
+                              
+                              return (
+                                <>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!selectedRefunds[test.testDetailId] || isAlreadyRefunded}
+                                    onChange={() => handleRefundSelection(test.testDetailId)}
+                                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                    disabled={isDisabled}
+                                  />
+                                  {(!!selectedRefunds[test.testDetailId] || isAlreadyRefunded || hasBalance) && (
+                                    <div className="text-xs mt-1 font-medium">
+                                      {isAlreadyRefunded ? (
+                                        <span className="text-red-600">Already refunded</span>
+                                      ) : hasBalance ? (
+                                        <span className="text-orange-600">Has balance</span>
+                                      ) : (
+                                        <span className="text-red-600">Will be refunded</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </td>
                         )}
                       </tr>
@@ -396,7 +454,7 @@ const TransactionSummaryModal = ({
                         <td className="p-2 border-b border-gray-200 text-green-800" colSpan={4}>TOTAL</td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
                           {(() => {
-                            // Calculate cash total excluding refunded tests
+                            // Calculate cash total excluding refunded tests - ONLY cash payments
                             let cashTotal = 0;
                             const testDetails = isEditingSummary
                               ? editedTransaction?.originalTransaction?.TestDetails
@@ -404,8 +462,11 @@ const TransactionSummaryModal = ({
                               
                             if (testDetails) {
                               testDetails.forEach(test => {
-                                if (isEditingSummary || test.status !== 'refunded') {
-                                  cashTotal += parseFloat(test.cashAmount || 0);
+                                if (test.status !== 'refunded') {
+                                  // Get cash amount directly - no need to adjust for discounted price here
+                                  // This is just showing the sum of cash paid values
+                                  const cashAmount = parseFloat(test.cashAmount || 0);
+                                  cashTotal += cashAmount;
                                 }
                               });
                             }
@@ -415,7 +476,7 @@ const TransactionSummaryModal = ({
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800">
                           {(() => {
-                            // Calculate GCash total excluding refunded tests
+                            // Calculate GCash total excluding refunded tests - ONLY GCash payments
                             let gCashTotal = 0;
                             const testDetails = isEditingSummary
                               ? editedTransaction?.originalTransaction?.TestDetails
@@ -423,8 +484,11 @@ const TransactionSummaryModal = ({
                             
                             if (testDetails) {
                               testDetails.forEach(test => {
-                                if (isEditingSummary || test.status !== 'refunded') {
-                                  gCashTotal += parseFloat(test.gCashAmount || 0);
+                                if (test.status !== 'refunded') {
+                                  // Get GCash amount directly - no need to adjust for discounted price here
+                                  // This is just showing the sum of GCash paid values
+                                  const gCashAmount = parseFloat(test.gCashAmount || 0);
+                                  gCashTotal += gCashAmount;
                                 }
                               });
                             }
@@ -442,7 +506,7 @@ const TransactionSummaryModal = ({
                             
                             if (testDetails) {
                               testDetails.forEach(test => {
-                                if (isEditingSummary || test.status !== 'refunded') {
+                                if (test.status !== 'refunded') {
                                   balanceTotal += parseFloat(test.balanceAmount || 0);
                                 }
                               });
@@ -457,6 +521,64 @@ const TransactionSummaryModal = ({
                           </td>
                         )}
                       </tr>
+                      {/* Total Transaction Row */}
+                      <tr className="bg-green-50 font-bold">
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={4}>
+                          TOTAL TRANSACTION
+                          {(() => {
+                            const idType = (isEditingSummary
+                              ? editedTransaction?.originalTransaction?.idType
+                              : transaction?.originalTransaction?.idType
+                            ) || '';
+                            const normalized = idType.trim().toLowerCase();
+                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
+                              return ' (20% PWD/Senior Discount Applied)';
+                            }
+                            return null;
+                          })()}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
+                          {(() => {
+                            // Calculate subtotal based on individual test discounts first
+                            let subtotal = 0;
+                            const testDetails = isEditingSummary
+                              ? editedTransaction?.originalTransaction?.TestDetails
+                              : transaction?.originalTransaction?.TestDetails;
+                              
+                            if (testDetails) {
+                              testDetails.forEach(test => {
+                                if (test.status !== 'refunded') {
+                                  // Calculate discounted price for each test based on its individual discount
+                                  const originalPrice = parseFloat(test.originalPrice || 0);
+                                  const discountPercent = parseFloat(test.discountPercentage || 0);
+                                  const testDiscountedPrice = originalPrice * (1 - discountPercent / 100);
+                                  
+                                  // Use the actual payment amounts (cash + gCash) which should match the discounted price
+                                  const cashAmount = parseFloat(test.cashAmount || 0);
+                                  const gCashAmount = parseFloat(test.gCashAmount || 0);
+                                  const actualPaid = cashAmount + gCashAmount;
+                                  
+                                  subtotal += actualPaid;
+                                }
+                              });
+                            }
+                            
+                            // Apply 20% PWD/Senior discount on the subtotal
+                            const idType = (isEditingSummary
+                              ? editedTransaction?.originalTransaction?.idType
+                              : transaction?.originalTransaction?.idType
+                            ) || '';
+                            const normalized = idType.trim().toLowerCase();
+                            let finalTotal = subtotal;
+                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
+                              finalTotal = subtotal * 0.8; // Apply 20% discount on subtotal
+                            }
+                            
+                            return finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={isEditingSummary && isRefundMode ? 2 : 1}></td>
+                      </tr>
                     </tfoot>
                   )}
                 </table>
@@ -465,7 +587,9 @@ const TransactionSummaryModal = ({
             
             {/* Footer buttons */}
             <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              {isEditingSummary ? (
+              {ConfirmButton ? (
+                ConfirmButton
+              ) : isEditingSummary ? (
                 <>
                   <button
                     className="bg-gray-500 text-white px-8 py-2 rounded hover:bg-gray-600 focus:outline-none"

@@ -10,7 +10,9 @@ const TestDetails = require('./TestDetails')(sequelize);
 const DepartmentRevenue = require('./DepartmentRevenue')(sequelize);
 const Expense = require('./Expenses')(sequelize);
 const ExpenseItem = require('./ExpenseItems')(sequelize);
+const Category = require('./Category')(sequelize);
 const CollectibleIncome = require('./CollectibleIncome')(sequelize);
+const ReferrerRebate = require('./ReferrerRebate')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
@@ -59,6 +61,16 @@ Transaction.hasMany(TestDetails, {
   foreignKey: 'transactionId',
   constraints: false
 });
+
+Category.hasMany(ExpenseItem, { 
+  foreignKey: 'categoryId',
+  onDelete: 'SET NULL'
+});
+
+ExpenseItem.belongsTo(Category, { 
+  foreignKey: 'categoryId'
+});
+
 TestDetails.belongsTo(Transaction, { 
   foreignKey: 'transactionId',
   constraints: false
@@ -143,6 +155,16 @@ ExpenseItem.belongsTo(Expense, {
   foreignKey: 'expenseId' 
 });
 
+Referrer.hasMany(ReferrerRebate, { 
+  foreignKey: 'referrerId',
+  onDelete: 'CASCADE'
+});
+
+ReferrerRebate.belongsTo(Referrer, { 
+  foreignKey: 'referrerId',
+  onDelete: 'CASCADE'
+});
+
 module.exports = {
   sequelize,
   User,
@@ -155,6 +177,8 @@ module.exports = {
   TestDetails,
   DepartmentRevenue,
   Expense,
-  ExpenseItem, 
-  CollectibleIncome
+  ExpenseItem,
+  Category,
+  CollectibleIncome,
+  ReferrerRebate
 };

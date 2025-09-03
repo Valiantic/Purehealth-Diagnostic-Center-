@@ -291,12 +291,7 @@ feature/Socket-io-Package-Install-BE
 
 devpatch6 - Merge Conflict
 
-feature/Build-Dashboard-Functionality-With-Socket.io-Package-BE -- will not used instead use devpatch-pre-prod merge fixed branch
-
-devpatch7 - New Core Branch due to Conflict
-
-feature/Pre-Prod-Merge-Conflict-Resolve-v.1
-
+feature/Build-Dashboard-Functionality-With-Socket.io-Package-BE
 
 
 --LATER--
@@ -325,9 +320,28 @@ feature/Transaction-Expenses-Table-Generate-Reports
 feature/Transaction-Income-Table-Functionality
 feature/Transaction-Expenses-Table-Functionality
 
-feature/Add-Transaction
-feature/Add-Expenses
-feature/Dynamic-Dashboard
+feature/Add-Expenses-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Add-Transaction-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Dashboard-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Add-Expenses-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Department-Management-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Monthly-Income-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Referral-Management-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Referrer-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Test-Management-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/Transaction-Component-OverStates-Delegation-to-Custom-Hooks
+
+feature/View-Account-Component-OverStates-Delegation-to-Custom-Hooks
+
 
 
 - Expenses, Test department iniinclude mga department kahit archived

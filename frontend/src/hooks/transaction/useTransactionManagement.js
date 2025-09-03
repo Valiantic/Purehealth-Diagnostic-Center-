@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { transactionAPI } from '../services/api';
+import { transactionAPI } from '../../services/api';
 import { toast } from 'react-toastify';
-import { formatTransactionForDisplay } from '../utils/transactionUtils';
+import { formatTransactionForDisplay } from '../../utils/transactionUtils';
 
 /**
  * Custom hook to manage transaction-related state and actions.
@@ -187,6 +187,21 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           
           const freshTransaction = formatTransactionForDisplay(response.data.data, departments, currentReferrers);
           
+          // Restore excess refunds from metadata if they exist
+          if (response.data.data.metadata) {
+            try {
+              const metadata = typeof response.data.data.metadata === 'string' 
+                ? JSON.parse(response.data.data.metadata) 
+                : response.data.data.metadata;
+              
+              if (metadata.excessRefunds && typeof metadata.excessRefunds === 'object') {
+                setRefundAmounts(metadata.excessRefunds);
+              }
+            } catch (error) {
+              console.warn('Failed to parse transaction metadata:', error);
+            }
+          }
+          
           if (!freshTransaction.referrer || freshTransaction.referrer === 'Unknown' || freshTransaction.referrer === 'Out Patient') {
             freshTransaction.referrer = preservedInfo.referrer;
           }
@@ -252,12 +267,31 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     setSelectedSummaryTransaction(null);
     setIsRefundMode(false);
     setSelectedRefunds({});
+    setRefundAmounts({}); // Clear excess refund amounts
   };
 
   // Enter edit mode for transaction summary
   const handleEnterEditMode = () => {
     // Create a deep copy of the transaction for editing
-    setEditedSummaryTransaction(JSON.parse(JSON.stringify(selectedSummaryTransaction)));
+    const editedTx = JSON.parse(JSON.stringify(selectedSummaryTransaction));
+    
+    // Auto-set 20% discount for PWD or Senior Citizen if not already set
+    const idType = (editedTx?.originalTransaction?.idType || '').trim().toLowerCase();
+    if (idType === 'person with disability' || idType === 'senior citizen') {
+      if (editedTx?.originalTransaction?.TestDetails) {
+        editedTx.originalTransaction.TestDetails.forEach(test => {
+          // Only set discount if it's not already set or is 0
+          if (!test.discountPercentage || test.discountPercentage === '0' || test.discountPercentage === 0) {
+            test.discountPercentage = '20';
+            // Recalculate discounted price
+            const originalPrice = parseFloat(test.originalPrice) || 0;
+            test.discountedPrice = (originalPrice * 0.8).toFixed(2);
+          }
+        });
+      }
+    }
+    
+    setEditedSummaryTransaction(editedTx);
     setIsEditingSummary(true);
   };
 
@@ -267,10 +301,21 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     setEditedSummaryTransaction(null);
     setIsRefundMode(false);
     setSelectedRefunds({});
+    setRefundAmounts({}); // Clear excess refund amounts
   };
 
   // Handle changes to summary fields
   const handleSummaryInputChange = (e, field) => {
+    if (field === 'birthDate') {
+      const selectedDate = new Date(e.target.value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate > today) {
+        return; 
+      }
+    }
     // Special handling for ID Type
     if (field === 'idType') {
       const newIdType = e.target.value;
@@ -440,8 +485,8 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           discountedPrice: "0.00"  
         };
         
-        const originalPrice = parseFloat(test.originalPrice) || 0;
-        toast.info(`Test "${test.testName}" marked for refund (₱${originalPrice.toFixed(2)})`);
+        const discountedPrice = parseFloat(test.discountedPrice) || 0;
+        toast.info(`Test "${test.testName}" marked for refund (₱${discountedPrice.toFixed(2)})`);
         
         setEditedSummaryTransaction(updatedTransaction);
       }
@@ -510,59 +555,88 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
         return; 
       }
       
+      // Get the current discounted price - calculate it if needed
       const originalPrice = parseFloat(testCopy.originalPrice) || 0;
-      const discountedPrice = parseFloat(testCopy.discountedPrice) || 0;
+      let discountedPrice;
+      
+      // Calculate discounted price based on percentage or use stored value
+      const idType = (editedSummaryTransaction?.originalTransaction?.idType || '').trim().toLowerCase();
+      const isSpecialDiscount = idType === 'person with disability' || idType === 'senior citizen';
+      
+      if (isSpecialDiscount) {
+        // Apply 20% discount for PWD/Senior Citizen
+        const discountPercent = parseFloat(testCopy.discountPercentage || 20);
+        discountedPrice = originalPrice * (1 - discountPercent/100);
+      } else {
+        // Apply regular discount if any
+        const discountPercent = parseFloat(testCopy.discountPercentage || 0);
+        discountedPrice = originalPrice * (1 - discountPercent/100);
+      }
+      
+      // Store calculated discounted price
+      testCopy.discountedPrice = discountedPrice.toFixed(2);
+      
+      // Get current payment values
       const numValue = parseFloat(value) || 0;
       const otherField = field === 'cashAmount' ? 'gCashAmount' : 'cashAmount';
       const otherValue = parseFloat(testCopy[otherField]) || 0;
-      const totalPayment = numValue + otherValue;
       
-      const discountPercentage = parseInt(testCopy.discountPercentage) || 0;
-      if (discountPercentage === 0 && totalPayment > originalPrice) {
-        toast.error(`Total payment cannot exceed original price of ₱${originalPrice.toFixed(2)} when no discount is applied`);
-        return; 
-      }
-      
-      // Set the new value directly (no automatic adjustment)
-      testCopy[field] = value;
-      
-      // Calculate refund if payment exceeds price
-      const refundId = `test-${testCopy.testDetailId}`;
-      if (totalPayment > discountedPrice) {
-        const refundAmount = totalPayment - discountedPrice;
-        
-        // Update refund tracking for this test
-        setRefundAmounts(prev => ({
-          ...prev,
-          [refundId]: refundAmount
-        }));
-        
-        // Show warning about refund
-        toast.info(`Payment exceeds price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
+      // Enforce limits based on field - cap at discounted price
+      if (field === 'cashAmount') {
+        // For cash payments, limit to the discounted price
+        if (numValue > discountedPrice) {
+          testCopy[field] = discountedPrice.toFixed(2);
+        } else {
+          testCopy[field] = value;
+        }
       } else {
-        // Clear any previously tracked refund for this test
-        setRefundAmounts(prev => {
-          const newRefunds = {...prev};
-          delete newRefunds[refundId];
-          return newRefunds;
-        });
+        // For GCash payments, limit to remaining amount after cash payment
+        const cashAmount = parseFloat(testCopy.cashAmount || 0);
+        const remainingAmount = Math.max(0, discountedPrice - cashAmount);
+        
+        if (numValue > remainingAmount) {
+          testCopy[field] = remainingAmount.toFixed(2);
+        } else {
+          testCopy[field] = value;
+        }
       }
+      
+      // Recalculate total payment after adjustments
+      const updatedCashAmount = parseFloat(testCopy.cashAmount || 0);
+      const updatedGCashAmount = parseFloat(testCopy.gCashAmount || 0);
+      const totalPayment = updatedCashAmount + updatedGCashAmount;
+      
+      // Clear any refund tracking since payments are now capped at discounted price
+      const refundId = `test-${testCopy.testDetailId}`;
+      setRefundAmounts(prev => {
+        const newRefunds = {...prev};
+        delete newRefunds[refundId];
+        return newRefunds;
+      });
       
       // Update balance - always based on actual calculation
       const newBalanceAmount = Math.max(0, discountedPrice - totalPayment).toFixed(2);
       testCopy.balanceAmount = newBalanceAmount;
     }
     else if (field === 'discountPercentage') {
-      // Only allow integer percentages from 0-100
-      if (value && !/^\d{0,3}$/.test(value)) {
-        return; 
-      }
-      
-      const percentValue = parseInt(value) || 0;
-      if (percentValue > 100) {
-        toast.warning('Discount cannot exceed 100%');
-        testCopy.discountPercentage = "100";
+      // Allow empty value for clearing the field
+      if (value === '') {
+        testCopy.discountPercentage = '';
+        // Reset to original price when no discount
+        const originalPrice = parseFloat(testCopy.originalPrice) || 0;
+        testCopy.discountedPrice = originalPrice.toFixed(2);
       } else {
+        // Only allow numeric input (0-9) and ensure it's a valid percentage
+        if (!/^\d{1,2}$|^100$/.test(value)) {
+          return; // Reject invalid input
+        }
+        
+        const percentValue = parseInt(value) || 0;
+        if (percentValue > 100) {
+          toast.warning('Discount cannot exceed 100%');
+          return;
+        }
+        
         testCopy.discountPercentage = value;
       }
       
@@ -572,33 +646,128 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       const newDiscountedPrice = originalPrice * (1 - discountPercent/100);
       testCopy.discountedPrice = newDiscountedPrice.toFixed(2);
       
-      // Recalculate balance
-      const cashAmount = parseFloat(testCopy.cashAmount || 0);
-      const gCashAmount = parseFloat(testCopy.gCashAmount || 0);
-      const totalPayment = cashAmount + gCashAmount;
+      // Get current payment amounts
+      const currentCashAmount = parseFloat(testCopy.cashAmount || 0);
+      const currentGCashAmount = parseFloat(testCopy.gCashAmount || 0);
+      const totalPayment = currentCashAmount + currentGCashAmount;
       
-      // Check for potential refund if price is now less than payment
-      const refundId = `test-${testCopy.testDetailId}`;
+      // If discounted price is lower than total payments, cap the payments
       if (totalPayment > newDiscountedPrice) {
-        const refundAmount = totalPayment - newDiscountedPrice;
-        
-        // Update refund tracking
-        setRefundAmounts(prev => ({
-          ...prev,
-          [refundId]: refundAmount
-        }));
-        
-        toast.info(`Payment now exceeds discounted price by ₱${refundAmount.toFixed(2)} - excess will be recorded as refund`);
-      } else {
-        // Clear any previously tracked refund
+        // Clear any refund tracking for this test
+        const refundId = `test-${testCopy.testDetailId}`;
         setRefundAmounts(prev => {
           const newRefunds = {...prev};
           delete newRefunds[refundId];
           return newRefunds;
         });
+        
+        // Cap payments to match discounted price
+        if (totalPayment > 0) {
+          // Maintain the ratio between cash and GCash payments
+          const cashRatio = currentCashAmount / totalPayment;
+          const gCashRatio = currentGCashAmount / totalPayment;
+          
+          const newCashAmount = newDiscountedPrice * cashRatio;
+          const newGCashAmount = newDiscountedPrice * gCashRatio;
+          
+          testCopy.cashAmount = newCashAmount.toFixed(2);
+          testCopy.gCashAmount = newGCashAmount.toFixed(2);
+          
+          // Balance should be 0 since payments now match discounted price
+          testCopy.balanceAmount = "0.00";
+        } else {
+          // If no payments were made, just set balance to discounted price
+          testCopy.balanceAmount = newDiscountedPrice.toFixed(2);
+        }
+      } else {
+        // No overpayment, just recalculate balance normally
+        const refundId = `test-${testCopy.testDetailId}`;
+        setRefundAmounts(prev => {
+          const newRefunds = {...prev};
+          delete newRefunds[refundId];
+          return newRefunds;
+        });
+        
+        testCopy.balanceAmount = Math.max(0, newDiscountedPrice - totalPayment).toFixed(2);
+      }
+    }
+    else if (field === 'discountedPrice') {
+      // Allow direct editing of discounted price
+      const newDiscountedPrice = parseFloat(value) || 0;
+      const originalPrice = parseFloat(testCopy.originalPrice) || 0;
+      
+      // Validate that discounted price doesn't exceed original price
+      if (newDiscountedPrice > originalPrice) {
+        toast.warning('Discounted price cannot exceed original price');
+        return;
       }
       
-      testCopy.balanceAmount = Math.max(0, newDiscountedPrice - totalPayment).toFixed(2);
+      testCopy.discountedPrice = value;
+      
+      // Recalculate discount percentage
+      if (originalPrice > 0) {
+        const discountPercent = Math.round(((originalPrice - newDiscountedPrice) / originalPrice) * 100);
+        testCopy.discountPercentage = Math.max(0, Math.min(100, discountPercent)).toString();
+      }
+      
+      // Get current payment amounts
+      const currentCashAmount = parseFloat(testCopy.cashAmount || 0);
+      const currentGCashAmount = parseFloat(testCopy.gCashAmount || 0);
+      const totalPayment = currentCashAmount + currentGCashAmount;
+      
+      // Clear any refund tracking for this test
+      const refundId = `test-${testCopy.testDetailId}`;
+      setRefundAmounts(prev => {
+        const newRefunds = {...prev};
+        delete newRefunds[refundId];
+        return newRefunds;
+      });
+      
+      // If payments exceed new discounted price, cap them
+      if (totalPayment > newDiscountedPrice) {
+        // Adjust cash and GCash proportionally to match discounted price
+        if (totalPayment > 0) {
+          const cashRatio = currentCashAmount / totalPayment;
+          const gCashRatio = currentGCashAmount / totalPayment;
+          
+          const newCashAmount = newDiscountedPrice * cashRatio;
+          const newGCashAmount = newDiscountedPrice * gCashRatio;
+          
+          testCopy.cashAmount = newCashAmount.toFixed(2);
+          testCopy.gCashAmount = newGCashAmount.toFixed(2);
+        }
+        
+        testCopy.balanceAmount = "0.00";
+      } else {
+        testCopy.balanceAmount = Math.max(0, newDiscountedPrice - totalPayment).toFixed(2);
+      }
+    }
+    else if (field === 'cashAmount' || field === 'gCashAmount') {
+      // Handle payment field changes with refund calculation
+      const newValue = parseFloat(value) || 0;
+      testCopy[field] = value;
+      
+      const cashAmount = field === 'cashAmount' ? newValue : parseFloat(testCopy.cashAmount || 0);
+      const gCashAmount = field === 'gCashAmount' ? newValue : parseFloat(testCopy.gCashAmount || 0);
+      const totalPayment = cashAmount + gCashAmount;
+      const discountedPrice = parseFloat(testCopy.discountedPrice) || 0;
+      
+      const refundId = `test-${testCopy.testDetailId}`;
+      if (totalPayment > discountedPrice) {
+        const refundAmount = totalPayment - discountedPrice;
+        setRefundAmounts(prev => ({
+          ...prev,
+          [refundId]: refundAmount
+        }));
+        testCopy.balanceAmount = "0.00";
+      } else {
+        setRefundAmounts(prev => {
+          const newRefunds = {...prev};
+          delete newRefunds[refundId];
+          return newRefunds;
+        });
+        testCopy.balanceAmount = Math.max(0, discountedPrice - totalPayment).toFixed(2);
+      }
     }
     else {
       // For other fields, just set the value
@@ -661,6 +830,13 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           refetchType: 'all'
         });
         
+        // Invalidate expenses queries to refresh expense modal data after referrer changes
+        queryClient.invalidateQueries({
+          queryKey: ['expenses'],
+          exact: false,
+          refetchType: 'all'
+        });
+        
         if (hasRefunds) {
           const newRefundTotal = Object.keys(selectedRefunds).reduce((total, testDetailId) => {
             const test = editedSummaryTransaction.originalTransaction.TestDetails.find(
@@ -708,8 +884,7 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
         setIsEditingSummary(false);
         setEditedSummaryTransaction(null);
         setSelectedRefunds({});
-        
-        closeTransactionSummary();
+        setIsTransactionSummaryOpen(false);
       } else {
         console.error('Unexpected response format:', response);
         toast.error('Failed to save changes: Unexpected response format');
@@ -794,7 +969,8 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       testDetails: testDetails,
       isRefundProcessing: isProcessingRefunds, 
       departmentRefunds: departmentRefunds, 
-      refundDate: new Date().toISOString() 
+      refundDate: new Date().toISOString(),
+      excessRefunds: refundAmounts || {},
     };
     
     // Validate before saving
@@ -836,6 +1012,10 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     return true;
   };
 
+  const clearRefundAmounts = () => {
+    setRefundAmounts({});
+  };
+
   return {
     // State
     openMenuId,
@@ -853,6 +1033,7 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     editingId,
     editedTransaction,
     pendingRefundAmount,
+    refundAmounts,
 
     // Handlers
     toggleIncomeMenu,
@@ -875,6 +1056,7 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     handleRefundSelection,
     handleTestDetailChange,
     handleSaveEdit,
+    clearRefundAmounts,
 
     // Mutations
     mutations: {

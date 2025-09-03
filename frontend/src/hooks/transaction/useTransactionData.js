@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { transactionAPI, departmentAPI, referrerAPI, revenueAPI, expenseAPI } from '../services/api';
-import { isTestRefunded } from '../utils/transactionUtils';
+import { transactionAPI, departmentAPI, referrerAPI, revenueAPI, expenseAPI } from '../../services/api';
+import { isTestRefunded } from '../../utils/transactionUtils';
 
 /**
  * Custom hook to handle data fetching and basic processing for the Transaction page
@@ -237,7 +237,13 @@ export const useTransactionData = (selectedDate, expenseDate) => {
         }
         
         let grossDeposit = 0;
-        if (transaction.TestDetails && transaction.TestDetails.length > 0) {
+        // Use the transaction's totalAmount which includes PWD/Senior discount, minus total balance
+        if (transaction.totalAmount !== undefined && transaction.totalAmount !== null) {
+          const totalAmount = parseFloat(transaction.totalAmount) || 0;
+          const totalBalance = parseFloat(transaction.totalBalanceAmount) || 0;
+          grossDeposit = totalAmount - totalBalance;
+        } else if (transaction.TestDetails && transaction.TestDetails.length > 0) {
+          // Fallback: calculate from test details for older transactions
           grossDeposit = transaction.TestDetails
             .filter(test => test.status !== 'refunded')
             .reduce((sum, test) => {
@@ -248,7 +254,6 @@ export const useTransactionData = (selectedDate, expenseDate) => {
         } else {
           grossDeposit = parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount);
         }
-        
         let referrerName = 'Out Patient';
         
         if (transaction.referrerId) {
@@ -297,29 +302,13 @@ export const useTransactionData = (selectedDate, expenseDate) => {
     });
     
     filteredTransactions.forEach((transaction) => {
-      if (transaction.status === 'cancelled') {
+      // Only process non-cancelled transactions for totals
+      if (transaction.status !== 'cancelled') {
+        // Use the departmentRevenues amounts that were already calculated correctly in processTransactions
         Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
-          departmentTotals[deptId] = (departmentTotals[deptId] || 0) - data.amount;
+          departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
+          departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + (data.balanceAmount || 0);
         });
-      } else {
-        if (transaction.originalTransaction?.TestDetails) {
-          transaction.originalTransaction.TestDetails.forEach(test => {
-            const deptId = test.departmentId;
-            if (test.status === 'refunded') {
-              // Refunds are handled separately
-            } else {
-              const testPrice = parseFloat(test.discountedPrice || 0);
-              const balanceAmount = parseFloat(test.balanceAmount) || 0;
-              departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + balanceAmount;
-              departmentTotals[deptId] = (departmentTotals[deptId] || 0) + (testPrice - balanceAmount);
-            }
-          });
-        } else {
-          Object.entries(transaction.departmentRevenues).forEach(([deptId, data]) => {
-            departmentTotals[deptId] = (departmentTotals[deptId] || 0) + data.amount;
-            departmentBalanceTotals[deptId] = (departmentBalanceTotals[deptId] || 0) + (data.balanceAmount || 0);
-          });
-        }
       }
     });
 
@@ -345,20 +334,28 @@ export const useTransactionData = (selectedDate, expenseDate) => {
         return sum;
       }
 
+      // Use the transaction's totalAmount which includes PWD/Senior discount, minus total balance
+      if (transaction.originalTransaction?.totalAmount !== undefined && transaction.originalTransaction?.totalAmount !== null) {
+        const totalAmount = parseFloat(transaction.originalTransaction.totalAmount) || 0;
+        const totalBalance = parseFloat(transaction.originalTransaction.totalBalanceAmount) || 0;
+        return sum + (totalAmount - totalBalance);
+      }
+
+      // Fallback: Use grossDeposit if available
+      if (typeof transaction.grossDeposit === 'number') {
+        return sum + transaction.grossDeposit;
+      }
+
+      // Last resort: calculate from test details (for older transactions)
       if (transaction.originalTransaction?.TestDetails?.length > 0) {
-        const transactionTotal = transaction.originalTransaction.TestDetails
+        let transactionTotal = transaction.originalTransaction.TestDetails
           .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
           .reduce((testSum, test) => {
             const price = parseFloat(test.discountedPrice || 0);
             const balance = parseFloat(test.balanceAmount || 0);
             return testSum + (price - balance);
           }, 0);
-        
         return sum + transactionTotal;
-      }
-      
-      if (typeof transaction.grossDeposit === 'number') {
-        return sum + transaction.grossDeposit;
       }
       
       return sum + parseFloat(transaction.originalTransaction?.totalAmount || 0);
@@ -372,7 +369,11 @@ export const useTransactionData = (selectedDate, expenseDate) => {
       if (transaction.originalTransaction?.TestDetails?.length > 0) {
         const gCashTotal = transaction.originalTransaction.TestDetails
           .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
-          .reduce((testSum, test) => testSum + parseFloat(test.gCashAmount || 0), 0);
+          .reduce((testSum, test) => {
+            // Always use the actual recorded gCashAmount which should reflect any discount
+            const gCashAmount = parseFloat(test.gCashAmount || 0);
+            return testSum + gCashAmount;
+          }, 0);
         
         return sum + gCashTotal;
       }

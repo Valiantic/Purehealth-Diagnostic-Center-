@@ -43,27 +43,58 @@ export const transformDailyIncomeData = (dailyData) => {
 
   // Sort data by day
   const sortedData = [...dailyData].sort((a, b) => a.day - b.day);
-  
-  const labels = sortedData.map(item => 
+
+  const labels = sortedData.map(item =>
     item.dayName?.substring(0, 3) || `Day ${item.day}`
   );
-  
-  const amounts = sortedData.map(item => parseFloat(item.amount) || 0);
+
+  // Use date properties on the datasets as referced in the context
+  const collected = sortedData.map(item => parseFloat(item.amount) || 0);
+  const collectible = sortedData.map(item => parseFloat(item.collectibleAmount) || 0);
+  const total = sortedData.map((_, idx) => collected[idx] + collectible[idx]);
 
   return {
     labels,
-    datasets: [{
-      label: 'Daily Income',
-      data: amounts,
-      borderColor: chartColors.primary,
-      backgroundColor: chartColors.gradient,
-      tension: 0.4,
-      fill: true,
-      pointBackgroundColor: chartColors.primary,
-      pointBorderColor: '#ffffff',
-      pointBorderWidth: 2,
-      pointRadius: 4
-    }]
+    datasets: [
+      {
+        label: 'Total Income',
+        data: total,
+        borderColor: chartColors.primary,
+        backgroundColor: chartColors.gradient,
+        tension: 0.4,
+        fill: false,
+        pointBackgroundColor: chartColors.primary,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      },
+      {
+        label: 'Collected Income',
+        data: collected,
+        borderColor: chartColors.accent1,
+        backgroundColor: chartColors.accent1,
+        tension: 0.4,
+        fill: false,
+        borderDash: [4, 4],
+        pointBackgroundColor: chartColors.accent1,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      },
+      {
+        label: 'Collectible Income',
+        data: collectible,
+        borderColor: chartColors.accent2,
+        backgroundColor: chartColors.accent2,
+        tension: 0.4,
+        fill: false,
+        borderDash: [2, 2],
+        pointBackgroundColor: chartColors.accent2,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      }
+    ]
   };
 };
 

@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
-import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
-import AddCollectibleIncomeModal from '../components/monthly/AddCollectiblesIncomeModals'
+import Sidebar from '../components/dashboard/Sidebar'
+import useAuth from '../hooks/auth/useAuth'
+import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import { exportMonthlyIncomeToExcel } from '../utils/monthlyIncomeExporter';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('add'); 
+  const [selectedCollectible, setSelectedCollectible] = useState(null);
   const [collectibles, setCollectibles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -63,8 +67,15 @@ const Monthly = () => {
         const allCollectibles = response.data.data || [];
         setTotalPages(Math.ceil(allCollectibles.length / itemsPerPage));
         
+        const filteredCollectibles = allCollectibles.filter(item => {
+          const itemDate = new Date(item.dateConducted);
+          return itemDate.getMonth() + 1 === currentDate.month && 
+                  itemDate.getFullYear() === currentDate.year;
+        })
+
+        setTotalPages(Math.ceil(filteredCollectibles.length / itemsPerPage));
         const startIndex = (currentPage - 1) * itemsPerPage;
-        const paginatedCollectibles = allCollectibles.slice(startIndex, startIndex + itemsPerPage);
+        const paginatedCollectibles = filteredCollectibles.slice(startIndex, startIndex + itemsPerPage);
         setCollectibles(paginatedCollectibles);
       } else {
         console.error("Failed response:", response);
@@ -139,7 +150,16 @@ const Monthly = () => {
   }
 
   const handleAddCollectibles = () => {
+    setModalMode('add');
+    setSelectedCollectible(null);
     setIsCollectibleModalOpen(true);
+  }
+
+  const handleEditCollectible = (collectible) => {
+    setModalMode('edit');
+    setSelectedCollectible(collectible);
+    setIsCollectibleModalOpen(true);
+    setActiveMenu(null); 
   }
 
   const handleCollectibleSubmit = async (data) => {
@@ -149,8 +169,6 @@ const Monthly = () => {
         ...data,
         currentUserId: user?.userId || user?.id 
       };
-
-      console.log("Submitting collectible with user ID:", collectibleData.currentUserId);
 
       const response = await collectibleIncomeAPI.createCollectibleIncome(collectibleData);
        
@@ -169,20 +187,30 @@ const Monthly = () => {
     }
   }
 
-  const handleDeleteCollectible = async (id) => {
+  const handleCollectibleUpdate = async (data) => {
+    setLoading(true);
     try {
-      const response = await collectibleIncomeAPI.deleteCollectibleIncome(id);
-      if (response && response.success) {
-        toast.success('Collectible income deleted successfully');
+      const updateData = {
+        ...data,
+        currentUserId: user?.userId || user?.id 
+      };
+
+      const response = await collectibleIncomeAPI.updateCollectibleIncome(selectedCollectible.companyId, updateData);
+       
+      if (response?.data?.success) {
+        toast.success('Collectible income updated successfully');
         await fetchCollectibles();
       } else {
-        toast.error(response?.message || 'Failed to delete collectible income');
+        toast.error(response?.data?.message || 'Failed to update collectible income');
       }
     } catch (error) {
-      console.error('Error deleting collectible income:', error);
-      toast.error('An error occurred while deleting collectible income');
+      console.error('Error updating collectible income:', error);
+      toast.error(`Error: ${error.message || 'An unknown error occurred'}`);
+    } finally {
+      setLoading(false);
+      setIsCollectibleModalOpen(false);
+      setSelectedCollectible(null);
     }
-    setActiveMenu(null);
   }
 
   const toggleMenu = (id) => {
@@ -208,6 +236,29 @@ const Monthly = () => {
       return { month: newMonth, year: newYear };
     });
   }
+
+  const handleGenerateReport = async () => {
+    try {
+      // Get all collectibles for the current month (not paginated)
+      const response = await collectibleIncomeAPI.getAllCollectibleIncome();
+      let allCollectibles = [];
+      
+      if (response && response.data && response.data.success) {
+        const allData = response.data.data || [];
+        allCollectibles = allData.filter(item => {
+          const itemDate = new Date(item.dateConducted);
+          return itemDate.getMonth() + 1 === currentDate.month && 
+                 itemDate.getFullYear() === currentDate.year;
+        });
+      }
+
+      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, allCollectibles, currentMonth);
+      toast.success('Monthly Income Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      toast.error('Failed to export report. Please try again.');
+    }
+  };
 
   // Format currency values
   const formatCurrency = (value) => {
@@ -239,6 +290,20 @@ const Monthly = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-cream-50">
+      
+      {/* Toast Container */}
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000} 
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+      
       {/* Sidebar */}
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
@@ -296,7 +361,6 @@ const Monthly = () => {
                         </th>
                       ))}
                       <th className="p-1 border-r border-green-800 text-sm font-medium">GCash</th>
-                      <th className="p-1 text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -317,21 +381,7 @@ const Monthly = () => {
                             </td>
                           ))}
                           <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(day.gCashAmount)}</td>
-                          <td className="p-1 text-center relative bg-white">
-                            <button 
-                              className="text-green-800 hover:text-green-600" 
-                              onClick={() => toggleMenu(`day-${day.date}`)}
-                              aria-label="Transaction menu"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                            
-                            {activeMenu === `day-${day.date}` && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                 {/* TO ADD ACTION HERE SOON */}
-                              </div>
-                            )}
-                          </td>
+                          
                         </tr>
                       ))
                     ) : (
@@ -352,7 +402,6 @@ const Monthly = () => {
                             <td key={`empty-${index}-${dept.id}`} className="p-1 border-r border-green-200 bg-white"></td>
                           ))}
                           <td className="p-1 border-r border-green-200 bg-white"></td>
-                          <td className="p-1 bg-white"></td>
                         </tr>
                       ))
                     }
@@ -367,7 +416,6 @@ const Monthly = () => {
                         </td>
                       ))}
                       <td className="p-1 border-r border-green-800 text-center">{formatCurrency(monthlySummary.totalGCash)}</td>
-                      <td className="p-1"></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -407,7 +455,7 @@ const Monthly = () => {
                           <tr key={`collectible-row-${item.companyId}`} className="border-b border-green-200">
                             <td className="p-1 border-r border-green-200 text-center bg-white">{item.companyName}</td>
                             <td className="p-1 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
-                            <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.createdAt).toLocaleDateString()}</td>
+                            <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.dateConducted).toLocaleDateString()}</td>
                             <td className="p-1 border-r border-green-200 text-center bg-white">
                               {formatCurrency(item.totalIncome)}
                             </td>
@@ -424,10 +472,10 @@ const Monthly = () => {
                                   <ul className="py-1">
                                     <li>
                                       <button 
-                                        onClick={() => handleDeleteCollectible(item.companyId)}
-                                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
+                                        onClick={() => handleEditCollectible(item)}
+                                        className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-100"
                                       >
-                                        Delete
+                                        Edit
                                       </button>
                                     </li>
                                   </ul>
@@ -493,23 +541,35 @@ const Monthly = () => {
             </div>
           </div>
 
-          {/* Generate Report Button */}
-          <div className="flex justify-end p-2">
-            <button className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600">
-              Generate Report
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </button>
-          </div>
+          {/* Generate Report Button - Only show if there's data */}
+          {(monthlyData.dailyIncome.length > 0 || collectibles.length > 0) && (
+            <div className="flex justify-end p-2">
+              <button 
+                onClick={handleGenerateReport}
+                className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+              >
+                Generate Report
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      <AddCollectibleIncomeModal
+      <CollectibleIncomeModal
         isOpen={isCollectibleModalOpen}
-        onClose={() => setIsCollectibleModalOpen(false)}
+        onClose={() => {
+          setIsCollectibleModalOpen(false);
+          setSelectedCollectible(null);
+          setModalMode('add');
+        }}
         onSubmit={handleCollectibleSubmit}
-        userId={user?.userId || user?.id} // Pass user ID explicitly to the modal
+        onUpdate={handleCollectibleUpdate}
+        userId={user?.userId || user?.id}
+        mode={modalMode}
+        initialData={selectedCollectible}
       />
       
       {/* Close dropdown menus when clicking outside */}

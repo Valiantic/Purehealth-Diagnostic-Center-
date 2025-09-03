@@ -127,13 +127,7 @@ export const webauthnAPI = {
     });
   },
   verifyAuthentication: (userId, response) => {
-    const clientOrigin = window.location.origin;
-    console.log('Authentication verify clientOrigin:', clientOrigin);
-    return apiClient.post('/webauthn/authentication/verify', { 
-      userId, 
-      response,
-      clientOrigin
-    });
+    return apiClient.post('/webauthn/authentication/verify', { userId, response });
   }
 };
 
@@ -401,6 +395,39 @@ export const expenseAPI = {
   },
   getExpenseById: (expenseId) => {
     return apiClient.get(`/expenses/${expenseId}`);
+  },
+  getAllCategories: () => {
+    return apiClient.get('/expenses/categories');
+  },
+  getCategoryById: (id) => {
+    return apiClient.get(`/expenses/categories/${id}`);
+  },
+  createCategory: (data) => {
+    return apiClient.post('/expenses/categories', data);
+  },
+  updateCategory: (id, data) => {
+    return apiClient.put(`/expenses/categories/${id}`, data); 
+  }
+};
+
+export const rebateAPI = {
+  getRebatesByDate: (date) => {
+    return apiClient.get(`/rebates/by-date?date=${date}`);
+  },
+  
+  getMonthlyRebates: (month, year) => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (year) params.append('year', year);
+    return apiClient.get(`/rebates/monthly?${params}`);
+  },
+  
+  getRebatesByReferrer: (referrerId, startDate, endDate) => {
+    const params = new URLSearchParams();
+    params.append('referrerId', referrerId);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return apiClient.get(`/rebates/by-referrer?${params}`);
   }
 };
 
@@ -411,6 +438,9 @@ export const collectibleIncomeAPI = {
   createCollectibleIncome: (incomeData) => {
     return apiClient.post('/collectible-incomes', incomeData);
   },
+  updateCollectibleIncome: (id, incomeData) => {
+    return apiClient.put(`/collectible-incomes/${id}`, incomeData);
+  }
 };
 
 export const monthlyIncomeAPI = {

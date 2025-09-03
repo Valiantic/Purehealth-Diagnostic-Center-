@@ -20,7 +20,7 @@ import DepartmentManagement from './pages/DepartmentManagement';
 import TestManagement from './pages/TestManagement';
 import ReferralManagement from './pages/ReferralManagement';
 import NotFound from './pages/NotFound';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const queryClient = new QueryClient()
 

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Download, X, Edit as EditIcon } from 'lucide-react'
-import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
-import TabNavigation from '../components/TabNavigation'
+import Sidebar from '../components/dashboard/Sidebar'
+import useAuth from '../hooks/auth/useAuth'
+import TabNavigation from '../components/dashboard/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { departmentAPI } from '../services/api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ToastContainer, toast } from 'react-toastify'
+import { exportDepartmentManagementToExcel } from '../utils/departmentManagementExporter'
 import 'react-toastify/dist/ReactToastify.css'
 
 const Department = () => {
@@ -212,6 +213,16 @@ const Department = () => {
       status: departmentStatus,
     })
   }
+
+  const handleGenerateDepartmentReport = async () => {
+    try {
+      await exportDepartmentManagementToExcel(sortedDepartments, searchTerm, filterOption);
+      toast.success('Test Departments List Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting test departments report:', error);
+      toast.error('Failed to export test departments report. Please try again.');
+    }
+  };
 
   if (isAuthenticating) {
     return null
@@ -471,13 +482,18 @@ const Department = () => {
                     </div>
                   )}
                   
-                  <div className="mt-4 flex flex-col md:flex-row justify-end">
-                    <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                      <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                        Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                      </button>
+                  {sortedDepartments.length > 0 && (
+                    <div className="mt-4 flex flex-col md:flex-row justify-end">
+                      <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                        <button 
+                          onClick={handleGenerateDepartmentReport}
+                          className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                        >
+                          Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {editModalOpen && editingDepartment && (

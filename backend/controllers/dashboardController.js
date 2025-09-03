@@ -1,4 +1,5 @@
-const { Transaction, Expense, Department, TestDetails, ExpenseItem, sequelize } = require('../models');
+const { Transaction, Expense, Department, TestDetails, ExpenseItem, CollectibleIncome, Category, sequelize } = require('../models');
+const RebateService = require('../services/rebateService');
 const { Op } = require('sequelize');
 
 const dashboardController = {
@@ -64,14 +65,34 @@ const dashboardController = {
         }
       });
 
+      // Get monthly collectible income
+      const monthlyCollectibleIncome = await CollectibleIncome.sum('totalIncome', {
+        where: {
+          createdAt: {
+            [Op.and]: [
+              sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
+              sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+            ]
+          }
+        }
+      });
+
       const revenueAmount = parseFloat(monthlyRevenueResult[0]?.totalRevenue || 0);
-      const netProfit = revenueAmount - (monthlyExpenses || 0);
+      const collectibleAmount = parseFloat(monthlyCollectibleIncome || 0);
+      const totalRevenue = revenueAmount + collectibleAmount;
+
+      // Total monthly expenses should only be what's actually recorded in ExpenseItems
+      // This already includes rebates when they are properly recorded by the rebate service
+      const totalMonthlyExpenses = parseFloat(monthlyExpenses || 0);
+      const netProfit = totalRevenue - totalMonthlyExpenses;
 
       res.json({
         success: true,
         data: {
-          monthlyRevenue: revenueAmount,
-          monthlyExpenses: monthlyExpenses || 0,
+          monthlyRevenue: totalRevenue,
+          transactionRevenue: revenueAmount,
+          collectibleIncome: collectibleAmount,
+          monthlyExpenses: totalMonthlyExpenses,
           netProfit: netProfit,
           month: month,
           year: year
@@ -129,12 +150,63 @@ const dashboardController = {
         raw: true
       });
 
-      // Format data for chart
-      const chartData = dailyData.map(item => ({
-        day: item.day,
-        dayName: item.dayName,
-        amount: parseFloat(item.totalAmount) || 0
-      }));
+      // Get daily collectible income
+      const dailyCollectibleData = await CollectibleIncome.findAll({
+        attributes: [
+          [sequelize.fn('DAY', sequelize.col('createdAt')), 'day'],
+          [sequelize.fn('DAYNAME', sequelize.col('createdAt')), 'dayName'],
+          [sequelize.fn('SUM', sequelize.col('totalIncome')), 'totalCollectible']
+        ],
+        where: {
+          createdAt: {
+            [Op.and]: [
+              sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
+              sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+            ]
+          }
+        },
+        group: [sequelize.fn('DAY', sequelize.col('createdAt')), sequelize.fn('DAYNAME', sequelize.col('createdAt'))],
+        order: [[sequelize.fn('DAY', sequelize.col('createdAt')), 'ASC']],
+        raw: true
+      });
+
+      // Merge daily data and collectible data
+      const chartData = [];
+      const collectibleMap = new Map();
+      
+      // Create a map of collectible income by day
+      dailyCollectibleData.forEach(item => {
+        collectibleMap.set(item.day, parseFloat(item.totalCollectible) || 0);
+      });
+
+      // Combine transaction income with collectible income
+      dailyData.forEach(item => {
+        const collectibleAmount = collectibleMap.get(item.day) || 0;
+        chartData.push({
+          day: item.day,
+          dayName: item.dayName,
+          amount: parseFloat(item.totalAmount) || 0,
+          collectibleAmount: collectibleAmount,
+          totalAmount: (parseFloat(item.totalAmount) || 0) + collectibleAmount
+        });
+      });
+
+      // Add days that only have collectible income (no transaction income)
+      collectibleMap.forEach((collectibleAmount, day) => {
+        const existingDay = chartData.find(item => item.day === day);
+        if (!existingDay) {
+          chartData.push({
+            day: day,
+            dayName: new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'long' }),
+            amount: 0,
+            collectibleAmount: collectibleAmount,
+            totalAmount: collectibleAmount
+          });
+        }
+      });
+
+      // Sort by day
+      chartData.sort((a, b) => a.day - b.day);
 
       res.json({
         success: true,
@@ -207,6 +279,11 @@ const dashboardController = {
               }
             ],
             attributes: []
+          },
+          {
+            model: Category,
+            attributes: ['name', 'categoryId'],
+            required: false
           }
         ],
         where: {
@@ -214,12 +291,8 @@ const dashboardController = {
             [Op.notIn]: ['paid', 'refunded']
           }
         },
-        group: [
-          '"Expense"."departmentId"',
-          '"Expense->Department"."departmentId"',
-          '"Expense->Department"."departmentName"'
-        ],
-        having: sequelize.literal('SUM("ExpenseItem"."amount") > 0'),
+        group: ['Expense.departmentId', 'Expense->Department.departmentId', 'Expense->Department.departmentName'],
+        having: sequelize.literal('SUM(ExpenseItem.amount) > 0'),
         raw: true
       });
 
@@ -229,14 +302,14 @@ const dashboardController = {
       const chartData = expensesByDept.map(item => {
         
         // Try different possible paths for department name
-        const departmentName = item['Expense->Department.departmentName'] || 
-                              item['Expense.Department.departmentName'] || 
+        const departmentName = item['Expense.Department.departmentName'] || 
+                              item['Expense->Department.departmentName'] || 
                               item['Department.departmentName'] ||
                               item.departmentName ||
                               'Other';
         
         return {
-          department: departmentName,
+          department: displayName,
           amount: parseFloat(item.totalAmount || 0),
           percentage: total > 0 ? parseFloat(((parseFloat(item.totalAmount || 0) / total) * 100).toFixed(2)) : 0
         };
@@ -321,14 +394,33 @@ const dashboardController = {
           }
         });
 
-        const revenue = parseFloat(revenueResult[0]?.totalRevenue || 0);
-        const profit = revenue - (expenses || 0);
+        // Get collectible income for this month
+        const collectibleIncome = await CollectibleIncome.sum('totalIncome', {
+          where: {
+            createdAt: {
+              [Op.and]: [
+                sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
+                sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+              ]
+            }
+          }
+        });
+
+        // Get rebate expenses for this month - but only if they're recorded as expense items
+        // The expenses query above should already include rebates when properly recorded
+        const transactionRevenue = parseFloat(revenueResult[0]?.totalRevenue || 0);
+        const collectibleAmount = parseFloat(collectibleIncome || 0);
+        const totalRevenue = transactionRevenue + collectibleAmount;
+        const totalExpenses = expenses || 0; // Only actual recorded expenses
+        const profit = totalRevenue - totalExpenses;
         
         monthlyData.push({
           month: month,
           monthName: new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' }),
-          revenue: revenue,
-          expenses: expenses || 0,
+          revenue: totalRevenue,
+          transactionRevenue: transactionRevenue,
+          collectibleIncome: collectibleAmount,
+          expenses: totalExpenses,
           profit: profit
         });
       }

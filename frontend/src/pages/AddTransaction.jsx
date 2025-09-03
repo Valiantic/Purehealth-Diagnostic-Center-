@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
+import Sidebar from '../components/dashboard/Sidebar'
+import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal'
+import ReferrerModal from '../components/referral-management/ReferrerModal'
+import TestQueueModal from '../components/transaction/TestQueueModal'
+import useAuth from '../hooks/auth/useAuth'
+import useReferrerForm from '../hooks/referral-management/useReferrerForm'
+import useTestQueue from '../hooks/transaction/useTestQueue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
 import { handleDecimalKeyPress } from '../utils/decimalUtils'
@@ -10,7 +14,6 @@ import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const AddIncome = () => {
-  const navigate = useNavigate();
   const { user, isAuthenticating } = useAuth()
   const [showDeptFilter, setShowDeptFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -20,77 +23,39 @@ const AddIncome = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedModalTest, setSelectedModalTest] = useState(null);
   const [basePrice, setBasePrice] = useState(0);
-  const [price, setPrice] = useState(0);
+  const [price, setPrice] = useState();
+  const [balance, setBalance] = useState(0);
   const [discount, setDiscount] = useState(20);
   const [cashPaid, setCashPaid] = useState(0);
   const [gCashPaid, setGCashPaid] = useState(0);
   const [discountFieldFocused, setDiscountFieldFocused] = useState(false);
 
   const [discountedPrice, setDiscountedPrice] = useState(0);
-  const [balance, setBalance] = useState(0);
-  const [testName, setTestName] = useState('');
 
-  const [testDate, setTestDate] = useState(new Date().toISOString().split('T')[0]);
-  const [testDepartment, setTestDepartment] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
-  const [userSelectedDepartment, setUserSelectedDepartment] = useState(false);
+  // Replace old test queue state with custom hook
+  const {
+    queue,
+    formData: testFormData,
+    isProcessing: isTestQueueProcessing,
+    errors: testQueueErrors,
+    isValid: isTestQueueValid,
+    addToQueue,
+    removeFromQueue,
+    processQueue,
+    updateFormField: updateTestFormField
+  } = useTestQueue();
+
   const [isOpen, setIsOpen] = useState(false);
-  const [testForm, setTestForm] = useState({
-    testName: '',
-    department: '',
-    price: '',
-    dateCreated: formatDate(new Date())
-  });
-  const [queue, setQueue] = useState([]);
-
   const [generatedMcNo, setGeneratedMcNo] = useState('');
 
-  function formatDate(date) {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('default', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-
-  function handleAddToQueue() {
-    if (!testForm.testName || !testDepartment || !price) {
-      toast.error("Please fill all required test details");
-      return;
-    }
-
-    const newItem = {
-      testName: testForm.testName,
-      department: testDepartment,
-      price: typeof price === 'string' ? price : price.toFixed(2),
-      created: formatDate(new Date(testDate))
-    };
-
-    setQueue([...queue, newItem]);
-
-    setTestForm({
-      testName: '',
-      department: '',
-      price: '',
-      dateCreated: formatDate(new Date())
-    });
-    setPrice('');
-
-    toast.success("Test added to queue successfully");
-  }
+  // Handler for processing the test queue
+  const handleProcessTestQueue = () => {
+    const userId = user?.userId || user?.id;
+    processQueue(departments, userId);
+    setIsOpen(false);
+  };
 
   const queryClient = useQueryClient();
-
-  const createBatchTestsMutation = useMutation({
-    mutationFn: ({ testData, userId }) => testAPI.createTest(testData, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tests'] });
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
-    },
-    onError: (error) => {
-      console.error('Error creating test:', error);
-      toast.error(error.response?.data?.message || 'Failed to create test');
-    }
-  });
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -189,6 +154,7 @@ const AddIncome = () => {
     } else {
       const testPrice = parseFloat(test.price) || 0;
       const roundedPrice = roundToTwoDecimals(testPrice);
+      
       const newTest = {
         testId: test.testId,
         name: test.testName,
@@ -433,8 +399,22 @@ const AddIncome = () => {
   };
 
   const handleDateChange = (e) => {
-    const newDate = e.target.value;
-    setFormData({ ...formData, birthDate: newDate });
+    const selectedDate = new Date(e.target.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) {
+      return;
+    }
+    
+    setFormData({ ...formData, birthDate: e.target.value });
+  };
+
+  // Handler for ID type change
+  const handleIdTypeChange = (e) => {
+    const newIdType = e.target.value;
+    setFormData({ ...formData, id: newIdType });
   };
 
   const handleReferrerChange = (e) => {
@@ -447,101 +427,27 @@ const AddIncome = () => {
     setFormData({ ...formData, referrer: value });
   };
 
-  const handleDepartmentChange = (e) => {
-    const value = e.target.value;
-    if (value === 'add-department') {
-      navigate('/department-management');
-      return;
-    }
-    if (value) {
-      setTestDepartment(value);
-      const selected = departments.find(dep => dep.departmentName === value);
-      if (selected) {
-        setDepartmentId(selected.departmentId);
-        setUserSelectedDepartment(true);
-      }
-    } else {
-      setTestDepartment('');
-      setDepartmentId('');
-      setUserSelectedDepartment(false);
-    }
-  };
-
-  function handleConfirm() {
-    if (queue.length === 0) {
-      toast.error("No tests in queue to save");
-      return;
-    }
-
-    const userId = user?.userId || user?.id;
-    if (!userId) {
-      toast.error('Authentication error. Please log in again.');
-      return;
-    }
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    Promise.all(
-      queue.map(async (item) => {
-        try {
-          const department = departments.find(
-            d => d.departmentName.toLowerCase() === item.department.toLowerCase()
-          );
-
-          if (!department) {
-            throw new Error(`Department not found for: ${item.department}`);
-          }
-
-          const testData = {
-            testName: item.testName,
-            departmentId: department.departmentId,
-            price: parseFloat(item.price),
-            dateCreated: new Date().toISOString(),
-            currentUserId: userId
-          };
-
-          await testAPI.createTest(testData, userId);
-          successCount++;
-
-        } catch (error) {
-          console.error(`Error saving test "${item.testName}":`, error);
-          errorCount++;
-          return error;
-        }
-      })
-    )
-      .then(() => {
-        if (successCount > 0) {
-          toast.success(`Successfully added ${successCount} tests to the database`);
-        }
-
-        if (errorCount > 0) {
-          toast.error(`Failed to add ${errorCount} tests`);
-        }
-
-        setQueue([]);
-
-        setIsOpen(false);
-
-        queryClient.invalidateQueries({ queryKey: ['tests'] });
-      })
-      .catch(error => {
-        console.error('Error in batch processing:', error);
-        toast.error('An error occurred while saving tests');
-      });
-  }
-
   const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
-  const [newReferrerData, setNewReferrerData] = useState({
-    firstName: '',
-    lastName: '',
-    birthday: '',
-    sex: 'Male',
-    clinicName: '',
-    clinicAddress: '',
-    contactNo: ''
-  });
+  
+  const {
+    firstName: referrerFirstName,
+    lastName: referrerLastName,
+    birthday: referrerBirthday,
+    sex: referrerSex,
+    clinicName: referrerClinicName,
+    clinicAddress: referrerClinicAddress,
+    contactNo: referrerContactNo,
+    setFirstName: setReferrerFirstName,
+    setLastName: setReferrerLastName,
+    setBirthday: setReferrerBirthday,
+    setSex: setReferrerSex,
+    setClinicName: setReferrerClinicName,
+    setClinicAddress: setReferrerClinicAddress,
+    setContactNo: setReferrerContactNo,
+    resetForm: resetReferrerForm,
+    validateForm: validateReferrerForm,
+    getFormData: getReferrerFormData
+  } = useReferrerForm();
 
   const addReferrerMutation = useMutation({
     mutationFn: (referrerData) =>
@@ -558,37 +464,21 @@ const AddIncome = () => {
 
   const closeReferrerModal = () => {
     setIsReferrerModalOpen(false);
-    setNewReferrerData({
-      firstName: '',
-      lastName: '',
-      birthday: '',
-      sex: 'Male',
-      clinicName: '',
-      clinicAddress: '',
-      contactNo: ''
-    });
-  };
-
-  const handleReferrerInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewReferrerData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    resetReferrerForm();
   };
 
   const handleAddNewReferrer = () => {
-    if (!newReferrerData.firstName.trim()) {
-      toast.error('First name is required');
+    if (!validateReferrerForm()) {
       return;
     }
 
-    if (!newReferrerData.lastName.trim()) {
-      toast.error('Last name is required');
-      return;
+    const referrerData = getReferrerFormData();
+    
+    if (referrerData.birthday) {
+      referrerData.birthday = referrerData.birthday || null;
     }
 
-    addReferrerMutation.mutate(newReferrerData);
+    addReferrerMutation.mutate(referrerData);
   };
 
   const [isTransactionSummaryOpen, setIsTransactionSummaryOpen] = useState(false);
@@ -604,13 +494,32 @@ const AddIncome = () => {
     if (!formData.firstName.trim()) missingFields.push("First Name");
     if (!formData.lastName.trim()) missingFields.push("Last Name");
     if (!formData.id) missingFields.push("ID Type");
-    if (!formData.referrer) missingFields.push("Referrer");
     if (!formData.birthDate) missingFields.push("Birth Date");
     if (!formData.sex) missingFields.push("Sex");
     
     if ((formData.id === "Senior Citizen" || formData.id === "Person with Disability") && 
         !formData.idNumber.trim()) {
       missingFields.push("ID Number");
+    }
+
+    // Validate birth date is not in the future
+    if (formData.birthDate) {
+      const selectedDate = new Date(formData.birthDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      if (selectedDate > today) {
+        toast.error("Birth date cannot be in the future");
+        return;
+      }
+      
+      // Validate birth year using the same logic as calculateAge
+      const age = calculateAge(formData.birthDate);
+      if (age === "Invalid Year" || age === "Invalid Date" || age === "Future Date" || age === "Invalid Age") {
+        toast.error("Please enter a valid birth date with a realistic year");
+        return;
+      }
     }
 
     if (missingFields.length > 0) {
@@ -674,8 +583,8 @@ const AddIncome = () => {
     }
 
     try {
-      const items = testsTable.map((test, index) => {
-        const originalTest = selectedTests[index];
+      const items = testsTable.map((test) => {
+        const originalTest = selectedTests.find(st => st.testName === test.name);
 
         if (!originalTest?.testId) {
           throw new Error(`Test ID is missing for ${test.name}`);
@@ -692,7 +601,8 @@ const AddIncome = () => {
         const gCashAmount = parseFloat(test.gCash) || 0;
         const balAmount = parseFloat(test.bal) || 0;
 
-        const discountedPrice = cashAmount + gCashAmount + balAmount;
+        // Calculate the actual discounted price based on original price and discount percentage
+        const discountedPrice = originalPrice * (1 - discountPercentage / 100);
 
         return {
           testId: originalTest.testId,
@@ -737,17 +647,36 @@ const AddIncome = () => {
     
     const today = new Date();
     const birthDate = new Date(birthdate);
-    let age = today.getFullYear() - birthDate.getFullYear();
+    
+    // Validate that the birth date is a valid date
+    if (isNaN(birthDate.getTime())) {
+      return "Invalid Date";
+    }
+    
+    const birthYear = birthDate.getFullYear();
+    const currentYear = today.getFullYear();
+    
+    // Validate realistic birth year range (1900 to current year)
+    if (birthYear < 1900 || birthYear > currentYear) {
+      return "Invalid Year";
+    }
+    
+    // Check if birth date is in the future
+    if (birthDate > today) {
+      return "Future Date";
+    }
+    
+    let age = currentYear - birthYear;
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
 
-    if (age <= 0) {
-      return "N/A";
+    if (age < 0 || age > 150) {
+      return "Invalid Age";
     }
     
-    return age >= 0 ? age : null;
+    return age;
   };
 
  
@@ -980,13 +909,15 @@ const AddIncome = () => {
               <div className="flex flex-col md:flex-row gap-4 mb-4">
                 <div className="flex-1">
                   <label className="block text-green-800 font-medium mb-1">Birth Date</label>
-                  <div className="relative" onClick={() => document.getElementById('birth-date-input').showPicker()}>
+                  <div className="relative">
                     <input
                       id="birth-date-input"
                       type="date"
                       value={formData.birthDate}
                       onChange={handleDateChange}
-                      className="w-full border-2 border-green-800 rounded p-2 cursor-pointer"
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full border-2 border-green-800 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
+                      placeholder="YYYY-MM-DD"
                     />
                     {formData.birthDate && (
                       <div className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-700 text-sm">
@@ -1045,7 +976,7 @@ const AddIncome = () => {
                   <label className="block text-green-800 font-medium mb-1">ID</label>
                   <select
                     value={formData.id}
-                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                    onChange={handleIdTypeChange}
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
                     <option>Regular</option>
@@ -1177,7 +1108,7 @@ const AddIncome = () => {
                               ) : (
                                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-green-800 text-green-800 text-xs mr-1"></span>
                               )}
-                              <span className="flex-1 text-green-800">{test.testName}</span>
+                              <span className="flex-1 font-medium text-sm sm:text-xs md:text-lg lg:text-lg text-green-800">{test.testName}</span>
                               <div className="relative">
                                 <button
                                   className="text-green-800"
@@ -1429,379 +1360,116 @@ const AddIncome = () => {
         </div>
       )}
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-md w-full max-w-md relative">
-            <div className="bg-green-800 text-white p-3 rounded-t-md flex justify-between items-center">
-              <h2 className="text-xl font-bold">New Test</h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-white hover:text-gray-200"
-              >
-                <X size={24} />
-              </button>
-            </div>
+      {/* Test Queue Modal - Now using reusable component */}
+      <TestQueueModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        queue={queue}
+        formData={testFormData}
+        departments={departments}
+        isProcessing={isTestQueueProcessing}
+        errors={testQueueErrors}
+        isValid={isTestQueueValid}
+        onAddToQueue={addToQueue}
+        onRemoveFromQueue={removeFromQueue}
+        onProcessQueue={handleProcessTestQueue}
+        onUpdateFormField={updateTestFormField}
+        title="Add New Tests"
+      />
 
-            <div className="p-4">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Test Name</label>
-                  <input
-                    type="text"
-                    value={testName}
-                    onChange={(e) => {
-                      setTestName(e.target.value);
-                      setTestForm({ ...testForm, testName: e.target.value });
-                    }}
-                    className="w-full border border-gray-300 rounded p-2"
-                    placeholder="Electrocardiogram"
-                  />
-                </div>
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Date Created</label>
-                  <div className="relative" onClick={() => document.getElementById('new-test-date').showPicker()}>
-                    <input
-                      id="new-test-date"
-                      type="date"
-                      value={testDate}
-                      onChange={(e) => setTestDate(e.target.value)}
-                      className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Test Department</label>
-                  <select
-                    value={testDepartment}
-                    onChange={handleDepartmentChange}
-                    className="w-full border border-gray-300 rounded p-2 appearance-none"
-                    required
-                  >
-                    <option value="">Select department</option>
-                    {Array.isArray(departments) && departments
-                      .filter(dept => dept.status === 'active')
-                      .map(dept => (
-                        <option key={dept.departmentId} value={dept.departmentName}>{dept.departmentName}</option>
-                      ))}
-                    <option value="add-department">+ Add Department</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Price</label>
-                  <input
-                    type="text"
-                    value={price}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (/^\d*\.?\d*$/.test(value) || value === '') {
-                        setPrice(value);
-                      }
-                    }}
-                    className="w-full border border-gray-300 rounded p-2 text-right"
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end mb-4">
-                <button
-                  onClick={handleAddToQueue}
-                  className="bg-green-700 text-white py-2 px-4 rounded"
-                >
-                  Add to Queue
-                </button>
-              </div>
-
-              <div className="overflow-x-auto mb-4">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-2 text-green-800">Test Name</th>
-                      <th className="text-left py-2 px-2 text-green-800">Department</th>
-                      <th className="text-left py-2 px-2 text-green-800">Price</th>
-                      <th className="text-left py-2 px-2 text-green-800">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queue.map((item, index) => (
-                      <tr key={index} className="border-b bg-gray-50">
-                        <td className="py-2 px-2">{item.testName}</td>
-                        <td className="py-2 px-2">{item.department}</td>
-                        <td className="py-2 px-2">{item.price}</td>
-                        <td className="py-2 px-2">{item.created}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-center">
-                <button
-                  onClick={handleConfirm}
-                  disabled={createBatchTestsMutation.isPending}
-                  className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700"
-                >
-                  {createBatchTestsMutation.isPending ? 'Processing...' : 'Confirm'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isReferrerModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded shadow-lg">
-            <div className="bg-green-800 text-white px-4 py-3 flex justify-between items-center sticky top-0 z-10">
-              <h3 className="text-xl font-medium">New Referrer</h3>
-              <button onClick={closeReferrerModal} className="text-white hover:text-gray-200">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">First Name</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={newReferrerData.firstName}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Birthday</label>
-                  <div className="relative" onClick={() => document.getElementById('add-new-referrer-date').showPicker()}>
-                    <input
-                      id="add-new-referrer-date"
-                      type="date"
-                      name="birthday"
-                      value={newReferrerData.birthday}
-                      onChange={handleReferrerInputChange}
-                      className="w-full border border-gray-300 rounded p-2 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={newReferrerData.lastName}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Sex</label>
-                  <div className="relative">
-                    <select
-                      name="sex"
-                      value={newReferrerData.sex}
-                      onChange={handleReferrerInputChange}
-                      className="w-full border border-gray-300 rounded p-2 appearance-none"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
-                        <path d="M7 10l5 5 5-5H7z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Clinic Name</label>
-                  <input
-                    type="text"
-                    name="clinicName"
-                    value={newReferrerData.clinicName}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-green-800 font-medium mb-1">Contact No.</label>
-                  <input
-                    type="text"
-                    name="contactNo"
-                    value={newReferrerData.contactNo}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-green-800 font-medium mb-1">Clinic Address</label>
-                  <input
-                    type="text"
-                    name="clinicAddress"
-                    value={newReferrerData.clinicAddress}
-                    onChange={handleReferrerInputChange}
-                    className="w-full border border-gray-300 rounded p-2"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-gray-300 my-4"></div>
-
-              <div className="flex justify-center">
-                <button
-                  onClick={handleAddNewReferrer}
-                  disabled={addReferrerMutation.isPending}
-                  className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 uppercase font-medium"
-                >
-                  {addReferrerMutation.isPending ? 'SAVING...' : 'CONFIRM'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReferrerModal
+        isOpen={isReferrerModalOpen}
+        onClose={closeReferrerModal}
+        firstName={referrerFirstName}
+        setFirstName={setReferrerFirstName}
+        lastName={referrerLastName}
+        setLastName={setReferrerLastName}
+        birthday={referrerBirthday}
+        setBirthday={setReferrerBirthday}
+        sex={referrerSex}
+        setSex={setReferrerSex}
+        clinicName={referrerClinicName}
+        setClinicName={setReferrerClinicName}
+        clinicAddress={referrerClinicAddress}
+        setClinicAddress={setReferrerClinicAddress}
+        contactNo={referrerContactNo}
+        setContactNo={setReferrerContactNo}
+        validateForm={validateReferrerForm}
+        onConfirm={handleAddNewReferrer}
+        isLoading={addReferrerMutation.isPending}
+        title="New Referrer"
+        mode="add"
+      />
 
       {isTransactionSummaryOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-md w-full max-w-3xl max-h-[85vh] flex flex-col">
-            <div className="bg-green-800 text-white p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
-              <h2 className="text-xl font-bold">Transaction Summary</h2>
-              <button
-                onClick={closeTransactionSummary}
-                className="text-white hover:text-gray-200 focus:outline-none"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 scrollbar-hide"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
-              }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200">
-                <div className="p-3 md:border-r border-gray-200">
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="font-bold text-green-800">First Name:</div>
-                    <div className="col-span-2 text-green-700">{formData.firstName || 'N/A'}</div>
-
-                    <div className="font-bold text-green-800">Last Name:</div>
-                    <div className="col-span-2 text-green-700">{formData.lastName || 'N/A'}</div>
-
-                    <div className="font-bold text-green-800">Referrer:</div>
-                    <div className="col-span-2 text-green-700">
-                      {(() => {
-                        const selectedReferrerId = formData.referrer;
-
-                        if (!selectedReferrerId) return 'Out Patient';
-
-                        const selectedReferrer = referrers.find(r => String(r.referrerId) === String(selectedReferrerId));
-
-                        if (selectedReferrer) {
-                          return `Dr. ${selectedReferrer.lastName || ''} ${selectedReferrer.firstName || ''}`.trim();
-                        } else {
-                          return 'Out Patient';
-                        }
-                      })()}
-                    </div>
-                    <div className='font-bold text-green-800'>MC #:</div>
-                    <div className="col-span-2 text-green-700">{generatedMcNo || 'N/A'}</div>
-                  </div>
-                </div>
-
-                <div className="p-3">
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="font-bold text-green-800">Birth Date:</div>
-                    <div className="col-span-2 text-green-700">
-                      {formData.birthDate ? (
-                        <>
-                          {new Date(formData.birthDate).toLocaleDateString()}
-                          <span className="ml-1 text-gray-700">
-                            (Age: {calculateAge(formData.birthDate)})
-                          </span>
-                        </>
-                      ) : 'N/A'}
-                    </div>
-
-                    <div className="font-bold text-green-800">Sex:</div>
-                    <div className="col-span-2 text-green-700">{formData.sex}</div>
-
-                    <div className="font-bold text-green-800">ID:</div>
-                    <div className="col-span-2 text-green-700">{formData.id}</div>
-                    <div className="font-bold text-green-800">ID #:</div>
-                    <div className="col-span-2 text-green-700">{formData.idNumber || 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse">
-                  <thead className="bg-gray-100 sticky top-0 z-10">
-                    <tr>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Test Name</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Disc.</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Cash</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">GCash</th>
-                      <th className="p-2 text-left border-b border-gray-200 font-bold text-green-800">Bal.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {testsTable.map((test, index) => (
-                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="p-2 border-b border-gray-200">{test.name}</td>
-                        <td className="p-2 border-b border-gray-200">{test.disc}</td>
-                        <td className="p-2 border-b border-gray-200">{parseFloat(test.cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="p-2 border-b border-gray-200">{test.gCash}</td>
-                        <td className="p-2 border-b border-gray-200">{test.bal}</td>
-                      </tr>
-                    ))}
-
-                    {testsTable.length > 0 && (
-                      <tr className="bg-green-100 font-bold">
-                        <td className="p-2 border-b border-gray-200 text-green-800">TOTAL</td>
-                        <td className="p-2 border-b border-gray-200"></td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                          {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.cash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.gCash) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800">
-                            {parseFloat(testsTable.reduce((sum, test) => sum + (parseFloat(test.bal) || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              <button
-                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
-              >
-                Export
-              </button>
-              <button
-                className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
-                onClick={handleConfirmTransaction}
-                disabled={createTransactionMutation.isPending}
-              >
-                {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <TransactionSummaryModal
+          isOpen={isTransactionSummaryOpen}
+          onClose={closeTransactionSummary}
+          transaction={{
+            originalTransaction: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              birthDate: formData.birthDate,
+              sex: formData.sex,
+              idType: formData.id,
+              idNumber: formData.idNumber,
+              referrerId: formData.referrer,
+              TestDetails: testsTable.map(test => {
+                // Find the original test object to get the original price
+                const origTest = tests.find(t => t.testName === test.name || t.testId === test.testId);
+                const originalPrice = origTest ? origTest.price : test.price;
+                
+                // Get the actual discount percentage from the test table
+                // Parse discount percentage (remove % if present)
+                let discountPercentage = test.disc;
+                if (typeof discountPercentage === 'string' && discountPercentage.endsWith('%')) {
+                  discountPercentage = discountPercentage.slice(0, -1);
+                }
+                discountPercentage = parseInt(discountPercentage) || 0;
+                
+                // For display purposes, use original price as discounted price
+                // The PWD/Senior discount is applied only at total transaction level
+                const discountedPrice = parseFloat(originalPrice);
+                
+                // Get payment amounts from the table (these represent the actual amounts paid at original prices)
+                const cashAmount = parseFloat(test.cash) || 0;
+                const gCashAmount = parseFloat(test.gCash) || 0;
+                const balanceAmount = parseFloat(test.bal) || 0;
+                
+                return {
+                  testName: test.name,
+                  discountPercentage,
+                  cashAmount: test.cash,
+                  gCashAmount: test.gCash,
+                  balanceAmount: test.bal,
+                  originalPrice,
+                  discountedPrice: discountedPrice.toFixed(2)
+                };
+              })
+            },
+            id: generatedMcNo
+          }}
+          isEditingSummary={false}
+          editedTransaction={null}
+          isLoading={false}
+          isRefundMode={false}
+          selectedRefunds={{}}
+          referrers={referrers}
+          idTypeOptions={[]}
+          mcNoExists={false}
+          isMcNoChecking={false}
+          mutations={{}}
+          handlers={{}}
+          ConfirmButton={
+            <button
+              className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50"
+              onClick={handleConfirmTransaction}
+              disabled={createTransactionMutation.isPending}
+            >
+              {createTransactionMutation.isPending ? 'Processing...' : 'Confirm'}
+            </button>
+          }
+        />
       )}
 
       {/* Add Discount Modal */}

@@ -3,13 +3,13 @@ import { BsTriangleFill } from 'react-icons/bs';
 import { TbTriangleInvertedFilled } from 'react-icons/tb';
 import { RxAvatar } from 'react-icons/rx';
 import Chart from 'chart.js/auto';
-import Sidebar from '../components/Sidebar';
-import DashboardErrorBoundary from '../components/DashboardErrorBoundary';
+import Sidebar from '../components/dashboard/Sidebar';
+import DashboardErrorBoundary from '../components/dashboard/DashboardErrorBoundary';
 import DateSelector from '../components/transaction/DateSelector';
-import useUserDisplay from '../hooks/useUserDisplay';
-import useAuth  from '../hooks/useAuth';
+import useUserDisplay from '../hooks/dashboard/useUserDisplay';
+import useAuth  from '../hooks/auth/useAuth';
 import { DashboardProvider, useDashboardContext } from '../contexts/DashboardContext';
-import useDashboardData from '../hooks/useDashboardData';
+import useDashboardData from '../hooks/dashboard/useDashboardData';
 import {
   transformDailyIncomeData,
   transformExpensesByDepartment,
@@ -53,6 +53,14 @@ const DashboardContent = () => {
   // Handle date change
   const handleDateChange = (e) => {
     const newDate = new Date(e.target.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    newDate.setHours(0, 0, 0, 0);
+
+    if (newDate > today){
+      return; 
+    }
+
     if (!isNaN(newDate.getTime())) {
       const month = newDate.getMonth() + 1;
       const year = newDate.getFullYear();
@@ -84,6 +92,8 @@ const DashboardContent = () => {
     monthlyNetProfit: null
   });
 
+  const [dailyIncomeLegend, setDailyIncomeLegend] = useState([]);
+
   // Initialize and render charts with memoized dependencies
   useEffect(() => {
     if (!user || isLoading) return;
@@ -96,8 +106,30 @@ const DashboardContent = () => {
       if (dailyIncomeChartRef.current && dailyIncomeData && !loading.dailyIncome) {
         const dailyIncomeCtx = dailyIncomeChartRef.current.getContext('2d');
         const chartData = transformDailyIncomeData(dailyIncomeData);
-        const chartOptions = getLineChartOptions();
-        
+        const chartOptions = {
+          ...getLineChartOptions(),
+          plugins: {
+            ...getLineChartOptions().plugins,
+            tooltip: {
+              ...getLineChartOptions().plugins.tooltip,
+              callbacks: {
+                label: function(context) {
+                  const label = context.dataset.label || '';
+                  return `${label}: ${formatCurrency(context.parsed.y)}`;
+                }
+              }
+            }
+          }
+        };
+
+        setDailyIncomeLegend(
+          chartData.datasets.map(ds => ({
+            label: ds.label,
+            color: ds.borderColor,
+            borderDash: ds.borderDash || [],
+          }))
+        );
+
         chartInstancesRef.current.dailyIncome = new Chart(dailyIncomeCtx, {
           type: 'line',
           data: chartData,
@@ -171,102 +203,149 @@ const DashboardContent = () => {
         <div className='flex flex-col lg:flex-row items-start justify-start gap-4 mb-6'>
 
           {/* Main metrics container */}
-          <div className='flex-1 w-full text-center grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-3 gap-4'>
+          <div className='flex-1 w-full text-center grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
 
-            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
+            <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Revenue */}
-              <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Revenue</h2>
-              <div className="flex items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
+                <h2 className="font-medium text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Revenue</h2>
+                <div 
+                  className="w-4 h-4 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative group"
+                >
+                  i
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <p className="font-semibold mb-1">Total Monthly Revenue</p>
+                    <p>
+                      This represents the total income generated from all transactions for the selected month. 
+                      It includes all patient payments (cash and GCash) minus any outstanding balances. 
+                      PWD/Senior citizen discounts are already applied to the final amounts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {revenueComparison ? (
                   revenueComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" 
-                      title={`Up ${revenueComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600 cursor-help flex-shrink-0" 
+                      title={`Up ${revenueComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : revenueComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" 
-                      title={`Down ${revenueComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-red-600 cursor-help flex-shrink-0" 
+                      title={`Down ${revenueComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full"
-                      title="No change from last month"
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 bg-gray-400 rounded-full cursor-help flex-shrink-0"
+                      title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded"
-                    title="No previous month data available"
+                    className="w-3 h-1 sm:w-4 sm:h-1 lg:w-6 lg:h-1 bg-gray-400 rounded cursor-help flex-shrink-0"
+                    title="No previous month data available for comparison"
                   ></div>
                 )}
-                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
+                <h1 className="text-green-800 font-medium text-sm sm:text-lg lg:text-2xl xl:text-3xl truncate">
                   {loading.monthlyData ? 'Loading...' : formatCurrency(monthlyRevenue)}
                 </h1>
               </div>
             </div>
 
-            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start">
+            <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start">
               {/* Total Expenses */}
-              <h2 className="font-medium mb-2 sm:text-xs md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Total Monthly Expenses</h2>
-              <div className="flex items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
+                <h2 className="font-medium text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">Total Monthly Expenses</h2>
+                <div 
+                  className="w-4 h-4 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative group"
+                >
+                  i
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <p className="font-semibold mb-1">Total Monthly Expenses</p>
+                    <p>
+                      This shows the sum of all recorded expenses for the selected month across all departments. 
+                      It includes operational costs, rebate payments to referrers, equipment purchases, 
+                      salaries, utilities, and other business-related expenditures.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {expensesComparison ? (
                   expensesComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" 
-                      title={`Up ${expensesComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-red-600 cursor-help flex-shrink-0" 
+                      title={`Up ${expensesComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : expensesComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" 
-                      title={`Down ${expensesComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600 cursor-help flex-shrink-0" 
+                      title={`Down ${expensesComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full"
-                      title="No change from last month"
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 bg-gray-400 rounded-full cursor-help flex-shrink-0"
+                      title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded"
-                    title="No previous month data available"
+                    className="w-3 h-1 sm:w-4 sm:h-1 lg:w-6 lg:h-1 bg-gray-400 rounded cursor-help flex-shrink-0"
+                    title="No previous month data available for comparison"
                   ></div>
                 )}
-                <h1 className="text-green-800 font-medium text-lg sm:text-xs md:text-2xl lg:text-3xl">
+                <h1 className="text-green-800 font-medium text-sm sm:text-lg lg:text-2xl xl:text-3xl truncate">
                   {loading.monthlyData ? 'Loading...' : formatCurrency(monthlyExpenses)}
                 </h1>
               </div>
             </div>
 
-            <div className="bg-white border-2 border-green-600 p-4 md:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
+            <div className="bg-white border-2 border-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-md flex flex-col items-start sm:col-span-2 lg:col-span-1">
               {/* Net Profit */}
-              <h2 className="font-medium mb-2 md:mb-4 text-green-800 text-sm md:text-lg lg:text-xl">Net Profit</h2>
-              <div className="flex items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
+                <h2 className="font-medium text-green-800 text-xs sm:text-xs md:text-sm lg:text-base xl:text-lg">
+                  {netProfit >= 0 ? 'Net Profit' : 'Net Loss'}
+                </h2>
+                <div 
+                  className="w-4 h-4 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative group"
+                >
+                  i
+                  <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <p className="font-semibold mb-1">Net Profit/Loss</p>
+                    <p>
+                      This is calculated as: <strong>Total Monthly Revenue - Total Monthly Expenses</strong>. 
+                      A positive value indicates profit (revenue exceeds expenses), while a negative value 
+                      indicates a loss (expenses exceed revenue). This is your actual financial performance for the month.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 w-full">
                 {netProfitComparison ? (
                   netProfitComparison.direction === 'up' ? (
                     <BsTriangleFill 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-green-600" 
-                      title={`Up ${netProfitComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600 cursor-help flex-shrink-0" 
+                      title={`Up ${netProfitComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : netProfitComparison.direction === 'down' ? (
                     <TbTriangleInvertedFilled 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 text-red-600" 
-                      title={`Down ${netProfitComparison.percentage?.toFixed(1)}% from last month`}
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-red-600 cursor-help flex-shrink-0" 
+                      title={`Down ${netProfitComparison.percentage?.toFixed(1)}% compared to previous month`}
                     />
                   ) : (
                     <div 
-                      className="w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 bg-gray-400 rounded-full"
-                      title="No change from last month"
+                      className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 bg-gray-400 rounded-full cursor-help flex-shrink-0"
+                      title="No change compared to previous month"
                     ></div>
                   )
                 ) : (
                   <div 
-                    className="w-4 h-1 sm:w-4 sm:h-1 md:w-6 md:h-1 bg-gray-400 rounded"
-                    title="No previous month data available"
+                    className="w-3 h-1 sm:w-4 sm:h-1 lg:w-6 lg:h-1 bg-gray-400 rounded cursor-help flex-shrink-0"
+                    title="No previous month data available for comparison"
                   ></div>
                 )}
-                <h1 className={`font-medium text-lg md:text-2xl lg:text-3xl ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
+                <h1 className={`font-medium text-sm sm:text-lg lg:text-2xl xl:text-3xl truncate ${netProfit >= 0 ? 'text-green-800' : 'text-red-600'}`}>
                   {loading.monthlyData ? 'Loading...' : formatCurrency(netProfit)}
                 </h1>
               </div>
@@ -291,6 +370,7 @@ const DashboardContent = () => {
                 date={selectedDate}
                 onDateChange={handleDateChange}
                 inputRef={dateInputRef}
+                max={new Date().toISOString().split('T')[0]} // Add this line
                 className="relative flex items-center border-0 rounded-md bg-transparent font-bold text-green-700 text-sm md:text-lg flex-1 md:flex-none cursor-pointer p-3"
                 customStyles={{
                   wrapper: "flex-grow",
@@ -320,10 +400,29 @@ const DashboardContent = () => {
                 {showDailyIncomeTooltip && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
                     <p className="font-semibold mb-1">Daily Income Trend</p>
-                    <p>This chart displays your daily income over the past few days. It helps you identify patterns in revenue generation and track day-to-day financial performance.</p>
+                    <p>
+                      This chart displays your daily income over the past few days, including both collected and collectible income. The "Total Income" line represents the sum of collected and collectible income for each day.
+                    </p>
                   </div>
                 )}
               </div>
+            </div>
+            {/* Color legend for daily income trend */}
+            <div className="flex flex-wrap gap-4 mb-2">
+              {dailyIncomeLegend.map((item, idx) => (
+                <div key={idx} className="flex items-center text-xs">
+                  <span
+                    className="inline-block w-4 h-2 mr-2 rounded"
+                    style={{
+                      background: item.color,
+                      borderBottom: item.borderDash.length ? '2px dashed #333' : '2px solid #333',
+                      borderColor: item.color,
+                      borderStyle: item.borderDash.length ? 'dashed' : 'solid'
+                    }}
+                  ></span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </div>
             <div className="h-48">
               {loading.dailyIncome ? (

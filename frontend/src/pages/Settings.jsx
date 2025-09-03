@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import Sidebar from '../components/Sidebar'
-import TabNavigation from '../components/TabNavigation'
-import useAuth from '../hooks/useAuth'
+import Sidebar from '../components/dashboard/Sidebar'
+import TabNavigation from '../components/dashboard/TabNavigation'
+import useAuth from '../hooks/auth/useAuth'
+import usePasskeyManager from '../hooks/auth/usePasskeyManager'
+import PasskeyModal from '../components/auth/PasskeyModal'
 import { Pencil, Key, Users, Save, X } from 'lucide-react'
 import tabsConfig from '../config/tabsConfig'
 import { userAPI } from '../services/api'
@@ -22,6 +24,9 @@ const Settings = () => {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  // Initialize passkey manager
+  const passkeyManager = usePasskeyManager(user?.userId);
 
   useEffect(() => {
     const currentUser = refreshUser();
@@ -176,7 +181,7 @@ const Settings = () => {
       <ToastContainer />
       
       {/* Main content */}
-      <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
+      <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
         
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
           <TabNavigation tabsConfig={filteredTabs} />
@@ -274,7 +279,10 @@ const Settings = () => {
                         Edit Account
                       </button>
                       
-                      <button className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition">
+                      <button 
+                        onClick={passkeyManager.openChangePasskeyModal}
+                        className="w-48 flex items-center justify-center py-2 px-3 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
+                      >
                         <Key className="w-4 h-4 mr-2" />
                         Change Passkey
                       </button>
@@ -293,6 +301,19 @@ const Settings = () => {
           </div>
         </div>
       </div>
+      
+      {/* Passkey Modal */}
+      <PasskeyModal
+        isOpen={passkeyManager.isModalOpen}
+        onClose={passkeyManager.closeModal}
+        modalType={passkeyManager.modalType}
+        passkeys={passkeyManager.passkeys}
+        selectedPasskey={passkeyManager.selectedPasskey}
+        isRegistering={passkeyManager.isRegistering}
+        onAddPasskey={passkeyManager.addPasskey}
+        onDeletePasskey={passkeyManager.deletePasskey}
+        onSetPrimaryPasskey={passkeyManager.setPrimaryPasskey}
+      />
     </div>
   )
 }

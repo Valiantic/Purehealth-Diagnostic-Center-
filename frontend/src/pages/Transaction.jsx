@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/dashboard/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Download } from 'lucide-react';
-import useAuth from '../hooks/useAuth';
-import Loading from '../components/Loading';
-import { useQueryClient } from '@tanstack/react-query';
+import useAuth from '../hooks/auth/useAuth';
+import Loading from '../components/transaction/Loading';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify'; // Added toast import
 import { calculateRefundTotal } from '../utils/transactionUtils';
 import DateSelector from '../components/transaction/DateSelector';
@@ -15,8 +15,11 @@ import ExpenseTable from '../components/transaction/ExpenseTable';
 import ConfirmationModal from '../components/transaction/ConfirmationModal';
 import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal';
 import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
-import { useTransactionManagement } from '../hooks/useTransactionManagement';
-import { useTransactionData } from '../hooks/useTransactionData';
+import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
+import { useTransactionData } from '../hooks/transaction/useTransactionData';
+import { expenseAPI } from '../services/api';
+import { exportIncomeToExcel } from '../utils/incomeExcelExporter';
+import { exportExpenseToExcel } from '../utils/expenseExcelExporter';
 
 const Transaction = () => {
   const { user, isAuthenticating } = useAuth();
@@ -65,6 +68,19 @@ const Transaction = () => {
     departmentRefundTotals
   } = useTransactionData(selectedDate, expenseDate);
 
+  // Fetch categories for the expense modal
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => expenseAPI.getAllCategories().then(res => res.data),
+    onError: (error) => console.error('Failed to fetch categories:', error),
+  });
+
+  // Process categories data consistently
+  const categories = categoriesData ? 
+    (Array.isArray(categoriesData) ? categoriesData : 
+    (categoriesData.data && Array.isArray(categoriesData.data) ? categoriesData.data : [])) 
+    : [];
+
   // Use the existing transaction management hook
   const {
     openMenuId,
@@ -80,7 +96,6 @@ const Transaction = () => {
     editingId,
     editedTransaction,
     toggleIncomeMenu,
-    toggleExpenseMenu,
     handleDropdownClick,
     handleCancelClick,
     closeConfirmModal, 
@@ -98,7 +113,9 @@ const Transaction = () => {
     toggleRefundMode,
     handleTestDetailChange,
     handleSaveClick,
-    mutations
+    clearRefundAmounts,
+    mutations,
+    refundAmounts
   } = useTransactionManagement(user, selectedDate);
 
   // Process and filter transactions
@@ -110,8 +127,8 @@ const Transaction = () => {
     );
   });
 
-  // Calculate department totals
-  const departmentTotalsData = calculateDepartmentTotals(filteredTransactions);
+  // Calculate department totals with filtered transactions
+  const calculatedTotals = calculateDepartmentTotals(filteredTransactions);
   const departmentsWithValues = getDepartmentsWithValues();
   const { totalGross, totalGCash } = calculateTotalValues(filteredTransactions);
 
@@ -122,8 +139,8 @@ const Transaction = () => {
   // Calculate refund total
   const refundInfo = calculateRefundTotal(filteredTransactions);
   const totalRefundAmount = refundInfo.totalRefundAmount;
-  const totalRefundedTests = refundInfo.refundedTestCount;
-  const totalRefundsToDisplay = totalRefundAmount + (pendingRefundAmount || 0);
+  const exceededRefunds = Object.values(refundAmounts || {}).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  const totalRefundsToDisplay = totalRefundAmount + exceededRefunds + (pendingRefundAmount || 0);
 
   const handleDateChange = (e) => {
     const newDate = new Date(e.target.value);
@@ -151,6 +168,40 @@ const Transaction = () => {
   
   const handleNewExpenses = () => navigate('/add-expenses');
   const handleNewIncome = () => navigate('/add-transaction');
+
+  // Handle Excel export
+  const handleGenerateReport = async () => {
+    try {
+      await exportIncomeToExcel(
+        filteredTransactions,
+        departmentsWithValues,
+        calculatedTotals.departmentTotals,
+        totalGross,
+        totalGCash,
+        totalRefundsToDisplay,
+        selectedDate
+      );
+      toast.success('Income report exported successfully!');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export income report. Please try again.');
+    }
+  };
+
+  // Handle Expense Excel export
+  const handleGenerateExpenseReport = async () => {
+    try {
+      await exportExpenseToExcel(
+        filteredExpenses,
+        totalExpense,
+        expenseDate
+      );
+      toast.success('Expense report exported successfully!');
+    } catch (error) {
+      console.error('Expense export failed:', error);
+      toast.error('Failed to export expense report. Please try again.');
+    }
+  };
 
   const [localExpenseMenuId, setLocalExpenseMenuId] = useState(null);
 
@@ -187,21 +238,77 @@ const Transaction = () => {
     setIsExpenseSummaryOpen(true);
   };
   
+  const getExpenseModalData = () => {
+    if (!selectedExpense) return {};
+    
+    const firstName = selectedExpense.firstName || selectedExpense.name?.split(' ')[0] || '';
+    const lastName = selectedExpense.lastName || selectedExpense.name?.split(' ').slice(1).join(' ') || '';
+    
+    const expenses = selectedExpense.ExpenseItems && selectedExpense.ExpenseItems.length > 0 
+      ? selectedExpense.ExpenseItems.map((item, index) => ({
+          id: item.id || index,
+          paidTo: item.paidTo || firstName + ' ' + lastName,
+          purpose: item.purpose || '',
+          categoryId: item.Category?.categoryId || item.categoryId || '',
+          categoryName: item.Category?.name || 'No Category',
+          amount: parseFloat(item.amount || 0)
+        }))
+      : [{
+          id: 1,
+          paidTo: firstName + ' ' + lastName,
+          purpose: selectedExpense.purpose || selectedExpense.description || '',
+          categoryId: selectedExpense.Category?.categoryId || selectedExpense.categoryId || '',
+          categoryName: selectedExpense.Category?.name || 'No Category', 
+          amount: parseFloat(selectedExpense.amount || 0)
+        }];
+    
+    return {
+      firstName,
+      lastName,
+      selectedDepartment: selectedExpense.departmentId || '',
+      selectedDate: expenseDate.toISOString().split('T')[0],
+      expenses
+    };
+  };
+  
+  const calculateExpenseTotal = () => {
+    const modalData = getExpenseModalData();
+    return modalData.expenses ? modalData.expenses.reduce((total, exp) => total + exp.amount, 0) : 0;
+  };
+  
   const closeExpenseSummary = () => {
     setIsExpenseSummaryOpen(false);
     setSelectedExpense(null);
     setIsEditingExpense(false);
   };
 
-  const handleSaveExpenseChanges = async (updatedExpense) => {
-    if (updatedExpense.isEditing !== undefined) {
-      setIsEditingExpense(updatedExpense.isEditing);
-      return;
-    }
-    
-    closeExpenseSummary();
-    
+  const handleSaveExpenseChanges = async (updatedData) => {
     try {
+      const totalAmount = updatedData.expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+      
+      const expenseUpdateData = {
+        firstName: updatedData.firstName,
+        lastName: updatedData.lastName,
+        departmentId: parseInt(updatedData.selectedDepartment),
+        date: updatedData.selectedDate || expenseDate.toISOString().split('T')[0],
+        totalAmount: totalAmount,
+        ExpenseItems: updatedData.expenses.map(exp => ({
+          id: exp.id,
+          paidTo: exp.paidTo,
+          purpose: exp.purpose,
+          categoryId: parseInt(exp.categoryId) || null,
+          amount: parseFloat(exp.amount),
+          status: exp.status || 'pending'
+        })),
+        userId: user.userId
+      };
+
+      const expenseId = selectedExpense?.expenseId || selectedExpense?.id;
+      if (!expenseId) {
+        throw new Error('No expense ID found for updating');
+      }
+
+      await expenseAPI.updateExpense(expenseId, expenseUpdateData);
       
       await refetchExpenseData(expenseDate);
       
@@ -209,14 +316,11 @@ const Transaction = () => {
         queryKey: ['expenses', expenseDate] 
       });
       
-      setTimeout(() => {
-        refetchExpenseData(expenseDate);
-      }, 500);
-      
-      toast.success('Expense data has been updated');
+      toast.success('Expense updated successfully');
+      closeExpenseSummary();
     } catch (error) {
-      console.error('Failed to refresh expense data:', error);
-      toast.error('Failed to refresh expense data');
+      console.error('Failed to update expense:', error);
+      toast.error(`Failed to update expense: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -299,7 +403,9 @@ const Transaction = () => {
     handleCancelEdit,
     handleEnterEditMode,
     toggleRefundMode,
-    handleRefundSelection
+    handleRefundSelection,
+    clearRefundAmounts,
+    refundAmounts
   };
 
   const refundDisplay = (
@@ -361,7 +467,7 @@ const Transaction = () => {
           <IncomeTable
             filteredTransactions={filteredTransactions}
             departmentsWithValues={departmentsWithValues}
-            departmentTotals={departmentTotals}
+            departmentTotals={calculatedTotals.departmentTotals}
             totalGross={totalGross}
             editingId={editingId}
             editedTransaction={editedTransaction}
@@ -373,7 +479,10 @@ const Transaction = () => {
           <div className="mt-2 flex flex-col md:flex-row justify-between p-2">
             <div className="flex flex-wrap items-center mb-4 md:mb-0">
               {filteredTransactions.length > 0 && (
-                <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
+                <button 
+                  onClick={handleGenerateReport}
+                  className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                >
                   Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
                 </button>
               )}
@@ -407,7 +516,7 @@ const Transaction = () => {
                       DEPOSIT
                     </td>
                     <td className="bg-gray-100 text-green-800 font-medium py-1 px-4 md:px-8 border border-gray-300 text-right">
-                      {Math.max(0, totalGross - totalGCash).toLocaleString(undefined, { 
+                      {Math.max(0, totalGross - totalRefundsToDisplay - totalGCash).toLocaleString(undefined, { 
                         minimumFractionDigits: 2, 
                         maximumFractionDigits: 2 
                       })}
@@ -477,6 +586,18 @@ const Transaction = () => {
             onEditExpense={handleEditExpense}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`} 
           />
+
+          {/* Expense Generate Report Button */}
+          <div className="mt-2 flex justify-start p-2">
+            {filteredExpenses.length > 0 && (
+              <button 
+                onClick={handleGenerateExpenseReport}
+                className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center text-sm md:text-base hover:bg-green-600"
+              >
+                Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       
@@ -508,16 +629,24 @@ const Transaction = () => {
         isPending={mutations?.cancelTransaction?.isPending}
       />
 
-      {/* New Expense Summary Modal */}
+      {/* Expense Summary Modal */}
       {isExpenseSummaryOpen && selectedExpense && (
         <ExpenseSummaryModal
           isOpen={isExpenseSummaryOpen}
           onClose={closeExpenseSummary}
-          expense={selectedExpense}
-          isEditing={isEditingExpense}
+          firstName={getExpenseModalData().firstName}
+          lastName={getExpenseModalData().lastName}
+          selectedDepartment={getExpenseModalData().selectedDepartment}
+          selectedDate={getExpenseModalData().selectedDate}
           departments={departments}
+          categories={categories}
+          expenses={getExpenseModalData().expenses}
+          calculateTotal={calculateExpenseTotal}
           onSave={handleSaveExpenseChanges}
           isLoading={false}
+          isEditing={isEditingExpense}
+          onEnterEditMode={() => setIsEditingExpense(true)}
+          mode="edit"
         />
       )}
 

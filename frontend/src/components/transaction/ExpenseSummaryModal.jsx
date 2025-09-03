@@ -1,486 +1,327 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { expenseAPI } from '../../services/api';
-import { toast } from 'react-toastify';
 
-const ExpenseSummaryModalNew = ({
+const ExpenseSummaryModal = ({
   isOpen,
   onClose,
-  expense,
-  isEditing,
+  firstName,
+  lastName,
+  selectedDepartment,
+  selectedDate,
   departments,
+  categories,
+  expenses,
+  calculateTotal,
+  onConfirm,
   onSave,
-  isLoading
+  isLoading = false,
+  isEditing = false,
+  onEnterEditMode,
+  mode = "confirm"
 }) => {
-  const [editedExpense, setEditedExpense] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [editedData, setEditedData] = useState({
+    firstName: firstName || '',
+    lastName: lastName || '',
+    selectedDepartment: selectedDepartment || '',
+    expenses: expenses || []
+  });
+  const [isEditMode, setIsEditMode] = useState(isEditing);
 
-  // Initialize expense state
   useEffect(() => {
-    if (expense) {
-      const expenseItemsWithIds = expense.ExpenseItems ? 
-        expense.ExpenseItems.map(item => ({
-          ...item,
-          id: item.id || `temp-${Math.random().toString(36).substr(2, 9)}`,
-          status: item.status || 'pending'
-        })) : [];
+    setEditedData({
+      firstName: firstName || '',
+      lastName: lastName || '',
+      selectedDepartment: selectedDepartment || '',
+      expenses: expenses || []
+    });
+    setIsEditMode(isEditing);
+  }, [firstName, lastName, selectedDepartment, expenses, isEditing]);
 
-      setEditedExpense({
-        ...expense,
-        ExpenseItems: expenseItemsWithIds
-      });
-    }
-  }, [expense]);
+  const handleInputChange = (field, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  const handleEnterEditMode = () => {
-    // Toggle edit mode
-    if (typeof onSave === 'function') {
-      onSave({ ...editedExpense, isEditing: true });
+  const handleExpenseChange = (index, field, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      expenses: prev.expenses.map((expense, i) => 
+        i === index ? { ...expense, [field]: value } : expense
+      )
+    }));
+  };
+
+  const handleEnterEdit = () => {
+    setIsEditMode(true);
+    if (onEnterEditMode) {
+      onEnterEditMode();
     }
+  };
+
+  const handleSaveChanges = () => {
+    if (onSave) {
+      onSave(editedData);
+    }
+    setIsEditMode(false);
   };
 
   const handleCancelEdit = () => {
-    // Reset form and exit edit mode
-    setEditedExpense(expense);
-    
-    if (typeof onSave === 'function') {
-      onSave({ ...expense, isEditing: false });
-    }
-  };
-
-  const handleSaveChanges = async () => {
-    try {
-      setIsSaving(true);
-      
-      const totalAmount = editedExpense.ExpenseItems.reduce(
-        (sum, item) => sum + parseFloat(item.amount || 0), 0
-      );
-      
-      // Get the correct expense ID
-      const expenseId = editedExpense.id || editedExpense.expenseId;
-      
-      if (!expenseId) {
-        throw new Error('Expense ID is missing');
-      }
-
-      // Fix for departmentId - ensure it's a number
-      const departmentId = typeof editedExpense.departmentId === 'string' 
-        ? parseInt(editedExpense.departmentId, 10) 
-        : editedExpense.departmentId;
-
-      let formattedDate;
-      try {
-        const today = new Date();
-        formattedDate = today.toISOString().split('T')[0]; 
-      } catch (error) {
-        console.error('Error formatting date:', error);
-        formattedDate = new Date().toDateString();
-      }
-
-      const updatedItems = editedExpense.ExpenseItems.map(item => {
-        return {
-          ...item,
-          id: item.id || undefined, 
-          paidTo: item.paidTo || '',
-          purpose: item.purpose || '',
-          amount: parseFloat(item.amount || 0),
-          status: item.status || 'pending'
-        };
-      });
-
-      const refundedCount = updatedItems.filter(item => item.status === 'refunded').length;
-      const paidCount = updatedItems.filter(item => item.status === 'paid').length;
-      const pendingCount = updatedItems.filter(item => item.status === 'pending').length;
-
-      // Prepare data for API with correct field types
-      const updateData = {
-        name: editedExpense.name || '',
-        departmentId: departmentId,
-        date: formattedDate,
-        totalAmount: totalAmount,
-        ExpenseItems: updatedItems,
-        userId: editedExpense.userId || editedExpense.User?.userId || 1
-      };
-      
-      const response = await expenseAPI.updateExpense(expenseId, updateData);
-      
-      let message = 'Expense updated successfully';
-      if (refundedCount > 0 || paidCount > 0 || pendingCount > 0) {
-        message += `:`;
-        if (refundedCount > 0) message += ` ${refundedCount} refunded,`;
-        if (paidCount > 0) message += ` ${paidCount} paid,`;
-        if (pendingCount > 0) message += ` ${pendingCount} pending`;
-        message = message.replace(/,$/g, '');
-      }
-            
-      const updatedExpenseData = {
-        ...response.data?.data || editedExpense,
-        ExpenseItems: response.data?.data?.ExpenseItems || updatedItems,
-        date: formattedDate,
-        departmentId: departmentId,
-        department: editedExpense.department,
-        Department: editedExpense.Department,
-        isUpdated: true
-      };
-      
-      // Close the modal
-      if (typeof onClose === 'function') {
-        onClose();
-      }
-      
-      if (typeof onSave === 'function') {
-        onSave(updatedExpenseData);
-      }
-    } catch (error) {
-      console.error('Error saving expense:', error);
-      toast.error(`Failed to update expense: ${error.response?.data?.message || error.message || 'Unknown error'}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleInputChange = (e, field) => {
-    setEditedExpense({
-      ...editedExpense,
-      [field]: e.target.value
+    // Reset to original data
+    setEditedData({
+      firstName: firstName || '',
+      lastName: lastName || '',
+      selectedDepartment: selectedDepartment || '',
+      expenses: expenses || []
     });
+    setIsEditMode(false);
   };
 
-  const handleExpenseItemChange = (index, field, value) => {
-    const updatedItems = [...editedExpense.ExpenseItems];
-    
-    // For amount field, only allow numeric input (with decimal point)
-    if (field === 'amount') {
-      // Replace any non-numeric characters (except decimal point)
-      value = value.replace(/[^\d.]/g, '');
-      
-      // Ensure only one decimal point exists
-      const parts = value.split('.');
-      if (parts.length > 2) {
-        value = parts[0] + '.' + parts.slice(1).join('');
-      }
-    }
-    
-    updatedItems[index] = {
-      ...updatedItems[index],
-      [field]: value
-    };
-
-    setEditedExpense({
-      ...editedExpense,
-      ExpenseItems: updatedItems
-    });
+  const calculateEditedTotal = () => {
+    return editedData.expenses.reduce((total, exp) => total + (parseFloat(exp.amount) || 0), 0);
   };
 
-  if (!isOpen || !expense) return null;
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString();
-    } catch(e) {
-      return 'Invalid Date';
-    }
-  };
-
-  // Determine department name
-  const getDepartmentName = () => {
-    if (!expense) return 'N/A';
-    
-    try {
-      if (expense.department) {
-        if (typeof expense.department === 'string') {
-          return expense.department;
-        } else if (typeof expense.department === 'object' && expense.department !== null) {
-          return expense.department.departmentName || expense.department.name || 'N/A';
-        }
-      } else if (expense.departmentName) {
-        return expense.departmentName;
-      } else if (expense.Department && expense.Department.departmentName) {
-        return expense.Department.departmentName;
-      }
-      return 'N/A';
-    } catch (err) {
-      return 'N/A';
-    }
-  };
-
-  const getStatusStyles = (status) => {
-    switch(status) {
-      case 'refunded':
-        return {
-          rowClass: 'bg-gray-200 text-gray-500',
-          textClass: 'line-through text-gray-500',
-          badgeClass: 'bg-red-100 text-red-800 border-red-200'
-        };
-      case 'paid':
-        return {
-          rowClass: 'bg-green-50',
-          textClass: 'text-green-800',
-          badgeClass: 'bg-green-100 text-green-800 border-green-200'
-        };
-      case 'pending':
-      default:
-        return {
-          rowClass: '',
-          textClass: '',
-          badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        };
-    }
-  };
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-      <div className="bg-white rounded-md w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-green-800 text-white p-2 md:p-3 lg:p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
-          <h2 className="text-base md:text-lg lg:text-xl font-bold truncate">
-            {isEditing ? 'Edit Expense' : 'Expense Summary'}
-          </h2>
-  
-          <button
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white w-full max-w-lg rounded-lg shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Modal Header */}
+        <div className='bg-[#02542D] text-white p-2 flex justify-between items-center'>
+          <h2 className="text-lg font-bold ml-2">Expense Summary</h2>
+          <button 
             onClick={onClose}
-            className="text-white hover:text-gray-200 focus:outline-none"
+            className="text-white hover:text-gray-300"
+            disabled={isLoading}
           >
-            <X size={18} className="md:w-5 md:h-5 lg:w-6 lg:h-6" />
+            <X size={20} />
           </button>
         </div>
+        
+        {/* Header Information */}
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-sm border-collapse">
+            <tbody>
+              <tr className="border-b">
+                <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">First Name</td>
+                <td className="p-2">
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600"
+                    />
+                  ) : (
+                    editedData.firstName || 'N/A'
+                  )}
+                </td>
+              </tr>
+              <tr className="border-b">
+                <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Last Name</td>
+                <td className="p-2">
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600"
+                    />
+                  ) : (
+                    editedData.lastName || 'N/A'
+                  )}
+                </td>
+              </tr>
+              <tr className="border-b">
+                <td className="p-2 pl-4 font-medium border-r border-green-700">Department</td>
+                <td className="p-2">
+                  {isEditMode ? (
+                    <select
+                      value={editedData.selectedDepartment}
+                      onChange={(e) => handleInputChange('selectedDepartment', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600"
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map((dept) => (
+                        <option key={dept.departmentId} value={dept.departmentId}>
+                          {dept.departmentName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    (() => {
+                      if (!editedData.selectedDepartment) {
+                        return 'N/A';
+                      }
+                      
+                      const dept = departments.find(d => 
+                        String(d.departmentId) === String(editedData.selectedDepartment)
+                      );
+                      
+                      return dept ? dept.departmentName : 'N/A';
+                    })()
+                  )}
+                </td>
+              </tr>
+              <tr className="border-b">
+                <td className="p-2 pl-4 font-medium border-r border-green-700">Date</td>
+                <td className="p-2">{new Date(selectedDate).toLocaleDateString('en-GB', { 
+                  day: '2-digit', 
+                  month: 'short', 
+                  year: 'numeric' 
+                }).replace(/\s/g, '-').toUpperCase()}</td>
+              </tr>
+            </tbody>
+          </table>
 
-        {isLoading ? (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-green-800 font-semibold">Loading expense data...</div>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-y-auto flex-1 scrollbar-hide"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
-              }}>
-              
-              {/* Expense Information */}
-              <div className="p-2 md:p-4 border-b border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
-                  {/* Payee Name - Takes full width on mobile, 1/2 on desktop */}
-                  <div className="md:col-span-1">
-                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Payee Name</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editedExpense?.name || ''}
-                        onChange={(e) => handleInputChange(e, 'name')}
-                        className="w-full px-2 md:px-3 py-1 md:py-2 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-base"
-                      />
-                    ) : (
-                      <div className="px-2 md:px-3 py-1 md:py-2 bg-gray-50 border border-gray-200 rounded text-gray-800 text-xs md:text-base">
-                        {expense?.name || 'N/A'}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Department - Takes full width on mobile, 1/2 on desktop */}
-                  <div className="md:col-span-1">
-                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Department</label>
-                    {isEditing ? (
-                      <select
-                        value={editedExpense?.departmentId || ''}
-                        onChange={(e) => handleInputChange(e, 'departmentId')}
-                        className="w-full px-2 md:px-3 py-1 md:py-2 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-base"
-                      >
-                        <option value="">Select Department</option>
-                        {departments?.map((dept) => (
-                          <option key={dept.departmentId} value={dept.departmentId}>
-                            {dept.departmentName}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <div className="px-2 md:px-3 py-1 md:py-2 bg-gray-50 border border-gray-200 rounded text-gray-800 text-xs md:text-base">
-                        {getDepartmentName()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Expense Items */}
-              <div className="p-2 md:p-4">
-                <div className="flex justify-between items-center mb-1 md:mb-3">
-                  <h3 className="text-sm md:text-lg font-medium">Expense Items</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse text-xs md:text-sm">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="p-1 md:px-4 md:py-2 text-left text-gray-700 border border-gray-200">Paid To</th>
-                        <th className="p-1 md:px-4 md:py-2 text-left text-gray-700 border border-gray-200">Purpose</th>
-                        <th className="p-1 md:px-4 md:py-2 text-right text-gray-700 border border-gray-200">Amount</th>
-                        <th className="p-1 md:px-4 md:py-2 text-center text-gray-700 border border-gray-200">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {editedExpense?.ExpenseItems?.map((item, index) => {
-                        const { rowClass, textClass, badgeClass } = getStatusStyles(item.status);
-                        
-                        return (
-                          <tr 
-                            key={item.id || index} 
-                            className={`
-                              ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                              ${rowClass}
-                              border-b border-gray-200 hover:bg-gray-50 text-xs md:text-sm
-                            `}
+          {/* Expense Table with Scrollbar */}
+          <div className="max-h-[250px] overflow-y-auto border-b">
+            <table className='w-full border-collapse text-sm'>
+              <thead className="sticky top-0 bg-green-100">
+                <tr>
+                  <th className='text-left p-2 pl-4 border-b'>Paid to</th>
+                  <th className='text-left p-2 border-b'>Purpose</th>
+                  <th className='text-left p-2 border-b'>Category</th>
+                  <th className='text-right p-2 pr-4 border-b'>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editedData.expenses && editedData.expenses.length > 0 ? (
+                  editedData.expenses.map((expense, index) => (
+                    <tr key={expense.id || index} className='border-b'>
+                      <td className='p-2 pl-4'>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={expense.paidTo || ''}
+                            onChange={(e) => handleExpenseChange(index, 'paidTo', e.target.value)}
+                            className="w-full px-1 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600 text-xs"
+                          />
+                        ) : (
+                          expense.paidTo || 'N/A'
+                        )}
+                      </td>
+                      <td className='p-2'>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={expense.purpose || ''}
+                            onChange={(e) => handleExpenseChange(index, 'purpose', e.target.value)}
+                            className="w-full px-1 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600 text-xs"
+                          />
+                        ) : (
+                          expense.purpose || 'N/A'
+                        )}
+                      </td>
+                      <td className='p-2'>
+                        {isEditMode ? (
+                          <select
+                            value={expense.categoryId || ''}
+                            onChange={(e) => {
+                              const selectedCategory = categories?.find(cat => cat.categoryId === parseInt(e.target.value));
+                              handleExpenseChange(index, 'categoryId', e.target.value);
+                              handleExpenseChange(index, 'categoryName', selectedCategory?.name || '');
+                            }}
+                            className="w-full px-1 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600 text-xs"
                           >
-                            <td className="p-1 md:px-4 md:py-2 border border-gray-200">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={item.paidTo || ''}
-                                  onChange={(e) => handleExpenseItemChange(index, 'paidTo', e.target.value)}
-                                  className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                                />
-                              ) : (
-                                <span className={`line-clamp-2 ${textClass}`}>
-                                  {item.paidTo || 'N/A'}
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-1 md:px-4 md:py-2 border border-gray-200">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={item.purpose || ''}
-                                  onChange={(e) => handleExpenseItemChange(index, 'purpose', e.target.value)}
-                                  className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                                />
-                              ) : (
-                                <span className={`line-clamp-2 ${textClass}`}>
-                                  {item.purpose || 'N/A'}
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-1 md:px-4 md:py-2 text-right border border-gray-200">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={item.amount || ''}
-                                  onChange={(e) => handleExpenseItemChange(index, 'amount', e.target.value)}
-                                  className="w-full px-1 md:px-2 py-1 md:py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-right text-xs md:text-sm"
-                                />
-                              ) : (
-                                <div>
-                                  <span className={textClass}>
-                                    {parseFloat(item.amount || 0).toLocaleString(undefined, {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2
-                                    })}
-                                  </span>
-                                  {item.status === 'refunded' && (
-                                    <span className="ml-1 text-xs text-red-500">→ 0.00</span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-1 md:px-4 md:py-2 text-center border border-gray-200">
-                              {isEditing ? (
-                                <select 
-                                  value={item.status || 'pending'}
-                                  onChange={(e) => handleExpenseItemChange(index, 'status', e.target.value)}
-                                  className="w-full px-1 md:px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600 text-xs md:text-sm"
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="paid">Paid</option>
-                                  <option value="refunded">Refunded</option>
-                                </select>
-                              ) : (
-                                <span className={`px-2 py-1 rounded-full text-xs capitalize border ${badgeClass}`}>
-                                  {item.status || 'pending'}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {(!editedExpense?.ExpenseItems || editedExpense.ExpenseItems.length === 0) && (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-4 text-center text-gray-500 border border-gray-200">
-                            No expense items found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                    {editedExpense?.ExpenseItems?.length > 0 && (
-                      <tfoot>
-                        <tr className="bg-green-100">
-                          <td colSpan={2} className="px-4 py-2 font-bold text-green-800 border border-gray-200">Total</td>
-                          <td className="px-4 py-2 text-right font-bold text-green-800 border border-gray-200">
-                            {editedExpense.ExpenseItems
-                              .filter(item => item.status !== 'refunded')
-                              .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0)
-                              .toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                          </td>
-                          <td className="px-4 py-2 text-center border border-gray-200">
-                            <div className="text-xs text-gray-600">
-                              {editedExpense.ExpenseItems.filter(item => item.status === 'paid').length} paid,
-                              {' '}{editedExpense.ExpenseItems.filter(item => item.status === 'pending').length} pending,
-                              {' '}{editedExpense.ExpenseItems.filter(item => item.status === 'refunded').length} refunded
-                            </div>
-                          </td>
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
-              </div>
+                            <option value="">Select Category</option>
+                            {categories?.filter(cat => cat.status === 'active').map((cat) => (
+                              <option key={cat.categoryId} value={cat.categoryId}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          expense.categoryName || 'N/A'
+                        )}
+                      </td>
+                      <td className='p-2 pr-4 text-right'>
+                        {isEditMode ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={expense.amount || ''}
+                            onChange={(e) => handleExpenseChange(index, 'amount', e.target.value)}
+                            className="w-full px-1 py-1 border border-gray-300 rounded focus:outline-none focus:border-green-600 text-xs text-right"
+                          />
+                        ) : (
+                          (expense.amount || 0).toLocaleString()
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-center text-gray-500">
+                      No expenses to display
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Total Row */}
+          <div className="px-4 py-3 flex items-center bg-green-100">
+            <div className="text-sm font-bold text-green-800">TOTAL:</div>
+            <div className="flex-grow"></div>
+            <div className="text-sm font-bold text-green-800 text-right">
+              {isEditMode ? calculateEditedTotal().toLocaleString() : (calculateTotal ? calculateTotal().toLocaleString() : '0.00')}
             </div>
-            
-            {/* Footer buttons */}
-            <div className="flex justify-end gap-1 md:gap-4 p-2 md:p-4 border-t border-gray-200 sticky bottom-0 bg-white">
-              {isEditing ? (
-                <>
-                  <button
-                    className="bg-gray-500 text-white px-2 md:px-8 py-1 md:py-2 rounded text-xs md:text-base hover:bg-gray-600 focus:outline-none"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </button>
-                  
-                  <button
-                    className="bg-green-800 text-white px-2 md:px-8 py-1 md:py-2 rounded text-xs md:text-base hover:bg-green-700 focus:outline-none"
-                    onClick={handleSaveChanges}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="bg-green-800 text-white px-2 md:px-8 py-1 md:py-2 rounded text-xs md:text-base hover:bg-green-700 focus:outline-none"
-                    onClick={handleEnterEditMode}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="bg-green-800 text-white px-2 md:px-8 py-1 md:py-2 rounded text-xs md:text-base hover:bg-green-700 focus:outline-none"
-                  >
-                    Export
-                  </button>
-                </>
-              )}
-            </div>
-          </>
-        )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className='flex justify-end gap-2 sm:gap-6 p-3'>
+          {mode === "confirm" ? (
+            <button 
+              onClick={onConfirm}
+              className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base hover:bg-green-700'
+              disabled={isLoading}
+            >
+              {isLoading ? 'Processing...' : 'Confirm'}
+            </button>
+          ) : (
+            isEditMode ? (
+              <>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isLoading}
+                  className='bg-gray-500 text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base hover:bg-gray-600'
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveChanges}
+                  disabled={isLoading}
+                  className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base disabled:opacity-50 hover:bg-green-700'
+                >
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleEnterEdit}
+                  disabled={isLoading}
+                  className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base disabled:opacity-50 hover:bg-green-700'
+                >
+                  Edit
+                </button>
+                <button 
+                  className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base hover:bg-green-700'
+                  disabled={isLoading}
+                >
+                  Export
+                </button>
+              </>
+            )
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default ExpenseSummaryModalNew;
+export default ExpenseSummaryModal;

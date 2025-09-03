@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react'
-import Sidebar from '../components/Sidebar'
-import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import useAuth from '../hooks/useAuth'
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react'
+import Sidebar from '../components/dashboard/Sidebar'
+import { X } from 'lucide-react';
+import CategoryModal from '../components/add-expenses/CategoryModal';
+import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
+import useAuth from '../hooks/auth/useAuth'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentAPI, expenseAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,21 +12,40 @@ import 'react-toastify/dist/ReactToastify.css';
 const AddExpenses = () => {
 
   const { user, isAuthenticating } = useAuth()
+  const queryClient = useQueryClient()
   const [paidTo, setPaidTo] = useState('');
   const [purpose, setPurpose] = useState('');
   const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
   const [expenses, setExpenses] = useState([]);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState(''); 
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(''); 
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const datePickerRef = useRef(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const handleDateChange = (e) => {
+    const inputDate = e.target.value;
+    const selectedDate = new Date(inputDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) {
+      return;
+    }
+    setSelectedDate(inputDate);
+  };
 
   const [errors, setErrors] = useState({
+    firstName: '',
+    lastName: '',
     paidTo: '',
     purpose: '',
+    category: '',
     amount: ''
   });
 
@@ -33,10 +54,17 @@ const AddExpenses = () => {
     queryFn: () => departmentAPI.getAllDepartments().then(res => {
       return res.data;
     }),
-    onSuccess: (data) => {
-    },
     onError: (error) => console.error('Failed to fetch departments:', error),
-    staleTime: 300000,
+
+  });
+
+  // Fetch categories using expenseAPI
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => expenseAPI.getAllCategories().then(res => {
+      return res.data;
+    }),
+    onError: (error) => console.error('Failed to fetch categories:', error),
   });
 
   // Access the departments data consistently
@@ -45,10 +73,48 @@ const AddExpenses = () => {
     (departmentsData.data && Array.isArray(departmentsData.data) ? departmentsData.data : [])) 
     : [];
 
+  const categories = categoriesData ? 
+    (Array.isArray(categoriesData) ? categoriesData : 
+    (categoriesData.data && Array.isArray(categoriesData.data) ? categoriesData.data : [])) 
+    : [];
+
   // Handle department selection
   const handleDepartmentChange = (e) => {
     const value = e.target.value;
     setSelectedDepartment(value);
+  };
+
+   // Handle category selection
+  const handleCategoryChange = (e) => {
+    const value = e.target.value;
+    if (value === 'add_new') {
+      setShowCategoryModal(true);
+    } else {
+      setCategory(value);
+    }
+  };
+
+  // Handle adding new category using expenseAPI
+  const handleAddCategory = async (newCategory) => {
+    try {
+      const categoryData = {
+        ...newCategory,
+        userId: user?.userId || 1  
+      };
+      
+      const response = await expenseAPI.createCategory(categoryData);
+      if (response.data.success) {
+        toast.success('Category added successfully');
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+        setCategory(response.data.data.categoryId);
+        setShowCategoryModal(false);
+      } else {
+        toast.error('Failed to add category');
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast.error('Error adding category');
+    }
   };
 
   // Always call useEffect regardless of conditions - moved from below
@@ -62,62 +128,6 @@ const AddExpenses = () => {
     }
   }, [departments, selectedDepartment]);
 
-  // Calendar date picker
-  const formatDate = (date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const handleDateSelect = (day) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(day);
-    setSelectedDate(newDate);
-    setShowDatePicker(false);
-  };
-
-  const getDaysInMonth = () => {
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    
-    const days = [];
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
-    return days;
-  };
-
-  const prevMonth = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setSelectedDate(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setSelectedDate(newDate);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
-        setShowDatePicker(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   const handleProcessTransaction = () => {
     if (expenses.length > 0) {
       setShowSummaryModal(true);
@@ -130,29 +140,68 @@ const AddExpenses = () => {
 
   const handleConfirmTransaction = async () => {
     try {
+      setIsConfirming(true);
+      
+      if (!firstName.trim()) {
+        toast.error('First name is required');
+        return;
+      }
+      
+      if (!lastName.trim()) {
+        toast.error('Last name is required');
+        return;
+      }
+      
+      if (!selectedDepartment) {
+        toast.error('Department is required');
+        return;
+      }
+      
+      if (!selectedDate) {
+        toast.error('Date is required');
+        return;
+      }
+      
+      if (expenses.length === 0) {
+        toast.error('Please add at least one expense item');
+        return;
+      }
+
       const expenseData = {
-        name: name || 'Unnamed Expense',
-        departmentId: selectedDepartment,
-        date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        departmentId: parseInt(selectedDepartment),
+        date: selectedDate, 
         expenses: expenses.map(exp => ({
-          paidTo: exp.paidTo,
-          purpose: exp.purpose,
-          amount: exp.amount
+          paidTo: exp.paidTo.trim(),
+          purpose: exp.purpose.trim(),
+          categoryId: parseInt(exp.categoryId),
+          amount: parseFloat(exp.amount)
         })),
         userId: user.userId
       };
       
       const response = await expenseAPI.createExpense(expenseData);
       
-      setShowSummaryModal(false);
-      setExpenses([]);
-      setPaidTo('');
-      setPurpose('');
-      setAmount('');
-      setName('');
-      toast.success('Expense saved successfully');
+      if (response && response.data && response.data.success) {
+        setShowSummaryModal(false);
+        setExpenses([]);
+        setPaidTo('');
+        setPurpose('');
+        setCategory('');
+        setAmount('');
+        setFirstName('');
+        setLastName('');
+        toast.success('Expense saved successfully');
+      } else {
+        toast.error('Failed to save expense - Invalid response');
+      }
     } catch (error) {
-      toast.error('Failed to save expense');
+      console.error('Error saving expense:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error('Failed to save expense: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -160,13 +209,26 @@ const AddExpenses = () => {
   const handleAddExpense = () => {
     // Reset previous errors
     const newErrors = {
+      firstName: '',
+      lastName: '',
       paidTo: '',
       purpose: '',
+      category: '',
       amount: ''
     };
 
     // Validate fields
     let isValid = true;
+
+    if(!firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+      isValid = false;
+    }
+
+    if(!lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+      isValid = false;
+    }
     
     if (!paidTo.trim()) {
       newErrors.paidTo = 'Paid To is required';
@@ -175,6 +237,11 @@ const AddExpenses = () => {
     
     if (!purpose.trim()) {
       newErrors.purpose = 'Purpose is required';
+      isValid = false;
+    }
+
+    if(!category) {
+      newErrors.category = 'Category is required';
       isValid = false;
     }
     
@@ -189,16 +256,20 @@ const AddExpenses = () => {
     setErrors(newErrors);
 
     if (isValid) {
+      const selectedCategoryObj = categories.find(cat => cat.categoryId === parseInt(category));
       const newExpense = {
         id: Date.now(), // Use timestamp as a simple unique id
         paidTo,
         purpose,
+        categoryId: category,
+        categoryName: selectedCategoryObj?.name || 'Unknown Category',
         amount: parseFloat(amount)
       };
       setExpenses([...expenses, newExpense]);
       // Reset form fields
       setPaidTo('');
       setPurpose('');
+      setCategory('');
       setAmount('');
     }
   };
@@ -240,21 +311,41 @@ const AddExpenses = () => {
             </div>
 
             <div className="p-4 space-y-4">
-              {/* Name Field */}
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-gray-700 font-semibold text-sm mb-1"
-                >
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 text-gray-700 focus:outline-none"
-                />
-              </div>
+              {/* First Name Field */}
+                <div>
+                  <label
+                    htmlFor="firstName"
+                    className="block text-gray-700 font-semibold text-sm mb-1"
+                  >
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className={`w-full border ${errors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md py-2 px-3 text-gray-700 focus:outline-none`}
+                  />
+                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                </div>
+
+                {/* Last Name Field */}
+                <div>
+                  <label
+                    htmlFor="lastName"
+                    className="block text-gray-700 font-semibold text-sm mb-1"
+                  >
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className={`w-full border ${errors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md py-2 px-3 text-gray-700 focus:outline-none`}
+                  />
+                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+                </div>
 
               {/* Department Field */}
               <div>
@@ -295,75 +386,16 @@ const AddExpenses = () => {
                 >
                   Date Created
                 </label>
-                <div className='relative'>
-                  <div className="flex items-center border border-gray-300 rounded-md py-2 px-3"
-                   onClick={() => setShowDatePicker(!showDatePicker)}
-                  >
+                <div className="relative">
                   <input
-                    type="text"
                     id="date-created"
-                    value={formatDate(selectedDate)}
-                    readOnly
-                    className="flex-grow text-gray-700 focus:outline-none"
+                    type="date"
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-green-600"
+                    placeholder="YYYY-MM-DD"
                   />
-                  <Calendar className="text-gray-500 ml-2" size={20} />
-                  </div>
-
-                   {showDatePicker && (
-                    <div 
-                      ref={datePickerRef}
-                      className="absolute z-10 mt-1 bg-white border border-gray-300 shadow-lg rounded-md p-2 w-full"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <button 
-                          onClick={prevMonth} 
-                          className="p-1 hover:bg-gray-100 rounded-full"
-                          type="button"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <span className="font-medium">
-                          {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </span>
-                        <button 
-                          onClick={nextMonth} 
-                          className="p-1 hover:bg-gray-100 rounded-full"
-                          type="button"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                      
-                      <div className="grid grid-cols-7 gap-1 text-center">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, index) => (
-                          <div key={`header-${index}`} className="text-xs font-medium text-gray-500 py-1">
-                            {day}
-                          </div>
-                        ))}
-                        
-                        {getDaysInMonth().map((day, index) => (
-                          <div key={`day-${index}`} className="text-center">
-                            {day !== null ? (
-                              <button
-                                key={`btn-${day}`}
-                                type="button"
-                                onClick={() => handleDateSelect(day)}
-                                className={`w-8 h-8 rounded-full text-sm ${
-                                  selectedDate.getDate() === day ? 
-                                  'bg-green-600 text-white' : 
-                                  'hover:bg-gray-200'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ) : (
-                              <div key={`empty-${index}`} className="w-8 h-8"></div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -410,6 +442,42 @@ const AddExpenses = () => {
                 />
                 {errors.purpose && <p className="text-red-500 text-xs mt-1">{errors.purpose}</p>}
               </div>
+
+               {/* Category Field */}
+                <div>
+                  <label 
+                    htmlFor="category"
+                    className='block text-gray-700 font-semibold text-sm mb-1'
+                  >
+                    Category
+                  </label>
+                  <select
+                    id="category"
+                    value={category}
+                    onChange={handleCategoryChange}
+                    className={`w-full border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md py-2 px-3 text-gray-700 focus:outline-none`}
+                  >
+                    <option value="">Select a category</option>
+                    {categoriesLoading ? (
+                      <option value="" disabled>Loading categories...</option>
+                    ) : (
+                      categories.filter(cat => cat.status === 'active')
+                      .map((cat) => (
+                        <option
+                          key={cat.categoryId}
+                          value={cat.categoryId}
+                        >
+                          {cat.name}
+                        </option>
+                      ))
+                    )}
+                    <option value="add_new" className="text-green-600 font-semibold">
+                      + Add New Category
+                    </option>
+                  </select>
+                  {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+                </div>
+
 
               {/* Amount Field and Queue Button */}
               <div className="flex items-center space-x-3">
@@ -464,6 +532,7 @@ const AddExpenses = () => {
                   <tr className="bg-green-100">
                     <th className="border-b py-2 px-4 text-left text-green-800">Paid To</th>
                     <th className="border-b py-2 px-4 text-left text-green-800">Purpose</th>
+                    <th className="border-b py-2 px-4 text-left text-green-800">Category</th>
                     <th className="border-b py-2 px-4 text-right text-green-800">Amount</th>
                     <th className="border-b py-2 px-4"></th>
                   </tr>
@@ -473,6 +542,7 @@ const AddExpenses = () => {
                     <tr key={expense.id}>
                       <td className="border-b py-2 px-4">{expense.paidTo}</td>
                       <td className="border-b py-2 px-4">{expense.purpose}</td>
+                      <td className="border-b py-2 px-4">{expense.categoryName}</td>
                       <td className="border-b py-2 px-4 text-right">
                         {expense.amount.toLocaleString()}
                       </td>
@@ -513,104 +583,37 @@ const AddExpenses = () => {
               </button>
             </div>
 
-            {showSummaryModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white w-full max-w-lg rounded-lg shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
-                  {/* Modal Header */}
-                  <div className='bg-[#02542D] text-white p-2 flex justify-between items-center'>
-                    <h2 className="text-lg font-bold ml-2">Expense Summary</h2>
-                    <button 
-                      onClick={handleCloseSummaryModal}
-                      className="text-white hover:text-gray-300"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                  
-                  {/* Header Information */}
-                  <div className="overflow-auto flex-1">
-                    <table className="w-full text-sm border-collapse">
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 w-28 font-medium border-r border-gray-700">Full Name</td>
-                          <td className="p-2">{name || 'N/A'}</td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 font-medium border-r border-green-700">Department</td>
-                          <td className="p-2">
-                            {(() => {
-                              if (!selectedDepartment) {
-                                return 'N/A';
-                              }
-                              
-                              const dept = departments.find(d => 
-                                String(d.departmentId) === String(selectedDepartment)
-                              );
-                              
-                              return dept ? dept.departmentName : 'N/A';
-                            })()}
-                          </td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="p-2 pl-4 font-medium border-r border-green-700">Date</td>
-                          <td className="p-2">{formatDate(selectedDate)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    {/* Expense Table with Scrollbar */}
-                    <div className="max-h-[250px] overflow-y-auto border-b">
-                      <table className='w-full border-collapse text-sm'>
-                        <thead className="sticky top-0 bg-green-100">
-                          <tr>
-                            <th className='text-left p-2 pl-4 border-b'>Paid to</th>
-                            <th className='text-left p-2 border-b'>Purpose</th>
-                            <th className='text-right p-2 pr-4 border-b'>Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {expenses.map((expense) => (
-                            <tr key={expense.id} className='border-b'>
-                              <td className='p-2 pl-4'>{expense.paidTo}</td>
-                              <td className='p-2'>{expense.purpose}</td>
-                              <td className='p-2 pr-4 text-right'>{expense.amount.toLocaleString()}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    {/* Total Row */}
-                    <div className="px-4 py-3 flex items-center bg-green-100">
-                      <div className="text-sm font-bold text-green-800">TOTAL:</div>
-                      <div className="flex-grow"></div>
-                      <div className="text-sm font-bold text-green-800 text-right">
-                        {calculateTotal().toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className='flex justify-end gap-2 sm:gap-6 p-3'>
-                    <button className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base'>
-                      Export
-                    </button>
-                    <button
-                      onClick={handleConfirmTransaction}
-                      className='bg-[#02542D] text-white py-1 px-4 sm:px-8 rounded text-sm sm:text-base'
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Expense Summary Modal */}
+            <ExpenseSummaryModal
+              isOpen={showSummaryModal}
+              onClose={handleCloseSummaryModal}
+              firstName={firstName}
+              lastName={lastName}
+              selectedDepartment={selectedDepartment}
+              selectedDate={selectedDate}
+              departments={departments}
+              expenses={expenses}
+              calculateTotal={calculateTotal}
+              onConfirm={handleConfirmTransaction}
+              isLoading={isConfirming}
+              mode="confirm"
+            />
           </div>
         </div>
       </div>
 
+            {/* Category Modal */}
+            <CategoryModal
+              isOpen={showCategoryModal}
+              onClose={() => {
+                setShowCategoryModal(false);
+                if (!category) {
+                }
+              }}
+              onAddCategory={handleAddCategory}
+            />
+
     </div>
-    
     </div>
   )
 }

@@ -19,6 +19,10 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: false
         },
+        categoryId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
         amount: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false
@@ -36,6 +40,10 @@ module.exports = (sequelize) => {
             {
                 name: 'idx_expense_item_expense',
                 fields: ['expenseId']
+            },
+            {
+                name: 'idx_expense_item_category',
+                fields: ['categoryId']
             }
         ]
     });

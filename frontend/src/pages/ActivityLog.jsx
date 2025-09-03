@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Download, RefreshCw, X, Calendar } from 'lucide-react'
-import Sidebar from '../components/Sidebar'
-import useAuth from '../hooks/useAuth'
-import TabNavigation from '../components/TabNavigation'
+import Sidebar from '../components/dashboard/Sidebar'
+import useAuth from '../hooks/auth/useAuth'
+import TabNavigation from '../components/dashboard/TabNavigation'
 import tabsConfig from '../config/tabsConfig'
 import { activityLogAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
+import { exportActivityLogToExcel } from '../utils/activityLogExporter'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const ActivityLog = () => {
   const { user, isAuthenticating } = useAuth()
@@ -87,6 +90,16 @@ const ActivityLog = () => {
     setSelectedDate('');
   };
 
+  const handleGenerateActivityLogReport = async () => {
+    try {
+      await exportActivityLogToExcel(logsData, selectedDate, debouncedSearchTerm);
+      toast.success('Activity Log Report exported successfully!');
+    } catch (error) {
+      console.error('Error exporting activity log report:', error);
+      toast.error('Failed to export activity log report. Please try again.');
+    }
+  };
+
   const totalPages = Math.ceil(logsData?.logs?.length / itemsPerPage);
 
   const indexOfLastLog = currentPage * itemsPerPage;
@@ -97,6 +110,17 @@ const ActivityLog = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000} 
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
@@ -194,7 +218,7 @@ const ActivityLog = () => {
                 <div className="border border-green-800 rounded-b">
                 
                   {/* Replaced nested scrolling containers with single responsive table container */}
-                  <div className="overflow-auto w-full" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+                  <div className="hidden md:block overflow-x-auto w-full max-h-[calc(100vh-380px)]">
                     <table className="w-full text-sm table-fixed">
                       <thead className="sticky top-0 bg-green-100 z-10">
                         <tr className="border-b border-green-800">
@@ -254,6 +278,51 @@ const ActivityLog = () => {
                       </tbody>
                     </table>
                   </div>
+
+ {/* Mobile Card View - Visible only on mobile */}
+                  <div className="md:hidden max-h-[calc(100vh-380px)] overflow-y-auto">
+                    {isLoading ? (
+                      <div className="text-center p-4">Loading activity logs...</div>
+                    ) : isError ? (
+                      <div className="text-center p-4 text-red-500">Error: {error.message}</div>
+                    ) : !logsData?.logs?.length ? (
+                      <div className="text-center p-4">No activity logs found</div>
+                    ) : (
+                      <div className="space-y-3 p-3">
+                        {currentLogs.map(log => (
+                          <div key={log.logId} className="bg-gray-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm text-gray-900">
+                                  {log.user?.name || 'System'}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {log.date} • {log.time}
+                                </div>
+                              </div>
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  log.user?.role === 'admin'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-green-100 text-green-800'
+                                }`}
+                              >
+                                {log.user?.role
+                                  ? log.user.role === 'admin'
+                                    ? 'Admin'
+                                    : 'Receptionist'
+                                  : 'SYSTEM'}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-700 leading-relaxed">
+                              {log.details}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                 </div>
 
                 {/* Pagination controls */}
@@ -319,14 +388,19 @@ const ActivityLog = () => {
                 )}
 
 
-                {/* Generate Report button */}
-                <div className="mt-4 flex flex-col md:flex-row justify-end">
-                  <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                    <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-                      Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-                    </button>
+                {/* Generate Report button - Only show if there are logs */}
+                {logsData?.logs?.length > 0 && (
+                  <div className="mt-4 flex flex-col md:flex-row justify-end">
+                    <div className="flex flex-wrap items-center mb-4 md:mb-0">
+                      <button 
+                        onClick={handleGenerateActivityLogReport}
+                        className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
+                      >
+                        Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </>
           )}

@@ -3,22 +3,11 @@ import { MoreVertical, Download, Edit } from 'lucide-react';
 
 const ExpenseTable = ({ 
   filteredExpenses, 
-  totalExpense,
-  editingId,
-  openMenuId,
-  handlers,
   expenseSearchTerm,
   onEditExpense
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   
-  const {
-    handleEditClick,
-    handleSaveClick,
-    handleCancelInlineEdit,
-    toggleExpenseMenu,
-  } = handlers || {};
-
   const toggleDropdown = (id, e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -93,8 +82,9 @@ const ExpenseTable = ({
         <table className="min-w-full border-collapse text-sm md:text-base">
           <thead className="sticky top-0 z-10">
             <tr className="bg-green-800 text-white">
-              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Name</th>
+              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Payee Name</th>
               <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Purpose</th>
+              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Category</th>
               <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Department</th>
               <th className="py-1 md:py-2 px-2 md:px-3 text-right border border-green-200">Amount</th>
               <th className="py-1 md:py-2 px-2 md:px-3 text-center border border-green-200 w-24">Action</th>
@@ -108,9 +98,21 @@ const ExpenseTable = ({
                                     
               if (!hasExpenseItems) {
                 const expenseId = expense.id || expense.expenseId || `exp-${expenseIndex}`;
-                const expenseName = expense.name || '';
+                
+                // Format payee name (firstName + lastName)
+                const payeeName = (() => {
+                  if (expense.firstName || expense.lastName) {
+                    return `${expense.firstName || ''} ${expense.lastName || ''}`.trim();
+                  } else if (expense.name) {
+                    return expense.name;
+                  }
+                  return 'Unknown';
+                })();
                 
                 let expensePurpose = expense.purpose || expense.expensePurpose || expense.description || 'N/A';
+                
+                // Get category name
+                const categoryName = expense.Category?.name || 'No Category';
                 
                 let departmentName = '';
                 try {
@@ -141,7 +143,7 @@ const ExpenseTable = ({
                   >
                     <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
                       <span className={isRefunded ? 'line-through' : ''}>
-                        {expenseName || 'Unknown'}
+                        {payeeName}
                       </span>
                       {isRefunded && (
                         <span className="ml-1 text-xs text-red-500 italic">(Refunded)</span>
@@ -150,6 +152,11 @@ const ExpenseTable = ({
                     <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
                       <span className={`font-medium ${isRefunded ? 'line-through' : ''}`}>
                         {expensePurpose}
+                      </span>
+                    </td>
+                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
+                      <span className={isRefunded ? 'line-through' : ''}>
+                        {categoryName}
                       </span>
                     </td>
                     <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
@@ -201,9 +208,21 @@ const ExpenseTable = ({
               
               return expense.ExpenseItems.map((expenseItem, itemIndex) => {
                 const uniqueItemKey = `${expenseId}-item-${itemIndex}`;
-                const expenseName = expense.name || ''; 
+                
+                // Format payee name (firstName + lastName)
+                const payeeName = (() => {
+                  if (expense.firstName || expense.lastName) {
+                    return `${expense.firstName || ''} ${expense.lastName || ''}`.trim();
+                  } else if (expense.name) {
+                    return expense.name;
+                  }
+                  return 'Unknown';
+                })();
                 
                 let expensePurpose = expenseItem.purpose || expenseItem.description || 'N/A';
+                
+                // Get category name for this specific expense item
+                const categoryName = expenseItem.Category?.name || 'No Category';
                 
                 let departmentName = '';
                 try {
@@ -236,7 +255,7 @@ const ExpenseTable = ({
                   >
                     <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
                       <span className={isRefunded ? 'line-through' : ''}>
-                        {expenseName || 'Unknown'}
+                        {payeeName}
                       </span>
                       {isRefunded && (
                         <span className="ml-1 text-xs text-red-500 italic">(Refunded)</span>
@@ -245,6 +264,11 @@ const ExpenseTable = ({
                     <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
                       <span className={`font-medium ${isRefunded ? 'line-through' : ''}`}>
                         {expensePurpose}
+                      </span>
+                    </td>
+                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
+                      <span className={isRefunded ? 'line-through' : ''}>
+                        {categoryName}
                       </span>
                     </td>
                     <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
@@ -295,7 +319,7 @@ const ExpenseTable = ({
 
             {/* Active expenses total row */}
             <tr className="bg-green-100">
-              <td colSpan="3" className="py-1 md:py-2 px-2 md:px-3 font-bold border border-green-200 text-green-800 text-left">TOTAL:</td>
+              <td colSpan="4" className="py-1 md:py-2 px-2 md:px-3 font-bold border border-green-200 text-green-800 text-left">TOTAL:</td>
               <td className="py-1 md:py-2 px-2 md:px-3 text-right font-bold border border-green-200 text-green-800">
                 {activeTotalExpense.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
@@ -307,20 +331,10 @@ const ExpenseTable = ({
           </tbody>
         </table>
       </div>
-      
-      {/* Footer section with Generate Report button and record count */}
-      <div className="mt-2 flex flex-col md:flex-row justify-between items-center p-2">
-        <div className="flex flex-wrap items-center mb-4 md:mb-0">
-          {filteredExpenses.length > 0 && (
-            <button className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600">
-              Generate Report <Download className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-            </button>
-          )}
-        </div>
+
+      <div className="flex justify-end mt-4 px-2">
         <div className="text-sm text-gray-600">
-          Showing {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}
-          {expenseSearchTerm && sortedExpenses.length > filteredExpenses.length && 
-            <span> (filtered from {sortedExpenses.length})</span>}
+            Showing {filteredExpenses.length} {filteredExpenses.length === 1 ? 'expense' : 'expenses'}
         </div>
       </div>
     </div>
