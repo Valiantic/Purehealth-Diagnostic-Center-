@@ -53,19 +53,41 @@ export const useTransactionData = (selectedDate, expenseDate) => {
     staleTime: 60000,
   });
 
-  // Refunds data query
+  // Refunds data query - only enabled when there are transactions
   const {
     data: refundsData = { data: { departmentRefunds: [], totalRefund: 0 } },
     isLoading: isLoadingRefunds,
   } = useQuery({
     queryKey: ['refunds', selectedDate],
     queryFn: async () => {
-      const response = await revenueAPI.getRefundsByDepartment({
-        date: selectedDate.toISOString().split('T')[0]
-      });
-      return response.data;
+      try {
+        const response = await revenueAPI.getRefundsByDepartment({
+          date: selectedDate.toISOString().split('T')[0]
+        });
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching refunds:', error);
+        // Return empty data structure instead of throwing error
+        return {
+          data: {
+            departmentRefunds: [],
+            totalRefund: 0,
+            departmentCancellations: [],
+            totalCancelled: 0,
+            refundDetails: {
+              deptRevenueTotalRefund: 0,
+              rawTotalRefund: 0,
+              metadataRefundTotal: 0,
+              totalTestRefunds: 0
+            }
+          }
+        };
+      }
     },
     staleTime: 30000,
+    enabled: true, // Always enabled but with error handling
+    retry: 1, // Only retry once
+    retryDelay: 500, // Wait 500ms before retry
   });
 
   // Expenses data query

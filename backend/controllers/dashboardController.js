@@ -12,7 +12,7 @@ const dashboardController = {
       // Calculate revenue from test details that are not refunded, minus any balance amounts
       const monthlyRevenueResult = await TestDetails.findAll({
         attributes: [
-          [sequelize.fn('SUM', sequelize.literal('discountedPrice - balanceAmount')), 'totalRevenue']
+          [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalRevenue']
         ],
         include: [
           {
@@ -20,8 +20,8 @@ const dashboardController = {
             where: {
               transactionDate: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Transaction.transactionDate')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Transaction.transactionDate')), year)
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Transaction\".\"transactionDate\"")), month),
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Transaction\".\"transactionDate\"")), year)
                 ]
               },
               status: {
@@ -47,8 +47,8 @@ const dashboardController = {
             where: {
               date: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Expense\".\"date\"")), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Expense\".\"date\"")), year)
                 ]
               },
               status: {
@@ -116,9 +116,9 @@ const dashboardController = {
       // Get daily income from non-refunded test details in non-cancelled transactions, excluding balance amounts
       const dailyData = await TestDetails.findAll({
         attributes: [
-          [sequelize.fn('DAY', sequelize.col('Transaction.transactionDate')), 'day'],
-          [sequelize.fn('DAYNAME', sequelize.col('Transaction.transactionDate')), 'dayName'],
-          [sequelize.fn('SUM', sequelize.literal('TestDetails.discountedPrice - TestDetails.balanceAmount')), 'totalAmount']
+          [sequelize.fn('EXTRACT', sequelize.literal("DAY FROM \"Transaction\".\"transactionDate\"")), 'day'],
+          [sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day'), 'dayName'],
+          [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalAmount']
         ],
         include: [
           {
@@ -126,8 +126,8 @@ const dashboardController = {
             where: {
               transactionDate: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Transaction.transactionDate')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Transaction.transactionDate')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Transaction\".\"transactionDate\"")), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Transaction\".\"transactionDate\"")), year)
                 ]
               },
               status: {
@@ -142,8 +142,11 @@ const dashboardController = {
             [Op.ne]: 'refunded'
           }
         },
-        group: [sequelize.fn('DAY', sequelize.col('Transaction.transactionDate')), sequelize.fn('DAYNAME', sequelize.col('Transaction.transactionDate'))],
-        order: [[sequelize.fn('DAY', sequelize.col('Transaction.transactionDate')), 'ASC']],
+        group: [
+          sequelize.fn('EXTRACT', sequelize.literal("DAY FROM \"Transaction\".\"transactionDate\"")),
+          sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day')
+        ],
+        order: [[sequelize.fn('EXTRACT', sequelize.literal("DAY FROM \"Transaction\".\"transactionDate\"")), 'ASC']],
         raw: true
       });
 
@@ -232,8 +235,8 @@ const dashboardController = {
             where: {
               date: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                 sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Expense\".\"date\"")), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Expense\".\"date\"")), year)
                 ]
               },
               status: {
@@ -252,7 +255,7 @@ const dashboardController = {
             
       const expensesByDept = await ExpenseItem.findAll({
         attributes: [
-          [sequelize.fn('SUM', sequelize.col('ExpenseItem.amount')), 'totalAmount']
+          [sequelize.fn('SUM', sequelize.col('"ExpenseItem"."amount"')), 'totalAmount']
         ],
         include: [
           {
@@ -260,8 +263,8 @@ const dashboardController = {
             where: {
               date: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Expense\".\"date\"")), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Expense\".\"date\"")), year)
                 ]
               },
               status: {
@@ -288,13 +291,7 @@ const dashboardController = {
             [Op.notIn]: ['paid', 'refunded']
           }
         },
-        group: [
-          'Expense.departmentId', 
-          'Expense->Department.departmentId', 
-          'Expense->Department.departmentName',
-          'Category.categoryId',
-          'Category.name'
-        ],
+        group: ['Expense.departmentId', 'Expense->Department.departmentId', 'Expense->Department.departmentName'],
         having: sequelize.literal('SUM(ExpenseItem.amount) > 0'),
         raw: true
       });
@@ -304,22 +301,12 @@ const dashboardController = {
 
       const chartData = expensesByDept.map(item => {
         
-        // Check if this expense item has a category (like rebates)
-        const categoryName = item['Category.name'] || item['Category->name'];
-        
-        // Special handling for rebates - if category is "Rebates", use that as the display name
-        let displayName;
-        if (categoryName === 'Rebates') {
-          displayName = 'Rebates';
-        } else if (categoryName) {
-          displayName = categoryName;
-        } else {
-          displayName = item['Expense.Department.departmentName'] || 
-                       item['Expense->Department.departmentName'] || 
-                       item['Department.departmentName'] ||
-                       item.departmentName ||
-                       'Other';
-        }
+        // Try different possible paths for department name
+        const departmentName = item['Expense.Department.departmentName'] || 
+                              item['Expense->Department.departmentName'] || 
+                              item['Department.departmentName'] ||
+                              item.departmentName ||
+                              'Other';
         
         return {
           department: displayName,
@@ -354,7 +341,7 @@ const dashboardController = {
         // Get revenue for this month from non-refunded test details in non-cancelled transactions, excluding balance amounts
         const revenueResult = await TestDetails.findAll({
           attributes: [
-            [sequelize.fn('SUM', sequelize.literal('discountedPrice - balanceAmount')), 'totalRevenue']
+            [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalRevenue']
           ],
           include: [
             {
@@ -362,8 +349,8 @@ const dashboardController = {
               where: {
                 transactionDate: {
                   [Op.and]: [
-                    sequelize.where(sequelize.fn('MONTH', sequelize.col('Transaction.transactionDate')), month),
-                    sequelize.where(sequelize.fn('YEAR', sequelize.col('Transaction.transactionDate')), year)
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Transaction\".\"transactionDate\"")), month),
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Transaction\".\"transactionDate\"")), year)
                   ]
                 },
                 status: {
@@ -389,8 +376,8 @@ const dashboardController = {
               where: {
                 date: {
                   [Op.and]: [
-                    sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                    sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("MONTH FROM \"Expense\".\"date\"")), month),
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal("YEAR FROM \"Expense\".\"date\"")), year)
                   ]
                 },
                 status: {

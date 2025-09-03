@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // Add this to prevent duplicate requests for dashboard real time updates
 // Request queue to prevent overwhelming the server
@@ -76,43 +76,58 @@ export const userAPI = {
 
 // WebAuthn API
 export const webauthnAPI = {
+  getCurrentOrigin: () => {
+    return window.location.origin;
+  },
+  
   // Temporary Registration (user not yet created)
   getTempRegistrationOptions: (userData) => {
-    return apiClient.post('/webauthn/registration/temp/options', userData);
+    const clientOrigin = window.location.origin;
+    return apiClient.post('/webauthn/registration/temp/options', { 
+      ...userData, 
+      clientOrigin 
+    });
   },
   verifyTempRegistration: (tempRegistrationId, response, userData) => {
+    const clientOrigin = window.location.origin;
     return apiClient.post('/webauthn/registration/temp/verify', { 
       tempRegistrationId, 
       response, 
-      userData 
+      userData,
+      clientOrigin 
     });
   },
-  
-  // Registration
+    // Registration
   getRegistrationOptions: (userId, isPrimary = true) => {
-    return apiClient.post('/webauthn/registration/options', { userId, isPrimary });
+    const clientOrigin = window.location.origin;
+    console.log('Registration options clientOrigin:', clientOrigin);
+    return apiClient.post('/webauthn/registration/options', { 
+      userId, 
+      isPrimary,
+      clientOrigin
+    });
   },
   verifyRegistration: (userId, response, isPrimary = true) => {
-    return apiClient.post('/webauthn/registration/verify', { userId, response, isPrimary });
+    const clientOrigin = window.location.origin;
+    console.log('Registration verify clientOrigin:', clientOrigin);
+    return apiClient.post('/webauthn/registration/verify', { 
+      userId, 
+      response, 
+      isPrimary,
+      clientOrigin
+    });
   },
-  
-  // Authentication
+    // Authentication
   getAuthenticationOptions: (email) => {
-    return apiClient.post('/webauthn/authentication/options', { email });
+    const clientOrigin = window.location.origin;
+    console.log('Authentication options clientOrigin:', clientOrigin);
+    return apiClient.post('/webauthn/authentication/options', { 
+      email,
+      clientOrigin
+    });
   },
   verifyAuthentication: (userId, response) => {
     return apiClient.post('/webauthn/authentication/verify', { userId, response });
-  },
-  
-  // Passkey Management
-  getUserPasskeys: (userId) => {
-    return apiClient.get(`/webauthn/passkeys/${userId}`);
-  },
-  deletePasskey: (passkeyId) => {
-    return apiClient.delete(`/webauthn/passkeys/${passkeyId}`);
-  },
-  setPrimaryPasskey: (passkeyId) => {
-    return apiClient.put(`/webauthn/passkeys/${passkeyId}/primary`);
   }
 };
 
