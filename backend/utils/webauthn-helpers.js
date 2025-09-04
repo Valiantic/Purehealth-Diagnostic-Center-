@@ -30,40 +30,32 @@ async function generateRegOptions(user, isPrimary = true) {
     });
   }
 
-  try {
-    // Generate registration options
-    const options = await generateRegistrationOptions({
-      rpName,
-      rpID,
-      userID: user.userId.toString(),
-      userName: user.email,
-      userDisplayName: `${user.firstName} ${user.lastName}`,
-      attestationType: 'none',
-      excludeCredentials: userAuthenticators,
-      authenticatorSelection: {
-        // Allow both platform and cross-platform authenticators
-        authenticatorAttachment: undefined, // Let the user choose
-        requireResidentKey: false, // More flexible for device compatibility
-        residentKey: 'preferred', // Prefer resident keys but don't require
-        userVerification: 'preferred' // Prefer user verification but don't require
-      },
-      supportedAlgorithmIDs: [-7, -257], // ES256 and RS256
-      timeout: 60000 // 60 seconds
-    });
-
-    // Save the challenge to the user
-    if (isTemporaryUser) {
-      // For temporary users, we don't call save() but return the challenge
-      return { ...options, challenge: options.challenge };
-    } else {
-      // For real users (Sequelize models), save the challenge to the database
-      user.currentChallenge = options.challenge;
-      await user.save();
-      return options;
+  // Generate registration options
+  const options = await generateRegistrationOptions({
+    rpName,
+    rpID,
+    userID: user.userId.toString(),
+    userName: user.email,
+    userDisplayName: `${user.firstName} ${user.lastName}`,
+    attestationType: 'none',
+    excludeCredentials: userAuthenticators,
+    authenticatorSelection: {
+      // For fingerprint, use platform authenticator
+      authenticatorAttachment: isPrimary ? 'platform' : 'cross-platform',
+      requireResidentKey: true,
+      userVerification: 'preferred'
     }
-  } catch (error) {
-    console.error('Error generating registration options:', error);
-    throw new Error(`Failed to generate registration options: ${error.message}`);
+  });
+
+  // Save the challenge to the user
+  if (isTemporaryUser) {
+    // For temporary users, we don't call save() but return the challenge
+    return { ...options, challenge: options.challenge };
+  } else {
+    // For real users (Sequelize models), save the challenge to the database
+    user.currentChallenge = options.challenge;
+    await user.save();
+    return options;
   }
 }
 
@@ -75,7 +67,7 @@ async function verifyRegResponse(user, response, isPrimary = true) {
     const expectedChallenge = user.currentChallenge;
     
     if (!expectedChallenge) {
-      throw new Error('No challenge found for user. Please request new registration options.');
+      throw new Error('Challenge not found for user');
     }
     
     let verification;
@@ -84,22 +76,11 @@ async function verifyRegResponse(user, response, isPrimary = true) {
         response,
         expectedChallenge,
         expectedOrigin,
-        expectedRPID: rpID,
-        requireUserVerification: false // More flexible for compatibility
+        expectedRPID: rpID
       });
     } catch (error) {
       console.error('Verification error details:', error);
-      
-      // Provide more specific error messages
-      if (error.message.includes('challenge')) {
-        throw new Error('Challenge verification failed. Please try registering again.');
-      } else if (error.message.includes('origin')) {
-        throw new Error('Origin verification failed. Please ensure you are on the correct website.');
-      } else if (error.message.includes('timeout')) {
-        throw new Error('Registration timed out. Please try again.');
-      } else {
-        throw new Error(`Registration verification failed: ${error.message}`);
-      }
+      throw new Error(`Verification failed: ${error.message}`);
     }
 
     const { verified, registrationInfo } = verification;
@@ -132,25 +113,6 @@ async function verifyRegResponse(user, response, isPrimary = true) {
           authenticator: newAuthenticator
         };
       } else {
-        // Check if this credential already exists
-        const existingAuth = await Authenticator.findOne({
-          where: {
-            credentialId: Buffer.from(credentialID).toString('base64url')
-          }
-        });
-
-        if (existingAuth) {
-          throw new Error('This passkey is already registered to an account.');
-        }
-
-        // If adding a new primary passkey, update existing ones
-        if (isPrimary) {
-          await Authenticator.update(
-            { isPrimary: false },
-            { where: { userId: user.userId } }
-          );
-        }
-
         // For existing users, save the authenticator
         const newAuthenticator = await Authenticator.create({
           userId: user.userId,
@@ -170,7 +132,7 @@ async function verifyRegResponse(user, response, isPrimary = true) {
       }
     }
 
-    return { verified: false, error: 'Registration verification failed' };
+    return { verified };
   } catch (error) {
     console.error('Error in verifyRegResponse:', error);
     throw error; // Rethrow for proper error handling up the chain

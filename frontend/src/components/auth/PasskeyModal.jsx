@@ -89,9 +89,6 @@ const PasskeyModal = ({
                   >
                     {isRegistering ? 'Creating...' : 'Add Primary Passkey'}
                   </button>
-                  <div className="mt-2 text-xs text-gray-500">
-                    ⚡ Uses your device's built-in authentication (Face ID, Touch ID, Windows Hello)
-                  </div>
                 </div>
 
                 <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-colors">
@@ -109,20 +106,7 @@ const PasskeyModal = ({
                   >
                     {isRegistering ? 'Creating...' : 'Add Backup Passkey'}
                   </button>
-                  <div className="mt-2 text-xs text-gray-500">
-                    🔑 Can use security keys, other devices, or built-in authentication
-                  </div>
                 </div>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h4 className="font-medium text-green-800 mb-2">📋 Before You Start:</h4>
-                <ol className="text-sm text-green-700 space-y-1 list-decimal list-inside">
-                  <li>Make sure your device has a screen lock (PIN, password, fingerprint, or face unlock)</li>
-                  <li>Ensure you're using a supported browser (Chrome, Edge, Safari, or Firefox)</li>
-                  <li>Be ready to approve the authentication prompt when it appears</li>
-                  <li>Don't navigate away from this page during the process</li>
-                </ol>
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -131,21 +115,6 @@ const PasskeyModal = ({
                   <li>• Adding a new primary passkey will replace your current primary passkey</li>
                   <li>• You can have multiple backup passkeys for redundancy</li>
                   <li>• Make sure your device supports passkeys before proceeding</li>
-                  <li>• When prompted, approve the passkey creation on your device</li>
-                  <li>• The operation may take a few seconds - please be patient</li>
-                </ul>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-800 mb-2">Troubleshooting Tips:</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• If you get a "not allowed" error, try again and approve the passkey prompt</li>
-                  <li>• Make sure you're using a supported browser (Chrome, Edge, Safari, Firefox)</li>
-                  <li>• Ensure your device has a screen lock (PIN, password, or biometrics) enabled</li>
-                  <li>• Try using a different authentication method (fingerprint, face, or security key)</li>
-                  <li>• Close other authentication prompts before trying again</li>
-                  <li>• If using Windows, make sure Windows Hello is set up</li>
-                  <li>• On mobile, ensure biometric authentication is enabled</li>
                 </ul>
               </div>
             </div>

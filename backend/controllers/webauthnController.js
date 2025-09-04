@@ -527,35 +527,6 @@ async function setPrimaryPasskey(req, res) {
   }
 }
 
-// Debug endpoint to check WebAuthn configuration
-async function debugInfo(req, res) {
-  try {
-    const { rpID, rpName, expectedOrigin } = require('../utils/webauthn-config');
-    
-    res.json({
-      success: true,
-      debug: {
-        rpID,
-        rpName,
-        expectedOrigin,
-        userAgent: req.get('User-Agent'),
-        origin: req.get('Origin'),
-        host: req.get('Host'),
-        protocol: req.protocol,
-        secure: req.secure,
-        ip: req.ip
-      }
-    });
-  } catch (error) {
-    console.error('Error getting debug info:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error getting debug info',
-      error: error.message
-    });
-  }
-}
-
 module.exports = {
   tempRegistrationOptions,
   tempRegistrationVerify,
@@ -565,6 +536,5 @@ module.exports = {
   authenticationVerify,
   getUserPasskeys,
   deletePasskey,
-  setPrimaryPasskey,
-  debugInfo
+  setPrimaryPasskey
 };
