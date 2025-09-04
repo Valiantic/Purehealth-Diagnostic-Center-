@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const webauthnController = require('../controllers/webauthnController');
 
+// Debug route (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  router.get('/debug', webauthnController.debugInfo);
+}
+
 // Temporary registration routes (no user created yet)
 router.post('/registration/temp/options', webauthnController.tempRegistrationOptions);
 router.post('/registration/temp/verify', webauthnController.tempRegistrationVerify);

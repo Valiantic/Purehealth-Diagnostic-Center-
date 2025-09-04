@@ -5,6 +5,18 @@ import './index.css'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
+// Import debug utility in development
+if (import.meta.env.DEV) {
+  import('./utils/passkeyDebug.js').then(() => {
+    console.log('🔐 Passkey debugging utilities loaded. Use window.passkeyDebug in console.');
+  });
+  
+  // Also import readiness checker
+  import('./utils/passkeyReadiness.js').then(() => {
+    console.log('🔍 Passkey readiness checker loaded.');
+  });
+}
+
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
