@@ -70,8 +70,8 @@ const dashboardController = {
         where: {
           createdAt: {
             [Op.and]: [
-              sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
-              sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('MONTH FROM "createdAt"')), month),
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('YEAR FROM "createdAt"')), year)
             ]
           }
         }
@@ -153,20 +153,20 @@ const dashboardController = {
       // Get daily collectible income
       const dailyCollectibleData = await CollectibleIncome.findAll({
         attributes: [
-          [sequelize.fn('DAY', sequelize.col('createdAt')), 'day'],
-          [sequelize.fn('DAYNAME', sequelize.col('createdAt')), 'dayName'],
+          [sequelize.fn('EXTRACT', sequelize.literal('DAY FROM "createdAt"')), 'day'],
+          [sequelize.fn('TO_CHAR', sequelize.col('createdAt'), 'Day'), 'dayName'],
           [sequelize.fn('SUM', sequelize.col('totalIncome')), 'totalCollectible']
         ],
         where: {
           createdAt: {
             [Op.and]: [
-              sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
-              sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('MONTH FROM "createdAt"')), month),
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('YEAR FROM "createdAt"')), year)
             ]
           }
         },
-        group: [sequelize.fn('DAY', sequelize.col('createdAt')), sequelize.fn('DAYNAME', sequelize.col('createdAt'))],
-        order: [[sequelize.fn('DAY', sequelize.col('createdAt')), 'ASC']],
+        group: [sequelize.fn('EXTRACT', sequelize.literal('DAY FROM "createdAt"')), sequelize.fn('TO_CHAR', sequelize.col('createdAt'), 'Day')],
+        order: [[sequelize.fn('EXTRACT', sequelize.literal('DAY FROM "createdAt"')), 'ASC']],
         raw: true
       });
 
@@ -309,7 +309,7 @@ const dashboardController = {
                               'Other';
         
         return {
-          department: displayName,
+          department: departmentName,
           amount: parseFloat(item.totalAmount || 0),
           percentage: total > 0 ? parseFloat(((parseFloat(item.totalAmount || 0) / total) * 100).toFixed(2)) : 0
         };
@@ -399,8 +399,8 @@ const dashboardController = {
           where: {
             createdAt: {
               [Op.and]: [
-                sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
-                sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+                sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('MONTH FROM "createdAt"')), month),
+                sequelize.where(sequelize.fn('EXTRACT', sequelize.literal('YEAR FROM "createdAt"')), year)
               ]
             }
           }
