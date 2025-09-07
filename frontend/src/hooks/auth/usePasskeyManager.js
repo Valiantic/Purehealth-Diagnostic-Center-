@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { webauthnAPI } from '../../services/api';
 import { toast } from 'react-toastify';
+import { startRegistration } from '@simplewebauthn/browser';
+import { isWebAuthnSupported, isSecureContext, getWebAuthnErrorMessage } from '../../utils/webauthn';
 
 const usePasskeyManager = (userId) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +63,17 @@ const usePasskeyManager = (userId) => {
       return false;
     }
 
+    // Check WebAuthn support and secure context
+    if (!isWebAuthnSupported()) {
+      toast.error('Your browser does not support passkeys');
+      return false;
+    }
+
+    if (!isSecureContext()) {
+      toast.error('Passkeys require a secure connection (HTTPS or localhost)');
+      return false;
+    }
+
     setIsRegistering(true);
     try {
       // Step 1: Get registration options
@@ -71,39 +84,15 @@ const usePasskeyManager = (userId) => {
 
       const options = optionsResponse.data.options;
 
-      // Step 2: Create credentials using WebAuthn
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          ...options,
-          challenge: new Uint8Array(options.challenge),
-          user: {
-            ...options.user,
-            id: new Uint8Array(options.user.id)
-          },
-          excludeCredentials: options.excludeCredentials?.map(cred => ({
-            ...cred,
-            id: new Uint8Array(cred.id)
-          }))
-        }
-      });
+      // Step 2: Use SimpleWebAuthn browser library for better compatibility
+      const credential = await startRegistration(options);
 
       if (!credential) {
-        throw new Error('Failed to create passkey');
+        throw new Error('Failed to create passkey - User cancelled or device not supported');
       }
 
-      // Step 3: Prepare the response for verification
-      const response = {
-        id: credential.id,
-        rawId: Array.from(new Uint8Array(credential.rawId)),
-        response: {
-          attestationObject: Array.from(new Uint8Array(credential.response.attestationObject)),
-          clientDataJSON: Array.from(new Uint8Array(credential.response.clientDataJSON))
-        },
-        type: credential.type
-      };
-
-      // Step 4: Verify registration
-      const verifyResponse = await webauthnAPI.verifyRegistration(userId, response, isPrimary);
+      // Step 3: Verify registration
+      const verifyResponse = await webauthnAPI.verifyRegistration(userId, credential, isPrimary);
       if (!verifyResponse.data || !verifyResponse.data.success) {
         throw new Error('Failed to verify passkey registration');
       }
@@ -114,9 +103,7 @@ const usePasskeyManager = (userId) => {
       return true;
     } catch (error) {
       console.error('Error adding passkey:', error);
-      const errorMessage = error.name === 'NotAllowedError' 
-        ? 'Passkey registration was cancelled or failed' 
-        : `Failed to add passkey: ${error.message}`;
+      const errorMessage = getWebAuthnErrorMessage(error);
       toast.error(errorMessage);
       return false;
     } finally {
