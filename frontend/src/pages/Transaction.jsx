@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Download } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
+import useProtectedAction from '../hooks/auth/useProtectedAction';
+import WebAuthnModal from '../components/auth/WebAuthnModal';
 import Loading from '../components/transaction/Loading';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify'; // Added toast import
@@ -31,6 +33,24 @@ const Transaction = () => {
   const [isExpenseSummaryOpen, setIsExpenseSummaryOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [isEditingExpense, setIsEditingExpense] = useState(false);
+
+  // WebAuthn protected actions hook
+  const {
+    goToAddTransaction,
+    goToAddExpenses,
+    generateReport,
+    protectFunction,
+    executeProtectedAction,
+    isModalOpen,
+    isAuthenticating: isWebAuthnAuthenticating,
+    error: webAuthnError,
+    pendingAction,
+    executeAuthentication,
+    cancelAuthentication,
+    clearError
+  } = useProtectedAction();
+
+
   
   const idTypeOptions = [
     { value: 'Regular', label: 'Regular' },
@@ -118,6 +138,45 @@ const Transaction = () => {
     refundAmounts
   } = useTransactionManagement(user, selectedDate);
 
+  // Create WebAuthn protected versions of sensitive handlers
+  const protectedHandleEditClick = useCallback(async (transaction) => {
+    const protectedAction = () => {
+      handleEditClick(transaction);
+    };
+    
+    const executeAction = executeProtectedAction(protectedAction, {
+      message: 'Please authenticate to edit this transaction'
+    });
+    
+    await executeAction();
+  }, [handleEditClick, executeProtectedAction]);
+
+  const protectedHandleCancelClick = useCallback(async (transaction) => {
+    const protectedAction = () => {
+      handleCancelClick(transaction);
+    };
+    
+    const executeAction = executeProtectedAction(protectedAction, {
+      message: 'Please authenticate to cancel this transaction'
+    });
+    
+    await executeAction();
+  }, [handleCancelClick, executeProtectedAction]);
+
+  const protectedHandleExpenseEdit = useCallback(async (expense) => {
+    const protectedAction = () => {
+      setSelectedExpense(expense);
+      setIsEditingExpense(true);
+      setIsExpenseSummaryOpen(true);
+    };
+    
+    const executeAction = executeProtectedAction(protectedAction, {
+      message: 'Please authenticate to edit this expense'
+    });
+    
+    await executeAction();
+  }, [setSelectedExpense, setIsEditingExpense, setIsExpenseSummaryOpen, executeProtectedAction]);
+
   // Process and filter transactions
   const processedTransactions = processTransactions(transactions, departments, referrers);
   const filteredTransactions = processedTransactions.filter((transaction) => {
@@ -166,42 +225,61 @@ const Transaction = () => {
     }
   };
   
-  const handleNewExpenses = () => navigate('/add-expenses');
-  const handleNewIncome = () => navigate('/add-transaction');
+  // Protected navigation handlers
+  const handleNewExpenses = goToAddExpenses();
+  const handleNewIncome = goToAddTransaction();
 
-  // Handle Excel export
-  const handleGenerateReport = async () => {
-    try {
-      await exportIncomeToExcel(
-        filteredTransactions,
-        departmentsWithValues,
-        calculatedTotals.departmentTotals,
-        totalGross,
-        totalGCash,
-        totalRefundsToDisplay,
-        selectedDate
-      );
-      toast.success('Income report exported successfully!');
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast.error('Failed to export income report. Please try again.');
+  // Protected Excel export handlers
+  const handleGenerateReport = generateReport(
+    async () => {
+      try {
+        await exportIncomeToExcel(
+          filteredTransactions,
+          departmentsWithValues,
+          calculatedTotals.departmentTotals,
+          totalGross,
+          totalGCash,
+          totalRefundsToDisplay,
+          selectedDate
+        );
+        toast.success('Income report exported successfully!');
+      } catch (error) {
+        console.error('Export failed:', error);
+        toast.error('Failed to export income report. Please try again.');
+        throw error; 
+      }
+    },
+    { 
+      message: 'Please authenticate to generate the income report',
+      onError: (error) => {
+        console.error('Protected report generation failed:', error);
+      }
     }
-  };
+  );
 
-  // Handle Expense Excel export
-  const handleGenerateExpenseReport = async () => {
-    try {
-      await exportExpenseToExcel(
-        filteredExpenses,
-        totalExpense,
-        expenseDate
-      );
-      toast.success('Expense report exported successfully!');
-    } catch (error) {
-      console.error('Expense export failed:', error);
-      toast.error('Failed to export expense report. Please try again.');
+  // Protected Expense Excel export
+  const handleGenerateExpenseReport = generateReport(
+    async () => {
+      try {
+        await exportExpenseToExcel(
+          filteredExpenses,
+          totalExpense,
+          expenseDate
+        );
+        toast.success('Expense report exported successfully!');
+      } catch (error) {
+        console.error('Expense export failed:', error);
+        toast.error('Failed to export expense report. Please try again.');
+        throw error; 
+      }
+    },
+    { 
+      message: 'Please authenticate to generate the expense report',
+      onError: (error) => {
+        console.error('Protected expense report generation failed:', error);
+      }
     }
-  };
+  );
 
   const [localExpenseMenuId, setLocalExpenseMenuId] = useState(null);
 
@@ -376,8 +454,8 @@ const Transaction = () => {
   }
 
   const rowHandlers = {
-    handleEditClick,
-    handleCancelClick,
+    handleEditClick: protectedHandleEditClick,
+    handleCancelClick: protectedHandleCancelClick,
     handleEditChange,
     handleSaveClick,
     handleCancelInlineEdit,
@@ -386,8 +464,8 @@ const Transaction = () => {
   };
 
   const expenseHandlers = {
-    handleEditClick,
-    handleCancelClick,
+    handleEditClick: protectedHandleEditClick,
+    handleCancelClick: protectedHandleCancelClick,
     handleEditChange,
     handleSaveClick,
     handleCancelInlineEdit,
@@ -583,7 +661,7 @@ const Transaction = () => {
               toggleExpenseMenu: null
             }}
             expenseSearchTerm={expenseSearchTerm}
-            onEditExpense={handleEditExpense}
+            onEditExpense={protectedHandleExpenseEdit}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`} 
           />
 
@@ -649,6 +727,17 @@ const Transaction = () => {
           mode="edit"
         />
       )}
+
+      {/* WebAuthn Authentication Modal */}
+      <WebAuthnModal
+        isOpen={isModalOpen}
+        isAuthenticating={isWebAuthnAuthenticating}
+        error={webAuthnError}
+        message={pendingAction?.message}
+        onAuthenticate={executeAuthentication}
+        onCancel={cancelAuthentication}
+        onClearError={clearError}
+      />
 
       {/* ToastContainer for notifications */}
       <ToastContainer

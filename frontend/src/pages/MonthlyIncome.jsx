@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
+import useProtectedAction from '../hooks/auth/useProtectedAction'
+import WebAuthnModal from '../components/auth/WebAuthnModal'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify';
@@ -12,6 +14,16 @@ import 'react-toastify/dist/ReactToastify.css';
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
+  const {
+    goToAddTransaction,
+    isModalOpen,
+    isAuthenticating: isWebAuthnAuthenticating,
+    error: webAuthnError,
+    pendingAction,
+    executeAuthentication,
+    cancelAuthentication,
+    clearError
+  } = useProtectedAction()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); 
   const [selectedCollectible, setSelectedCollectible] = useState(null);
@@ -145,9 +157,9 @@ const Monthly = () => {
     }
   };
 
-  const handleAddIncome = () => {
-    navigate('/add-transaction')
-  }
+  const handleAddIncome = goToAddTransaction({
+    message: 'Please authenticate to add a new transaction'
+  })
 
   const handleAddCollectibles = () => {
     setModalMode('add');
@@ -570,6 +582,17 @@ const Monthly = () => {
         userId={user?.userId || user?.id}
         mode={modalMode}
         initialData={selectedCollectible}
+      />
+      
+      {/* WebAuthn Authentication Modal */}
+      <WebAuthnModal
+        isOpen={isModalOpen}
+        isAuthenticating={isWebAuthnAuthenticating}
+        error={webAuthnError}
+        message={pendingAction?.message}
+        onAuthenticate={executeAuthentication}
+        onCancel={cancelAuthentication}
+        onClearError={clearError}
       />
       
       {/* Close dropdown menus when clicking outside */}
