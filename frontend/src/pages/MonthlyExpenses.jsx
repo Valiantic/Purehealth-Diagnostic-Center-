@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/dashboard/Sidebar'
 import { ChevronLeft, ChevronRight, CirclePlus } from 'lucide-react'
 import useAuth from '../hooks/auth/useAuth'
+import useProtectedAction from '../hooks/auth/useProtectedAction'
+import WebAuthnModal from '../components/auth/WebAuthnModal'
 import { monthlyExpenseAPI, departmentAPI } from '../services/api'
 import { toast } from 'react-toastify'
 import { exportMonthlyExpensesToExcel } from '../utils/monthlyExpensesExporter'
@@ -10,6 +12,16 @@ import { exportMonthlyExpensesToExcel } from '../utils/monthlyExpensesExporter'
 const MonthlyExpenses = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
+  const {
+    goToAddExpenses,
+    isModalOpen,
+    isAuthenticating: isWebAuthnAuthenticating,
+    error: webAuthnError,
+    pendingAction,
+    executeAuthentication,
+    cancelAuthentication,
+    clearError
+  } = useProtectedAction()
   
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
@@ -92,9 +104,9 @@ const MonthlyExpenses = () => {
     }
   };
 
-  const handleAddExpense = () => {
-    navigate('/add-expenses')
-  }
+  const handleAddExpense = goToAddExpenses({
+    message: 'Please authenticate to add new expenses'
+  })
 
   const handlePrevMonth = () => {
     setCurrentDate(prev => {
@@ -523,6 +535,17 @@ const MonthlyExpenses = () => {
           )}
         </div>
       </div>
+      
+      {/* WebAuthn Authentication Modal */}
+      <WebAuthnModal
+        isOpen={isModalOpen}
+        isAuthenticating={isWebAuthnAuthenticating}
+        error={webAuthnError}
+        message={pendingAction?.message}
+        onAuthenticate={executeAuthentication}
+        onCancel={cancelAuthentication}
+        onClearError={clearError}
+      />
       
       {/* Close dropdown menus when clicking outside */}
       {activeMenu && (
