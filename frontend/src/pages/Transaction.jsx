@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import Income from '../assets/icons/income_logo.png';
 import Expense from '../assets/icons/expense_logo.png';
 import { Download } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
+import useProtectedAction from '../hooks/auth/useProtectedAction';
+import WebAuthModal from '../components/auth/WebAuthModal';
 import Loading from '../components/transaction/Loading';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify'; // Added toast import
@@ -31,6 +33,18 @@ const Transaction = () => {
   const [isExpenseSummaryOpen, setIsExpenseSummaryOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [isEditingExpense, setIsEditingExpense] = useState(false);
+
+  // WebAuthn protected actions hook
+  const {
+    executeProtectedAction,
+    isModalOpen,
+    isAuthenticating: isWebAuthnAuthenticating,
+    error: webAuthnError,
+    pendingAction,
+    executeAuthentication,
+    cancelAuthentication,
+    clearError
+  } = useProtectedAction();
   
   const idTypeOptions = [
     { value: 'Regular', label: 'Regular' },
@@ -117,6 +131,19 @@ const Transaction = () => {
     mutations,
     refundAmounts
   } = useTransactionManagement(user, selectedDate);
+
+  // Protected refund mode handler
+  const protectedToggleRefundMode = useCallback(async () => {
+    const protectedAction = () => {
+      toggleRefundMode();
+    };
+    
+    const executeAction = executeProtectedAction(protectedAction, {
+      message: 'Please authenticate to access refund mode'
+    });
+    
+    await executeAction();
+  }, [toggleRefundMode, executeProtectedAction]);
 
   // Process and filter transactions
   const processedTransactions = processTransactions(transactions, departments, referrers);
@@ -402,7 +429,7 @@ const Transaction = () => {
     handleSaveEdit,
     handleCancelEdit,
     handleEnterEditMode,
-    toggleRefundMode,
+    toggleRefundMode: protectedToggleRefundMode,
     handleRefundSelection,
     clearRefundAmounts,
     refundAmounts
@@ -649,6 +676,17 @@ const Transaction = () => {
           mode="edit"
         />
       )}
+
+      {/* WebAuthn Authentication Modal */}
+      <WebAuthModal
+        isOpen={isModalOpen}
+        isAuthenticating={isWebAuthnAuthenticating}
+        error={webAuthnError}
+        message={pendingAction?.message}
+        onAuthenticate={executeAuthentication}
+        onCancel={cancelAuthentication}
+        onClearError={clearError}
+      />
 
       {/* ToastContainer for notifications */}
       <ToastContainer

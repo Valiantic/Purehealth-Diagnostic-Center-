@@ -74,12 +74,7 @@ const TransactionSummaryModal = ({
           </div>
         ) : (
           <>
-            <div className="overflow-y-auto flex-1 scrollbar-hide"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch'
-              }}>
+            <div className="overflow-y-auto flex-1 scrollbar">
               {isEditingSummary && isRefundMode && (
                 <div className="bg-red-50 p-3 border-l-4 border-red-500 mb-3">
                   <h3 className="text-red-700 font-bold">Refund Mode Active</h3>
