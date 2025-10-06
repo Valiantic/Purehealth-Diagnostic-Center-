@@ -973,7 +973,7 @@ const AddIncome = () => {
 
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
-                  <label className="block text-green-800 font-medium mb-1">ID</label>
+                  <label className="block text-green-800 font-medium mb-1">Discount Type</label>
                   <select
                     value={formData.id}
                     onChange={handleIdTypeChange}
