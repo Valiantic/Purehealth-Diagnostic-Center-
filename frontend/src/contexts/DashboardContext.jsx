@@ -6,6 +6,8 @@ const initialState = {
   monthlyRevenue: 0,
   monthlyExpenses: 0,
   netProfit: 0,
+  transactionCount: 0,
+  transactionComparison: null,
   
   // Previous month data for comparison
   previousMonthRevenue: 0,
@@ -64,6 +66,7 @@ const actionTypes = {
   SET_PERIOD: 'SET_PERIOD',
   CLEAR_ERRORS: 'CLEAR_ERRORS',
   UPDATE_COMPARISONS: 'UPDATE_COMPARISONS'
+  ,SET_TRANSACTION_DATA: 'SET_TRANSACTION_DATA'
 };
 
 // Helper function to calculate comparison
@@ -116,6 +119,8 @@ const dashboardReducer = (state, action) => {
         monthlyRevenue: action.payload.monthlyRevenue,
         monthlyExpenses: action.payload.monthlyExpenses,
         netProfit: action.payload.netProfit,
+        transactionCount: typeof action.payload.transactionCount === 'number' ? action.payload.transactionCount : 0,
+        transactionComparison: action.payload.transactionComparison || null,
         loading: {
           ...state.loading,
           monthlyData: false
@@ -124,6 +129,12 @@ const dashboardReducer = (state, action) => {
           ...state.errors,
           monthlyData: null
         }
+      };
+    case actionTypes.SET_TRANSACTION_DATA:
+      return {
+        ...state,
+        transactionCount: typeof action.payload.transactionCount === 'number' ? action.payload.transactionCount : 0,
+        transactionComparison: action.payload.transactionComparison || null
       };
       
     case actionTypes.SET_PREVIOUS_MONTH_DATA:
