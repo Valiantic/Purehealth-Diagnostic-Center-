@@ -7,9 +7,8 @@ const dashboardController = {
   getMonthlyData: async (req, res) => {
     try {
       const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
-      
+
       // Get monthly revenue from active transactions only (exclude cancelled)
-      // Calculate revenue from test details that are not refunded, minus any balance amounts
       const monthlyRevenueResult = await TestDetails.findAll({
         attributes: [
           [sequelize.fn('SUM', sequelize.literal('discountedPrice - balanceAmount')), 'totalRevenue']
@@ -77,12 +76,52 @@ const dashboardController = {
         }
       });
 
+      // Get transaction count for current month
+      const transactionCount = await Transaction.count({
+        where: {
+          status: { [Op.ne]: 'cancelled' },
+          transactionDate: {
+            [Op.and]: [
+              sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), month),
+              sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), year)
+            ]
+          }
+        }
+      });
+
+      // Get transaction count for previous month
+      let prevMonth = month - 1;
+      let prevYear = year;
+      if (prevMonth < 1) {
+        prevMonth = 12;
+        prevYear = year - 1;
+      }
+      const prevTransactionCount = await Transaction.count({
+        where: {
+          status: { [Op.ne]: 'cancelled' },
+          transactionDate: {
+            [Op.and]: [
+              sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), prevMonth),
+              sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), prevYear)
+            ]
+          }
+        }
+      });
+
+      // Calculate transaction comparison
+      let transactionComparison = null;
+      if (prevTransactionCount > 0) {
+        const diff = transactionCount - prevTransactionCount;
+        const percentage = (diff / prevTransactionCount) * 100;
+        transactionComparison = {
+          direction: percentage > 0 ? 'up' : percentage < 0 ? 'down' : 'same',
+          percentage: Math.abs(percentage)
+        };
+      }
+
       const revenueAmount = parseFloat(monthlyRevenueResult[0]?.totalRevenue || 0);
       const collectibleAmount = parseFloat(monthlyCollectibleIncome || 0);
       const totalRevenue = revenueAmount + collectibleAmount;
-
-      // Total monthly expenses should only be what's actually recorded in ExpenseItems
-      // This already includes rebates when they are properly recorded by the rebate service
       const totalMonthlyExpenses = parseFloat(monthlyExpenses || 0);
       const netProfit = totalRevenue - totalMonthlyExpenses;
 
@@ -94,6 +133,8 @@ const dashboardController = {
           collectibleIncome: collectibleAmount,
           monthlyExpenses: totalMonthlyExpenses,
           netProfit: netProfit,
+          transactionCount,
+          transactionComparison,
           month: month,
           year: year
         }
