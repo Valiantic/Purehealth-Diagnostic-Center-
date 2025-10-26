@@ -33,7 +33,7 @@ const DashboardContent = () => {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const dateInputRef = useRef(null);
 
-  // Dashboard data hook
+  // Dashboard data hook (add selectedDate as dependency to ensure refresh)
   const {
     monthlyRevenue,
     monthlyExpenses,
@@ -48,7 +48,7 @@ const DashboardContent = () => {
     netProfitComparison,
     transactionCount,
     transactionComparison,
-  } = useDashboardData();
+  } = useDashboardData(selectedDate);
 
   // Handle date change
   const handleDateChange = (e) => {
@@ -77,18 +77,18 @@ const DashboardContent = () => {
   const [showExpensesTooltip, setShowExpensesTooltip] = useState(false);
   const [showNetProfitTooltip, setShowNetProfitTooltip] = useState(false);
   
-  // Chart legend data
+  // Chart legend data for Expenses by Category (horizontal bar)
   const [expenseLegendData, setExpenseLegendData] = useState([]);
   
   // Chart references
   const dailyIncomeChartRef = useRef(null);
-  const expensesByDepartmentChartRef = useRef(null);
+  const expensesCategoryBarRef = useRef(null);
   const monthlyNetProfitChartRef = useRef(null);
   
   // Chart instances
   const chartInstancesRef = useRef({
     dailyIncome: null,
-    expensesByDepartment: null,
+    expensesCategoryBar: null,
     monthlyNetProfit: null
   });
 
@@ -103,6 +103,7 @@ const DashboardContent = () => {
     });
     
     const renderTimeout = setTimeout(() => {
+      // Income Trend Line Chart
       if (dailyIncomeChartRef.current && dailyIncomeData && !loading.dailyIncome) {
         const dailyIncomeCtx = dailyIncomeChartRef.current.getContext('2d');
         const chartData = transformDailyIncomeData(dailyIncomeData);
@@ -121,7 +122,6 @@ const DashboardContent = () => {
             }
           }
         };
-
         setDailyIncomeLegend(
           chartData.datasets.map(ds => ({
             label: ds.label,
@@ -129,36 +129,81 @@ const DashboardContent = () => {
             borderDash: ds.borderDash || [],
           }))
         );
-
         chartInstancesRef.current.dailyIncome = new Chart(dailyIncomeCtx, {
           type: 'line',
           data: chartData,
           options: chartOptions
         });
       }
-      
-      // Monthly Expenses by Department Pie Chart
-      if (expensesByDepartmentChartRef.current && expensesByDepartment && !loading.expensesByDepartment) {
-        const expensesCtx = expensesByDepartmentChartRef.current.getContext('2d');
-        const chartData = transformExpensesByDepartment(expensesByDepartment);
-        const chartOptions = getPieChartOptions();
-        
-        // Store legend data for rendering
-        setExpenseLegendData(chartData.legendData || []);
-        
-        chartInstancesRef.current.expensesByDepartment = new Chart(expensesCtx, {
-          type: 'pie',
+
+      // Expenses by Category Horizontal Bar Chart
+      if (expensesCategoryBarRef.current && expensesByDepartment && !loading.expensesByDepartment) {
+        // Transform data for horizontal bar chart
+        const categories = expensesByDepartment.map(item => item.category || item.department || 'Category');
+        const amounts = expensesByDepartment.map(item => item.amount || 0);
+        const total = amounts.reduce((sum, val) => sum + val, 0);
+        const percentages = amounts.map(val => total > 0 ? Math.round((val / total) * 100) : 0);
+        const defaultColors = ["#15803d", "#22c55e", "#16a34a", "#65a30d", "#166534", "#84cc16", "#4ade80", "#22d3ee", "#facc15", "#eab308"];
+        const colors = expensesByDepartment.map((item, idx) => item.color || defaultColors[idx % defaultColors.length]);
+        setExpenseLegendData(categories.map((label, idx) => ({ label, percentage: percentages[idx], color: colors[idx], amount: amounts[idx] })));
+
+        const chartData = {
+          labels: categories,
+          datasets: [
+            {
+              label: 'Expenses',
+              data: amounts,
+              backgroundColor: colors,
+              borderRadius: 8,
+              barPercentage: 0.7,
+              categoryPercentage: 0.7,
+            }
+          ]
+        };
+        const chartOptions = {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${formatCurrency(context.parsed.x)} (${percentages[context.dataIndex]}%)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  // Show as 'k' for thousands
+                  return value >= 1000 ? `${value/1000}k` : value;
+                },
+                color: '#374151',
+                font: { size: 12 }
+              },
+              grid: { color: '#e5e7eb' }
+            },
+            y: {
+              ticks: { color: '#374151', font: { size: 13, weight: 'bold' } },
+              grid: { display: false }
+            }
+          }
+        };
+        chartInstancesRef.current.expensesCategoryBar = new Chart(expensesCategoryBarRef.current.getContext('2d'), {
+          type: 'bar',
           data: chartData,
           options: chartOptions
         });
       }
-      
+
       // Monthly Net Profit Bar Chart
       if (monthlyNetProfitChartRef.current && monthlyProfitData && !loading.monthlyProfit) {
         const profitCtx = monthlyNetProfitChartRef.current.getContext('2d');
         const chartData = transformMonthlyProfitData(monthlyProfitData);
         const chartOptions = getBarChartOptions();
-        
         chartInstancesRef.current.monthlyNetProfit = new Chart(profitCtx, {
           type: 'bar',
           data: chartData,
@@ -175,14 +220,17 @@ const DashboardContent = () => {
       });
     };
   }, [
-    user, 
-    isLoading, 
-    dailyIncomeData, 
-    expensesByDepartment, 
+    user,
+    isLoading,
+    dailyIncomeData,
+    expensesByDepartment,
     monthlyProfitData,
     loading.dailyIncome,
     loading.expensesByDepartment,
-    loading.monthlyProfit
+    loading.monthlyProfit,
+    selectedDate,
+    currentMonth,
+    currentYear
   ]);
 
   if (isAuthenticating) {
@@ -229,7 +277,7 @@ const DashboardContent = () => {
         <div className="mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Revenue */}
-            <div className="bg-white rounded shadow-sm p-4">
+            <div className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4">
               <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">Total Revenue</h3>
               <div className="flex items-center justify-between">
                 <div>
@@ -254,7 +302,7 @@ const DashboardContent = () => {
             </div>
 
             {/* Operating Cost */}
-            <div className="bg-white rounded shadow-sm p-4">
+            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
               <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">Operating Cost</h3>
               <div className="flex items-center justify-between">
                 <div>
@@ -279,7 +327,7 @@ const DashboardContent = () => {
             </div>
 
             {/* Total Transactions */}
-            <div className="bg-white rounded shadow-sm p-4">
+            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
               <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">Total Transactions</h3>
               <div className="flex items-center justify-between">
                 <div>
@@ -306,7 +354,7 @@ const DashboardContent = () => {
             </div>
 
             {/* Net Profit */}
-            <div className="bg-white rounded shadow-sm p-4">
+            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
               <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">{netProfit >= 0 ? 'Net Profit' : 'Net Loss'}</h3>
               <div className="flex items-center justify-between">
                 <div>
@@ -332,46 +380,83 @@ const DashboardContent = () => {
           </div>
         </div>
               
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Daily Income Trend Chart */}
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-medium text-gray-700">Daily Income Trend</h3>
-              <div 
-                className="w-5 h-5 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative"
-                onMouseEnter={() => setShowDailyIncomeTooltip(true)}
-                onMouseLeave={() => setShowDailyIncomeTooltip(false)}
-              >
-                i
-                {showDailyIncomeTooltip && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
-                    <p className="font-semibold mb-1">Daily Income Trend</p>
-                    <p>
-                      This chart displays your daily income over the past few days, including both collected and collectible income. The "Total Income" line represents the sum of collected and collectible income for each day.
-                    </p>
+        {/* Dashboard Middle Row: Monthly Progress & Expenses by Category (Left), Income Trend (Right) */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Left Column: Monthly Progress and Expenses by Category stacked */}
+          <div className="flex flex-col gap-4 h-full justify-start">
+            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2">
+              <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-1">Monthly Progress</h3>
+              {(() => {
+                const now = new Date();
+                const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+                const currentDay = now.getMonth() + 1 === currentMonth && now.getFullYear() === currentYear ? now.getDate() : daysInMonth;
+                const percent = Math.round((currentDay / daysInMonth) * 100);
+                return (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <div className="text-3xl font-extrabold text-black">{percent}%</div>
+                      <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div
+                          className="h-4 rounded-full bg-green-700 transition-all duration-300"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-700 mb-1 mt-2">
+                      {currentDay}/{daysInMonth} days of {now.toLocaleString('default', { month: 'long' })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-64">
+              <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2">Expenses by Category</h3>
+              {Array.isArray(expensesByDepartment) && expensesByDepartment.length > 0 ? (
+                <div className="mt-2 flex flex-col gap-2 h-full justify-between">
+                  {/* Bars */}
+                  <div className="flex flex-col gap-2 relative flex-1 justify-center">
+                    {(() => {
+                      const amounts = expensesByDepartment.map(item => item.amount || 0);
+                      const total = amounts.reduce((sum, val) => sum + val, 0);
+                      const defaultColors = ["#15803d", "#22c55e", "#16a34a", "#65a30d", "#166534", "#84cc16", "#4ade80", "#22d3ee", "#facc15", "#eab308"];
+                      
+                      return expensesByDepartment.map((item, idx) => {
+                        const percentage = total > 0 ? Math.round((amounts[idx] / total) * 100) : 0;
+                        const color = item.color || defaultColors[idx % defaultColors.length];
+                        const label = item.category || item.department || 'Category';
+                        
+                        return (
+                          <div key={idx} className="flex items-center mb-1 w-full">
+                            <span className="w-28 text-sm text-gray-800 font-bold mr-2">{label}</span>
+                            <div className="relative flex-1 flex items-center">
+                              <div className="h-3 rounded-full" style={{ backgroundColor: color, width: `${percentage}%`, minWidth: '8px', maxWidth: '100%' }}></div>
+                            </div>
+                            <span className="text-sm text-gray-800 font-bold ml-2">{percentage}%</span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
-                )}
-              </div>
-            </div>
-            {/* Color legend for daily income trend */}
-            <div className="flex flex-wrap gap-4 mb-2">
-              {dailyIncomeLegend.map((item, idx) => (
-                <div key={idx} className="flex items-center text-xs">
-                  <span
-                    className="inline-block w-4 h-2 mr-2 rounded"
-                    style={{
-                      background: item.color,
-                      borderBottom: item.borderDash.length ? '2px dashed #333' : '2px solid #333',
-                      borderColor: item.color,
-                      borderStyle: item.borderDash.length ? 'dashed' : 'solid'
-                    }}
-                  ></span>
-                  <span>{item.label}</span>
+                  {/* Centered axis below bars */}
+                  <div className="w-full flex justify-center mt-2">
+                    <div className="flex items-center text-xs text-gray-500">
+                      {[0,2,4,6,8,10,12,14,16,18,20,22].map(val => (
+                        <span key={val} className="mx-1" style={{ minWidth: '18px' }}>{val === 0 ? '0k' : `${val}k`}</span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                <div className="flex items-center justify-center h-full text-xs text-gray-500">No expense data available</div>
+              )}
             </div>
-            <div className="h-48">
+          </div>
+
+          {/* Right Column: Income Trend Chart */}
+          <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-full justify-center">
+            <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2">Income Trend</h3>
+            <div className="h-64 w-full">
               {loading.dailyIncome ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-gray-500">Loading chart...</div>
@@ -380,58 +465,30 @@ const DashboardContent = () => {
                 <canvas ref={dailyIncomeChartRef}></canvas>
               )}
             </div>
-          </div>
-          
-          {/* Monthly Expenses by Department Chart */}
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-medium text-gray-700">Monthly Expenses Breakdown by Department</h3>
-              <div 
-                className="w-5 h-5 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative"
-                onMouseEnter={() => setShowExpensesTooltip(true)}
-                onMouseLeave={() => setShowExpensesTooltip(false)}
-              >
-                i
-                {showExpensesTooltip && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
-                    <p className="font-semibold mb-1">Monthly Expenses by Department</p>
-                    <p>This pie chart shows the distribution of expenses across different departments. Use this visualization to identify which departments are consuming the largest portions of your budget.</p>
+            {/* Custom legend below chart */}
+            {dailyIncomeLegend && dailyIncomeLegend.length > 0 && (
+              <div className="mt-2 flex flex-row gap-4 items-center">
+                {dailyIncomeLegend.map((item, idx) => (
+                  <div key={idx} className="flex items-center text-xs">
+                    <span
+                      className="inline-block w-4 h-2 mr-2 rounded"
+                      style={{
+                        background: item.color,
+                        borderBottom: item.borderDash.length ? '2px dashed #333' : '2px solid #333',
+                        borderColor: item.color,
+                        borderStyle: item.borderDash.length ? 'dashed' : 'solid'
+                      }}
+                    ></span>
+                    <span>{item.label}</span>
                   </div>
-                )}
+                ))}
               </div>
-            </div>
-            <div className="flex flex-col md:flex-row items-center">
-              <div className="h-48 w-full md:w-2/3">
-                {loading.expensesByDepartment ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-gray-500">Loading chart...</div>
-                  </div>
-                ) : (
-                  <canvas ref={expensesByDepartmentChartRef}></canvas>
-                )}
-              </div>
-              <div className="w-full md:w-1/3 mt-4 md:mt-0">
-                {/* Dynamic legend based on real data */}
-                {expenseLegendData && expenseLegendData.length > 0 ? (
-                  expenseLegendData.map((item, index) => (
-                    <div key={index} className="flex items-center mb-2">
-                      <div 
-                        className="w-6 h-3 mr-2" 
-                        style={{ backgroundColor: item.color }}
-                      ></div>
-                      <span className="text-xs">{item.label} ({item.percentage}%)</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-gray-500">No expense data available</div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
         
         {/* Monthly Net Profit Chart (Full Width) */}
-        <div className="bg-white p-4 rounded-lg shadow-md mt-6">
+        <div className="bg-white  border border-3 border-gray-300 p-4 rounded-lg shadow-md mt-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-medium text-gray-700">Monthly Net Profit</h3>
             <div 
