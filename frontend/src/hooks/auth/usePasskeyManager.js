@@ -99,10 +99,6 @@ const usePasskeyManager = (userId) => {
         const padLength = (4 - (base64.length % 4)) % 4;
         const paddedBase64 = base64 + '='.repeat(padLength);
 
-        console.log('[base64urlToUint8Array] Original:', base64url);
-        console.log('[base64urlToUint8Array] Converted to base64:', base64);
-        console.log('[base64urlToUint8Array] Padded:', paddedBase64);
-        console.log('[base64urlToUint8Array] Pad length:', padLength);
 
         // Decode base64 to binary string
         const binary = atob(paddedBase64);
@@ -148,11 +144,6 @@ const usePasskeyManager = (userId) => {
 
       const options = optionsResponse.data.options;
 
-      console.log('[PasskeyManager] Received options:', options);
-      console.log('[PasskeyManager] Challenge type:', typeof options.challenge);
-      console.log('[PasskeyManager] Challenge value:', options.challenge);
-      console.log('[PasskeyManager] Challenge is array?:', Array.isArray(options.challenge));
-      console.log('[PasskeyManager] Challenge constructor:', options.challenge?.constructor?.name);
 
       // Step 2: Create credentials using WebAuthn
       const credential = await navigator.credentials.create({
@@ -178,10 +169,6 @@ const usePasskeyManager = (userId) => {
 
       // Step 3: Prepare the response for verification with proper base64url encoding
       const rawIdBase64url = arrayBufferToBase64url(credential.rawId);
-      console.log('[PasskeyManager] rawId value:', rawIdBase64url);
-      console.log('[PasskeyManager] rawId length:', rawIdBase64url.length);
-      console.log('[PasskeyManager] credential.id:', credential.id);
-      console.log('[PasskeyManager] credential.rawId byteLength:', credential.rawId.byteLength);
 
       const response = {
         id: rawIdBase64url, // Use our encoded version to ensure consistency
