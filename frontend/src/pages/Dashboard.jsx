@@ -487,32 +487,56 @@ const DashboardContent = () => {
           </div>
         </div>
         
-        {/* Monthly Net Profit Chart (Full Width) */}
+        {/* Monthly Profit and Loss Chart (Full Width) */}
         <div className="bg-white  border border-3 border-gray-300 p-4 rounded-lg shadow-md mt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-medium text-gray-700">Monthly Net Profit</h3>
-            <div 
-              className="w-5 h-5 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative"
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+              <h3 className="font-bold text-green-700 text-lg">Monthly Profit and Loss</h3>
+              {/* Legend - Responsive grid for mobile */}
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#84cc16' }}></div>
+                  <span className="text-xs text-gray-700">Revenue</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#15803d' }}></div>
+                  <span className="text-xs text-gray-700">Expenses</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#a3e635' }}></div>
+                  <span className="text-xs text-gray-700">Profit</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ea580c' }}></div>
+                  <span className="text-xs text-gray-700">Loss</span>
+                </div>
+              </div>
+            </div>
+            <div
+              className="w-5 h-5 rounded-full bg-[#02542D] flex items-center justify-center text-white text-xs cursor-help relative self-end sm:self-auto"
               onMouseEnter={() => setShowNetProfitTooltip(true)}
               onMouseLeave={() => setShowNetProfitTooltip(false)}
             >
               i
               {showNetProfitTooltip && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-3 z-10 text-gray-700 text-xs">
-                  <p className="font-semibold mb-1">Monthly Net Profit</p>
-                  <p>This bar chart shows your net profit for the year. Use this data to analyze profit trends, identify seasonal variations, and track overall financial performance.</p>
+                  <p className="font-semibold mb-1">Monthly Profit and Loss</p>
+                  <p>This bar chart shows your revenue, expenses, profit and loss for each month of the year. Use this data to analyze financial trends and track overall performance.</p>
                 </div>
               )}
             </div>
           </div>
-          <div className="h-64">
-            {loading.monthlyProfit ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-gray-500">Loading chart...</div>
-              </div>
-            ) : (
-              <canvas ref={monthlyNetProfitChartRef}></canvas>
-            )}
+          {/* Chart Container with horizontal scroll on mobile */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[768px] h-64">
+              {loading.monthlyProfit ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-500">Loading chart...</div>
+                </div>
+              ) : (
+                <canvas ref={monthlyNetProfitChartRef}></canvas>
+              )}
+            </div>
           </div>
         </div>
       </div>
