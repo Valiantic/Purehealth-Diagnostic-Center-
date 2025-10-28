@@ -13,22 +13,26 @@ const { User, Authenticator } = require('../models');
 async function generateRegOptions(user, isPrimary = true) {
   // Check if this is a temporary user (not a Sequelize model)
   const isTemporaryUser = user.isTemporary === true;
-  
-  // Get existing authenticators for the user (skip for temporary users)
-  const userAuthenticators = [];
-  if (!isTemporaryUser) {
-    const existingAuthenticators = await Authenticator.findAll({
-      where: { userId: user.userId }
-    });
 
-    existingAuthenticators.forEach(authenticator => {
-      userAuthenticators.push({
-        id: Buffer.from(authenticator.credentialId, 'base64url'),
-        type: 'public-key',
-        transports: authenticator.transports
-      });
-    });
-  }
+  // Don't exclude credentials - this allows the same device to register multiple passkeys
+  // This is useful for backup passkeys on the same device
+  // If you want to prevent duplicate devices, set excludeCredentials to the existing authenticators
+  const userAuthenticators = [];
+
+  // OPTIONAL: Uncomment the code below to prevent the same device from registering multiple times
+  // if (!isTemporaryUser) {
+  //   const existingAuthenticators = await Authenticator.findAll({
+  //     where: { userId: user.userId }
+  //   });
+  //
+  //   existingAuthenticators.forEach(authenticator => {
+  //     userAuthenticators.push({
+  //       id: Buffer.from(authenticator.credentialId, 'base64url'),
+  //       type: 'public-key',
+  //       transports: authenticator.transports
+  //     });
+  //   });
+  // }
 
   // Generate registration options
   const options = await generateRegistrationOptions({
@@ -38,7 +42,7 @@ async function generateRegOptions(user, isPrimary = true) {
     userName: user.email,
     userDisplayName: `${user.firstName} ${user.lastName}`,
     attestationType: 'none',
-    excludeCredentials: userAuthenticators,
+    excludeCredentials: userAuthenticators, // Empty array = no exclusions
     authenticatorSelection: {
       // For fingerprint, use platform authenticator
       authenticatorAttachment: isPrimary ? 'platform' : 'cross-platform',
@@ -59,6 +63,7 @@ async function generateRegOptions(user, isPrimary = true) {
   }
 }
 
+
 /**
  * Verify registration response from client
  */
@@ -70,17 +75,46 @@ async function verifyRegResponse(user, response, isPrimary = true) {
       throw new Error('Challenge not found for user');
     }
     
+
+   
+    const needsConversion = typeof response.rawId === 'string' || Array.isArray(response.rawId);
+
+    const formattedResponse = needsConversion ? {
+      id: response.rawId,
+      rawId: response.rawId,
+      response: {
+        attestationObject: response.response.attestationObject,
+        clientDataJSON: response.response.clientDataJSON,
+        transports: response.response.transports || []
+      },
+      type: response.type,
+      clientExtensionResults: response.clientExtensionResults || {}
+    } : response;
+
+    if (needsConversion && formattedResponse.response.clientDataJSON) {
+      try {
+        const decodedClientData = Buffer.from(formattedResponse.response.clientDataJSON, 'base64url').toString('utf-8');
+        const parsedClientData = JSON.parse(decodedClientData);
+      } catch (e) {
+        console.error('Error decoding clientDataJSON:', e.message);
+      }
+    }
+    
     let verification;
     try {
       verification = await verifyRegistrationResponse({
-        response,
+        response: formattedResponse,
         expectedChallenge,
         expectedOrigin,
         expectedRPID: rpID
       });
     } catch (error) {
-      console.error('Verification error details:', error);
-      throw new Error(`Verification failed: ${error.message}`);
+      console.error('Registration verification error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Formatted response id:', formattedResponse.id);
+      console.error('Formatted response rawId type:', typeof formattedResponse.rawId);
+      console.error('Formatted response rawId length:', formattedResponse.rawId?.length || formattedResponse.rawId?.byteLength);
+      throw new Error(`Registration verification failed: ${error.message}`);
     }
 
     const { verified, registrationInfo } = verification;
@@ -104,7 +138,7 @@ async function verifyRegResponse(user, response, isPrimary = true) {
           counter,
           credentialDeviceType,
           credentialBackedUp,
-          transports: response.response.transports || [],
+          transports: formattedResponse.response.transports || [],
           isPrimary
         });
 
@@ -121,7 +155,7 @@ async function verifyRegResponse(user, response, isPrimary = true) {
           counter,
           credentialDeviceType,
           credentialBackedUp,
-          transports: response.response.transports || [],
+          transports: formattedResponse.response.transports || [],
           isPrimary
         });
 
@@ -186,10 +220,11 @@ async function verifyAuthResponse(user, response) {
 
   const expectedChallenge = user.currentChallenge;
 
+ 
   let verification;
   try {
     verification = await verifyAuthenticationResponse({
-      response,
+      response: response, 
       expectedChallenge,
       expectedOrigin,
       expectedRPID: rpID,
@@ -201,6 +236,10 @@ async function verifyAuthResponse(user, response) {
     });
   } catch (error) {
     console.error('Authentication verification error:', error);
+    console.error('Failed with direct pass-through, error details:', {
+      message: error.message,
+      stack: error.stack
+    });
     throw new Error(`Verification failed: ${error.message}`);
   }
 

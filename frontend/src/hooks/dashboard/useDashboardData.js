@@ -24,7 +24,9 @@ const useDashboardData = () => {
     errors,
     revenueComparison,
     expensesComparison,
-    netProfitComparison
+    netProfitComparison,
+    transactionCount,
+    transactionComparison
   } = useDashboardContext();
 
   const abortControllerRef = useRef(null);
@@ -232,6 +234,8 @@ const useDashboardData = () => {
     dailyIncomeData,
     expensesByDepartment,
     monthlyProfitData,
+    transactionCount,
+    transactionComparison,
     
     // Comparison data
     revenueComparison,

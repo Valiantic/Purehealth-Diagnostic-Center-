@@ -162,17 +162,43 @@ export const transformMonthlyProfitData = (monthlyData) => {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    
+
     return {
       labels: defaultMonths,
-      datasets: [{
-        label: 'Net Profit',
-        data: new Array(12).fill(0),
-        backgroundColor: new Array(12).fill(chartColors.primary),
-        borderWidth: 0,
-        borderRadius: 2,
-        barThickness: 30
-      }]
+      datasets: [
+        {
+          label: 'Revenue',
+          data: new Array(12).fill(0),
+          backgroundColor: '#84cc16', // Light green/lime
+          borderWidth: 0,
+          borderRadius: 4,
+          barThickness: 15
+        },
+        {
+          label: 'Expenses',
+          data: new Array(12).fill(0),
+          backgroundColor: '#15803d', // Dark green
+          borderWidth: 0,
+          borderRadius: 4,
+          barThickness: 15
+        },
+        {
+          label: 'Profit',
+          data: new Array(12).fill(0),
+          backgroundColor: '#84cc16', // Lime green
+          borderWidth: 0,
+          borderRadius: 4,
+          barThickness: 15
+        },
+        {
+          label: 'Loss',
+          data: new Array(12).fill(0),
+          backgroundColor: '#dc2626', // Red/orange for loss
+          borderWidth: 0,
+          borderRadius: 4,
+          barThickness: 15
+        }
+      ]
     };
   }
 
@@ -183,29 +209,68 @@ export const transformMonthlyProfitData = (monthlyData) => {
   ];
 
   const labels = allMonths;
-  const profits = allMonths.map((_, index) => {
+
+  // Extract data for each month
+  const revenueData = allMonths.map((_, index) => {
     const monthData = monthlyData.find(item => item.month === index + 1);
-    return monthData ? parseFloat(monthData.profit) || 0 : 0;
+    return monthData ? parseFloat(monthData.revenue) || 0 : 0;
   });
 
-  // Color bars based on profit value
-  const backgroundColors = profits.map(profit => {
-    if (profit > 15000) return chartColors.accent2;
-    if (profit > 5000) return chartColors.accent1;
-    if (profit > 0) return chartColors.primary;
-    return '#E0E0E0'; // Gray for zero/negative
+  const expensesData = allMonths.map((_, index) => {
+    const monthData = monthlyData.find(item => item.month === index + 1);
+    return monthData ? parseFloat(monthData.expenses) || 0 : 0;
+  });
+
+  const profitData = allMonths.map((_, index) => {
+    const monthData = monthlyData.find(item => item.month === index + 1);
+    const profit = monthData ? parseFloat(monthData.profit) || 0 : 0;
+    // Only show positive values in profit column
+    return profit > 0 ? profit : 0;
+  });
+
+  const lossData = allMonths.map((_, index) => {
+    const monthData = monthlyData.find(item => item.month === index + 1);
+    const profit = monthData ? parseFloat(monthData.profit) || 0 : 0;
+    // Only show negative values (as positive numbers) in loss column
+    return profit < 0 ? Math.abs(profit) : 0;
   });
 
   return {
     labels,
-    datasets: [{
-      label: 'Net Profit',
-      data: profits,
-      backgroundColor: backgroundColors,
-      borderWidth: 0,
-      borderRadius: 2,
-      barThickness: 30
-    }]
+    datasets: [
+      {
+        label: 'Revenue',
+        data: revenueData,
+        backgroundColor: '#84cc16', // Light green/lime
+        borderWidth: 0,
+        borderRadius: 4,
+        barThickness: 15
+      },
+      {
+        label: 'Expenses',
+        data: expensesData,
+        backgroundColor: '#15803d', // Dark green
+        borderWidth: 0,
+        borderRadius: 4,
+        barThickness: 15
+      },
+      {
+        label: 'Profit',
+        data: profitData,
+        backgroundColor: '#a3e635', // Lime green
+        borderWidth: 0,
+        borderRadius: 4,
+        barThickness: 15
+      },
+      {
+        label: 'Loss',
+        data: lossData,
+        backgroundColor: '#ea580c', // Orange/red for loss
+        borderWidth: 0,
+        borderRadius: 4,
+        barThickness: 15
+      }
+    ]
   };
 };
 
@@ -304,7 +369,8 @@ export const getBarChartOptions = () => ({
       ...getCommonChartOptions().plugins.tooltip,
       callbacks: {
         label: function(context) {
-          return formatCurrency(context.parsed.y);
+          const label = context.dataset.label || '';
+          return `${label}: ${formatCurrency(context.parsed.y)}`;
         }
       }
     }
@@ -317,13 +383,25 @@ export const getBarChartOptions = () => ({
       },
       ticks: {
         callback: function(value) {
-          return value === 0 ? '0' : formatCurrency(value);
+          // Show as 'k' for thousands
+          if (value >= 1000) {
+            return `${value/1000}k`;
+          }
+          return value === 0 ? '0' : value;
+        },
+        font: {
+          size: 11
         }
       }
     },
     x: {
       grid: {
         display: false
+      },
+      ticks: {
+        font: {
+          size: 11
+        }
       }
     }
   }
