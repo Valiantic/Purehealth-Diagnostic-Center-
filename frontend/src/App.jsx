@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register'; 
 import Dashboard from './pages/Dashboard';
 import Transaction from './pages/Transaction'
+import NewTransaction from './pages/NewTransaction';
 import AddExpenses from './pages/AddExpenses';
 import AddTransaction from './pages/AddTransaction';
 import MonthlyIncome from './pages/MonthlyIncome';
@@ -37,6 +38,7 @@ function App() {
           {/* Routes accessible to all authenticated users */}
           <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
           <Route path="transaction" element={<ProtectedRoute component={Transaction} />} />
+          <Route path="new-transaction" element={<ProtectedRoute component={NewTransaction} />} />
           <Route path="add-transaction" element={<ProtectedRoute component={AddTransaction} />} />
           <Route path="referrals" element={<ProtectedRoute component={Referrals} />} />
           <Route path="settings" element={<ProtectedRoute component={Settings} />} />
