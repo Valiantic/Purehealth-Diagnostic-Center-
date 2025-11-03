@@ -38,7 +38,7 @@ const Sidebar = () => {
     { title: 'Dashboard', path: '/dashboard', icon: newDashbordIcon },
     { title: 'Transaction', path: '/transaction', icon: newTransactionIcon, dropdown: [
       { label: 'Add', icon: addIcon, path: '/add-transaction' },
-      { label: 'Manage', icon: manageIcon, path: '/transaction' }
+      { label: 'Manage', icon: manageIcon, path: '/manage-transaction' }
     ] },
     { title: 'Expenses', path: '/monthly-expenses', icon: expensesIcon, dropdown: [
       { label: 'Add', icon: addIcon, path: '/add-expenses' },
