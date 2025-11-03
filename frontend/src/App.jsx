@@ -10,6 +10,7 @@ import Transaction from './pages/Transaction'
 import NewTransaction from './pages/NewTransaction';
 import AddExpenses from './pages/AddExpenses';
 import AddTransaction from './pages/AddTransaction';
+import NewAddTransaction from './pages/NewAddTransaction';
 import MonthlyIncome from './pages/MonthlyIncome';
 import MonthlyExpenses from './pages/MonthlyExpenses';
 import Referrals from './pages/Referrals';
@@ -38,7 +39,7 @@ function App() {
           {/* Routes accessible to all authenticated users */}
           <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
           <Route path="manage-transaction" element={<ProtectedRoute component={NewTransaction} />} />
-          <Route path="add-transaction" element={<ProtectedRoute component={AddTransaction} />} />
+          <Route path="add-transaction" element={<ProtectedRoute component={NewAddTransaction} />} />
           <Route path="referrals" element={<ProtectedRoute component={Referrals} />} />
           <Route path="settings" element={<ProtectedRoute component={Settings} />} />
           <Route path="add-expenses" element={<ProtectedRoute component={AddExpenses} />} />
