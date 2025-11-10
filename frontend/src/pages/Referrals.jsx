@@ -362,144 +362,202 @@ const Referrals = () => {
     return null;
   }
 
+  // Calculate total rebates and total referred transactions across all referrers
+  const { totalRebates, totalReferredTransactions } = useMemo(() => {
+    let rebatesSum = 0;
+    let transactionsCount = 0;
+
+    filteredReferrers.forEach(referrer => {
+      const transactions = allReferrerTransactions[referrer.referrerId] || [];
+      transactionsCount += transactions.length;
+
+      if (transactions.length > 0) {
+        const { testDetailTotals } = calculateReferrerTotals(transactions);
+        const grandTotal = Object.values(testDetailTotals).reduce(
+          (sum, amount) => sum + parseFloat(amount || 0), 0
+        );
+        rebatesSum += grandTotal * 0.20;
+      }
+    });
+
+    return {
+      totalRebates: rebatesSum,
+      totalReferredTransactions: transactionsCount
+    };
+  }, [filteredReferrers, allReferrerTransactions]);
+
   return (
-    <div className='flex flex-col md:flex-row h-screen'>
+    <div className='flex flex-col md:flex-row h-screen bg-gray-50'>
       <ToastContainer position="top-right" autoClose={3000} />
-     <div className="md:sticky md:top-0 md:h-screen z-10">
+      <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
       
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-
-        {/* Search Bar - Now outside the table */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 pr-2">
-
-         <div className='flex items-center gap-2'>
-
-          {filteredReferrers.length > 0 && (
-            <button 
-              onClick={handleGenerateReferralsReport}
-              className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
-            >
-              Generate Report
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </button>
-          )}
-
-          <button
-          onClick={() => setIsReferrerModalOpen(true)}
-          className='w-10 h-10 bg-green-800 text-white rounded-full flex items-center justify-center hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200'
-          title="Add New Referrer"
-          >
-            <PlusCircle size={20}/>
-          </button>
-
-         </div>
         
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-          
-          <div className="relative w-full sm:w-auto">
-            <button 
-            onClick={toggleSortDirection}
-            className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between hover:bg-green-50"
-          >
-            <span>Amount </span>
-            {sortDirection === 'asc' ? (
-           <ArrowUp size={16} className="ml-2" />
-            ) : (
-           <ArrowDown size={16} className="ml-2" />
-           )}
-          </button>
-         </div>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Referral</h1>
+        </div>
 
-         <div className='relative w-full sm:w-auto'>
-            <DateSelector 
-            date={selectedDate}
-            onDateChange={handleDateChange}
-            inputRef={incomeDateInputRef}
-            className='border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1  text-sm md:text-base w-full sm:w-auto'
-            />
-         </div>
-
-          <div className="relative w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Search Doctor..."
-            className="border-2 border-green-800 focus:border-green-800 focus:outline-none rounded-lg px-2 py-1 md:px-4 md:py-2 w-full text-sm md:text-base"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Total Rebates Card */}
+          <div className="bg-white rounded-lg shadow-md p-4 flex items-center">
+            <div className="bg-green-800 p-3 rounded-lg mr-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm">Total Rebates</p>
+              <p className="text-2xl font-bold text-gray-800">₱ {totalRebates.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
           </div>
 
+          {/* Referred Transactions Card */}
+          <div className="bg-white rounded-lg shadow-md p-4 flex items-center">
+            <div className="bg-orange-500 p-3 rounded-lg mr-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm">Referred Transactions</p>
+              <p className="text-2xl font-bold text-gray-800">{totalReferredTransactions}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Actions Bar */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            
+            {/* Left side - Search */}
+            <div className="relative w-full lg:w-96">
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+            </div>
+
+            {/* Right side - Actions */}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={toggleSortDirection}
+                className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                title={`Sort by amount: ${sortDirection === 'asc' ? 'Low to High' : 'High to Low'}`}
+              >
+                {sortDirection === 'asc' ? (
+                  <>
+                    <ArrowUp size={20} className="mr-2" />
+                    Sort: Low to High
+                  </>
+                ) : (
+                  <>
+                    <ArrowDown size={20} className="mr-2" />
+                    Sort: High to Low
+                  </>
+                )}
+              </button>
+
+              {filteredReferrers.length > 0 && (
+                <button 
+                  onClick={handleGenerateReferralsReport}
+                  className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Generate Report
+                </button>
+              )}
+
+              <button
+                onClick={() => setIsReferrerModalOpen(true)}
+                className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                title="Add New Referrer"
+              >
+                <PlusCircle size={20} className="mr-2"/>
+                Add Referrer
+              </button>
+            </div>
           </div>
         </div>
       
 
         {isReferrersLoading || isTransactionsLoading || isDepartmentsLoading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-md">
             <p className="text-green-800 font-medium">Loading data...</p>
           </div>
         ) : referrersError ? (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
             <p>{referrersError.message || 'Failed to load referrers data. Please try again.'}</p>
           </div>
         ) : filteredReferrers.length === 0 ? (
-          <div className="text-center py-8">
+          <div className="text-center py-12 bg-white rounded-lg shadow-md">
             <p className="text-gray-600">No referrers found matching your search criteria.</p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {filteredReferrers.map((referrer) => (
-              <div key={referrer.referrerId} className="p-2">
-                <div className="bg-green-800 p-2 rounded-t">
-                  <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>
+              <div key={referrer.referrerId} className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="bg-green-800 px-4 py-3">
+                  <h2 className='font-bold text-white text-lg'>
                     Dr. {referrer.firstName} {referrer.lastName}
-                  </h1>
+                  </h2>
                 </div>
-                <div className="border border-green-800 rounded-b">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-green-800 bg-green-100">
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">OR#</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Patient Name</th>
-                          {renderableDepartments.length > 0 ? renderableDepartments.map(department => (
-                            <th 
-                              key={`header-${department.departmentId}`} 
-                              className="p-1 border-r border-green-800 text-sm font-medium text-center min-w-[100px]"
-                              title={`Department ID: ${department.departmentId} (${typeof department.departmentId})`}
-                            >
-                              {department.departmentName || 'Department'}
-                            </th>
-                          )) : (
-                            <th className="p-1 border-r border-green-800 text-sm font-medium text-center">
-                              No Departments Found
-                            </th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">OR#</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Client Name</th>
+                        {renderableDepartments.length > 0 ? renderableDepartments.map(department => (
+                          <th 
+                            key={`header-${department.departmentId}`} 
+                            className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[100px]"
+                            title={`Department ID: ${department.departmentId}`}
+                          >
+                            {department.departmentName || 'Department'}
+                          </th>
+                        )) : (
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            No Departments Found
+                          </th>
+                        )}
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
                         {allReferrerTransactions[referrer.referrerId]?.length ? (
-                          // Sort transactions based on amount if needed
                           [...allReferrerTransactions[referrer.referrerId]]
                             .sort(sortTransactions)
                             .map(transaction => {
+                              const transactionDate = new Date(transaction.transactionDate);
+                              const formattedTransactionDate = `${String(transactionDate.getMonth() + 1).padStart(2, '0')}-${String(transactionDate.getDate()).padStart(2, '0')}`;
+                              
                               return (
-                                <tr key={transaction.transactionId} className="border-b border-green-200">
-                                  <td className="p-1 text-center border-r border-green-200 bg-white">{transaction.mcNo}</td>
-                                  <td className="p-1 text-center border-r border-green-200 bg-white">
+                                <tr key={transaction.transactionId} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm text-gray-700">{transaction.mcNo}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">{formattedTransactionDate}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
                                     {transaction.firstName} {transaction.lastName}
                                   </td>
                                   {renderableDepartments.map(department => {
                                     const deptId = String(department.departmentId);
                                     const testsForDepartment = getTestsForDepartment(transaction, deptId);
                                     
-                                    // Calculate total test amount for this department in this transaction
                                     const testTotalAmount = testsForDepartment.reduce(
                                       (sum, test) => sum + parseFloat(test.discountedPrice || 0), 
                                       0
@@ -508,66 +566,52 @@ const Referrals = () => {
                                     return (
                                       <td 
                                         key={`${transaction.transactionId}-${deptId}`}
-                                        className="p-1 border-r border-green-200 bg-white"
+                                        className="px-4 py-3 text-sm text-center text-gray-700"
                                       >
-                                        {/* Department cell with department name in a tooltip */}
-                                        <div title={`Department: ${department.departmentName}`} className="text-center">
-                                          {testsForDepartment.length > 0 ? (
-                                            <div className="text-center font-medium">
-                                              {/* Display only the amount without peso sign */}
-                                              {testTotalAmount.toFixed(2)}
-                                            </div>
-                                          ) : (
-                                            /* Use a non-breaking space to prevent cell collapse without showing a box */
-                                            <>&nbsp;</>
-                                          )}
-                                        </div>
+                                        {testsForDepartment.length > 0 ? (
+                                          <span className="font-medium">
+                                            {testTotalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          </span>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
                                       </td>
                                     );
                                   })}
+                                  <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900">
+                                    {(() => {
+                                      const testsForTransaction = transaction.TestDetails || [];
+                                      const totalAmount = testsForTransaction.reduce(
+                                        (sum, test) => sum + parseFloat(test.discountedPrice || 0),
+                                        0
+                                      );
+                                      return totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    })()}
+                                  </td>
                                 </tr>
                               );
                             })
                         ) : (
-                          <tr className="border-b border-green-200">
-                            <>
-                              <td colSpan={2} className="p-2 text-center bg-white text-gray-500">
-                                No transactions found
-                              </td>
-                              {/* Empty cells for each department column to maintain table structure */}
-                              {renderableDepartments.length > 0 ? renderableDepartments.map(dept => (
-                                <td key={`empty-${dept.departmentId}`} className="p-1 bg-white border-r border-green-200 bg-whitetext-center" style={{ minWidth: '100px' }}>
-                                  {/* Use non-breaking space to maintain cell structure without showing boxes */}
-                                  <span title={`Department: ${dept.departmentName} (${dept.departmentId})`}>&nbsp;</span>
-                                </td>
-                              )) : (
-                                <td className="p-1 border-r border-green-200 bg-white text-center text-gray-500">No departments found</td>
-                              )}
-                            </>
+                          <tr>
+                            <td colSpan={4 + renderableDepartments.length} className="px-4 py-8 text-center text-gray-500">
+                              No transactions found
+                            </td>
                           </tr>
                         )}
                         
-                        {/* Total and Rebates row as part of the same table */}
-                        <tr className="border-t border-green-800">
-                          <td colSpan="2" className="p-1 border-r border-green-800 font-bold text-green-800">
-                            TOTAL:
+                        {/* Total Row */}
+                        <tr className="bg-gray-100 font-semibold border-t-2 border-gray-300">
+                          <td colSpan="3" className="px-4 py-3 text-sm text-green-800">
+                            Referred Transactions Total:
                           </td>
                           
                           {(() => {
-                            // Get the data whether there are transactions or not
-                            const { testDetailTotals, testDetailsByDepartment } = allReferrerTransactions[referrer.referrerId]?.length 
+                            const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
                               ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
-                              : { testDetailTotals: {}, testDetailsByDepartment: {} };
+                              : { testDetailTotals: {} };
                             
-                            // Calculate grand total from test details
-                            const grandTotal = Object.values(testDetailTotals).reduce(
-                              (sum, amount) => sum + parseFloat(amount || 0), 0
-                            );
-                            
-                            // Always render consistent columns regardless of data availability
                             return (
                               <>
-                                {/* Department total columns */}
                                 {renderableDepartments.map(department => {
                                   const deptId = String(department.departmentId);
                                   const deptTotal = testDetailTotals[deptId] || 0;
@@ -575,90 +619,68 @@ const Referrals = () => {
                                   return (
                                     <td 
                                       key={`total-${deptId}`}
-                                      className="p-1 border-r border-green-800 text-center font-bold text-green-800"
-                                      style={{ minWidth: '100px' }}
+                                      className="px-4 py-3 text-sm text-center text-green-800"
                                     >
-                                      {/* Display department total if greater than 0, otherwise render &nbsp; to prevent cell collapse */}
-                                      {deptTotal > 0 ? deptTotal.toFixed(2) : <>&nbsp;</>}
+                                      {deptTotal > 0 ? deptTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                     </td>
                                   );
                                 })}
+                                <td className="px-4 py-3 text-sm text-center text-green-800">
+                                  {Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </td>
                               </>
                             );
                           })()}
                         </tr>
 
-                        <tr className="bg-green-100 border-t border-green-800">
-                          <td colSpan="2" className="p-1 border-r border-green-800 font-bold text-green-800">
-                            REBATES (20%):
+                        {/* Rebates Row */}
+                        <tr className="bg-yellow-100 font-semibold">
+                          <td colSpan="3" className="px-4 py-3 text-sm text-green-800">
+                            Rebates Total:
                           </td>
                           
                           {(() => {
-                            // Get the data whether there are transactions or not
-                            const { testDetailTotals, testDetailsByDepartment } = allReferrerTransactions[referrer.referrerId]?.length 
+                            const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
                               ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
-                              : { testDetailTotals: {}, testDetailsByDepartment: {} };
-                            
-                            // Calculate department rebates (20% of each department total)
-                            let totalRebates = 0;
+                              : { testDetailTotals: {} };
                             
                             return (
                               <>
-                                {/* Department rebate columns */}
                                 {renderableDepartments.map(department => {
                                   const deptId = String(department.departmentId);
                                   const deptTotal = testDetailTotals[deptId] || 0;
-                                  const deptRebate = deptTotal * 0.20; // 20% of department total
-                                  totalRebates += deptRebate;
+                                  const deptRebate = deptTotal * 0.20;
                                   
                                   return (
                                     <td 
                                       key={`rebate-${deptId}`}
-                                      className="p-1 border-r border-green-800 text-center font-bold text-green-800"
-                                      style={{ minWidth: '100px' }}
+                                      className="px-4 py-3 text-sm text-center text-green-800"
                                     >
-                                      {/* Display department rebate if greater than 0, otherwise render &nbsp; to prevent cell collapse */}
-                                      {deptRebate > 0 ? deptRebate.toFixed(2) : <>&nbsp;</>}
+                                      {deptRebate > 0 ? deptRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                     </td>
                                   );
                                 })}
-                                
-                                {/* Store total rebates for the next row */}
-                                <script>window.tempRebates = {totalRebates}</script>
+                                <td className="px-4 py-3 text-sm text-center text-green-800 font-bold">
+                                  {(() => {
+                                    const grandTotal = Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0);
+                                    const totalRebate = grandTotal * 0.20;
+                                    return totalRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                  })()}
+                                </td>
                               </>
                             );
                           })()}
                         </tr>
-
-                        <tr className="bg-yellow-200 border-t border-green-800">
-                          <td colSpan={2 + renderableDepartments.length} className="p-1 text-right font-bold text-green-800 pr-4">
-                            {(() => {
-                              // Calculate total rebates for this referrer
-                              const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
-                                ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
-                                : { testDetailTotals: {} };
-                              
-                              const grandTotal = Object.values(testDetailTotals).reduce(
-                                (sum, amount) => sum + parseFloat(amount || 0), 0
-                              );
-                              
-                              const totalRebates = grandTotal * 0.20; // 20% of grand total
-                              
-                              return `TOTAL REBATES: ${totalRebates.toFixed(2)}`;
-                            })()}
-                          </td>
-                        </tr>                      </tbody>
+                      </tbody>
                     </table>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-       {isReferrerModalOpen && (
+        {isReferrerModalOpen && (
           <ReferrerModal
           isOpen={isReferrerModalOpen}
           onClose={() => {
