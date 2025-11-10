@@ -454,218 +454,66 @@ feature/Monthly-Income-Export-Header-Responsiveness
 feature/Npm-Start-Concurrently-Package
 feature/Npm-i-and-README-Inclusion
 
-feature/Total-Dashboard-Label-Not-Responsive
-feature/20%-Referrer-Deduction-Wrong-Calculation
-feature/Net-profit-Wrong-CALCULATION
-feature/Referrer-Modal-Page-Username-Not-Logged-in-Activity-Log
-feature/Income-Table-Must-Have-Decimals
-feature/Expense-Items-Must-Have-Category-and-Label
-feature/Expense-Items-Updated-Wrong-Referrer
-feature/Test-Details-Discount-Removal-Apply-Only-Total
+feature/Devpatch8-Bug-Fixing-Batch-Feedback
+# 🌟 What's Changed?
+- Generate Button Hide if no data displayed on the pages 
+- Dashboard Total Monthly Revenue, Expenses and Net Profit Label not Responsive Sizing 
+- Net Profit Now displays clear Net Profit = Total Monthly Income - Total Monthly Expenses 
+- Referrer Modal in Referral Management Page now Displays Username on Activity Log
+- Income Table now have Decimals 
+- Rebates now have Category on Expense Table 
+- Transaction Summary Modal now Updates Referrer of that transaction and paid to expense items 
+- If transaction referrer was updated to out patient it will remove that rebates on the expense table \
+- Test Conducted 20% now applies only on total transaction and not every test 
+- Income Table Digit has no commas 
+- Pie Chart and Monthly Expenses Table Rebate no has Separate Category and Table 
+- Fido 2 Change Passkey Functionality
 
+feature/Test-Conducted-20%-Discount-Removal-Application-Total-Transaction-Only
 
-feature/FIDO2-Change-Passkey
+feature/Income-Table-Digit-Commas
 
-feature/FIDO2-User-Create-Update-Cancel-Checkpoint
+feature/Referrer-Labeled-Dashboard-Monthly-Expenses-Table
 
---LATER--
-feature/Test-Management-Search-Date-Bug
-feature/User-Search-Date-Bug
-feature/Refactor-Backend-Controllers-Structure-&-Table-Model 
-feature/Api-Rate-Limiting 
-feature/Remove-Refund-Recording
-feature/Optimize-Api-Endpoints-Service
-feature/Separate-Information-Add-Expenses-Page
+feature/FIDO2-Change-Passkey-v1
 
-feature/Change-Passkey-Build
-feature/Activity-Log-Generate-Reports 
-feature/Department-Management-Generate-Reports 
-feature/Test-Management-Generate-Reports 
-feature/Referrer-Management-Generate-Reports 
+devpatch9
 
-feature/Referrer-Generate-Reports
-feature/Monthly-Income-Search-Fetch
-feature/Monthly-Generate-Reports
-feature/Monthly-Expenses-Search-Fetch
-feature/Monthly-Expenses-Generate-Reports
+devpatch10
 
-feature/Transaction-Income-Table-Generate-Reports
-feature/Transaction-Expenses-Table-Generate-Reports
-feature/Transaction-Income-Table-Functionality
-feature/Transaction-Expenses-Table-Functionality
+feature/Pre-Prod-Dashboard-Error
 
-feature/Add-Expenses-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Add-DATABASE-Mock-Backup-File
 
-feature/Add-Transaction-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Build-WebAuthn-Trigger
 
-feature/Dashboard-Component-OverStates-Delegation-to-Custom-Hooks
+devpatch11 
 
-feature/Add-Expenses-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Easy-Revise-Ops
+- Show scrollbar on transaction summary modal 
+- Change label from id to discount type 
+- add webauthn modal on refund button
 
-feature/Department-Management-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Pre-Prod-Change-Passkey-Error
 
-feature/Monthly-Income-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Build-Dashboard-Revamp
 
-feature/Referral-Management-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Sidebar-Revamp-v2
 
-feature/Referrer-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Dashboard-Metric-System-Revamp
 
-feature/Test-Management-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Dashboard-Metric-Graph-Revamp
 
-feature/Transaction-Component-OverStates-Delegation-to-Custom-Hooks
+feature/FIDO2-Change-Passkey-v2
 
-feature/View-Account-Component-OverStates-Delegation-to-Custom-Hooks
+feature/Dashboard-Metric-Profit-Loss-Revamp
 
+feauture/Build-Transaction-Revamp
 
+feature/New-Transaction-Page-Revamp
 
-- Expenses, Test department iniinclude mga department kahit archived
+feature/New-Add-Transction-Page-Revamp
 
-
-there is a problem upon creating expenses. find the problem and resolved it 
-
-backend issue 
-
-Error creating expense: Error
-parent: error: invalid input syntax for type integer: "INTEGER"
-
-frontend issue 
-
-https://purehealth-diagnostic-center.onrender.com/api/expenses
-
--Transaction (di maka-create sa income & expenses)(matagal mag-load)
--Nagrerefresh yung ineedit sa transaction kapag may titingnan sa ibang module.
--Time sa activity log di accurate
-
-PHONE
--Sa dashboard, yung monthly net profit di nakaalign yung bar graph sa months
--Yung may red circle sa may transaction(swipe horizontal). Para san yun?
--Magulo Activity log
--Goods format kapag naka desktop view except lang sa last yung sa settings
-
-LOGIN
-Yung acc ko na ginawa sa laptop(L) Windows hello ginamit ko sa passkey. Yung acc ko na ginawa sa cp(C) finger print ginamit ko sa passkey. Kapag inopen ko yung acc L sa cp di ko sya maopen kase windows hello gamit ko. Kapag inopen ko naman yung acc C sa laptop di ko rin maopen.
-
-Backup passkey registration failed: Security Error the RP ID "localhost" is invalid for this domain
-
-
-TRANSACTION DEPLOYED FIXING 
-
-
--- 1. Fix TestDetails table - Change departmentId from UUID to INTEGER
-ALTER TABLE "TestDetails" 
-ALTER COLUMN "departmentId" TYPE INTEGER USING "departmentId"::text::integer;
-
--- 2. Fix DepartmentRevenues table - Change departmentId from UUID to INTEGER  
-ALTER TABLE "DepartmentRevenues"
-ALTER COLUMN "departmentId" TYPE INTEGER USING "departmentId"::text::integer;
-
--- 3. Fix Transactions table - Change userId from UUID to INTEGER
-ALTER TABLE "Transactions"
-ALTER COLUMN "userId" TYPE INTEGER USING "userId"::text::integer;
-
-psql postgresql://purehealthdb_user:4TYaQnmH2MRtm5aRGt6uGluwZueoYVfO@dpg-d1d2e13e5dus73au6nm0-a/purehealthdb
-
-Transaction Page not rendering properly and keeps getting reload. 
-this error persist because there is no data on the backend. 
-
-backend log
-
-Error getting department refunds: Error
-parent: error: operator does not exist: uuid = integer
-severity: 'ERROR',
-original: error: operator does not exist: uuid = integer
-
-frontend log 
-{
-    "success": false,
-    "message": "Failed to retrieve department refunds",
-    "error": "operator does not exist: uuid = integer"
-}
-
-
-
-index-4746d220.js:73 Transaction API error: 
-{success: false, message: 'Failed to create transaction', error: 'invalid input syntax for type uuid: "2"', details: 'Error\n    at Query.run (/opt/render/project/src/ba…ckend/controllers/transactionController.js:94:25)'}
-
-{
-    "success": false,
-    "message": "Failed to create transaction",
-    "error": "invalid input syntax for type uuid: \"2\"",
-    "details": "Error\n    at Query.run (/opt/render/project/src/backend/node_modules/sequelize/lib/dialects/postgres/query.js:50:25)\n    at /opt/render/project/src/backend/node_modules/sequelize/lib/sequelize.js:315:28\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async PostgresQueryInterface.insert (/opt/render/project/src/backend/node_modules/sequelize/lib/dialects/abstract/query-interface.js:308:21)\n    at async model.save (/opt/render/project/src/backend/node_modules/sequelize/lib/model.js:2490:35)\n    at async Transaction.create (/opt/render/project/src/backend/node_modules/sequelize/lib/model.js:1362:12)\n    at async exports.createTransaction (/opt/render/project/src/backend/controllers/transactionController.js:94:25)"
-}
-
-
-
-
-
-
-the transaction page causes an error and keeps triggering the refund causing the transaction page to cause an error.
-my perspective to this is that this error persist because the api is keep calling the refund error even thought there is no refund data yet stored in the backend/database. resolve this problem so that even thought there is no refund record it will work properly and only call the api when there is a refunded record 
-
-backend error 
-Error getting department refunds: Error
-
-parent: error: function json_valid(text) does not exist
- severity: 'ERROR',
-{success: false, message: "Failed to retrieve department refunds",…}
-error
-
-: 
-"function json_valid(text) does not exist"
-message
-
-
-frontend error 
-: 
-"Failed to retrieve department refunds"
-success
-: 
-false
-
-
-i can't create a transaction 
-
-backend error 
-
-Transaction creation error: Error
-
-parent: error: invalid input syntax for type uuid: "2"
-
-severity: 'ERROR',
-
-
-
-frontend error
-
-{success: false, message: "Failed to create transaction",…}
-details
-: 
-"Error\n    at Query.run (/opt/render/project/src/backend/node_modules/sequelize/lib/dialects/postgres/query.js:50:25)\n    at /opt/render/project/src/backend/node_modules/sequelize/lib/sequelize.js:315:28\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async PostgresQueryInterface.insert (/opt/render/project/src/backend/node_modules/sequelize/lib/dialects/abstract/query-interface.js:308:21)\n    at async model.save (/opt/render/project/src/backend/node_modules/sequelize/lib/model.js:2490:35)\n    at async Transaction.create (/opt/render/project/src/backend/node_modules/sequelize/lib/model.js:1362:12)\n    at async exports.createTransaction (/opt/render/project/src/backend/controllers/transactionController.js:94:25)"
-error
-: 
-"invalid input syntax for type uuid: \"2\""
-message
-: 
-"Failed to create transaction"
-success
-: 
-false
-
-
-index-fbfe1f1a.js:73 Transaction API error: 
-{success: false, message: 'Failed to create transaction', error: 'invalid input syntax for type uuid: "2"', details: 'Error\n    at Query.run (/opt/render/project/src/ba…ckend/controllers/transactionController.js:94:25)'}
-
-index-fbfe1f1a.js:238 Transaction error: 
-AxiosError {message: 'Request failed with status code 500', name: 'AxiosError', code: 'ERR_BAD_RESPONSE', config: {…}, request: XMLHttpRequest, …}
-
-
--- 4. Fix Transactions table - Change referrerId from UUID to INTEGER
-ALTER TABLE "Transactions"
-ALTER COLUMN "referrerId" TYPE INTEGER USING "referrerId"::text::integer;
-
--- 5. Fix TestDetails table - Change testId from UUID to INTEGER  
-ALTER TABLE "TestDetails"
-ALTER COLUMN "testId" TYPE INTEGER USING "testId"::text::integer;
 
 
 
