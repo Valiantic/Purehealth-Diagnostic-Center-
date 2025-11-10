@@ -40,9 +40,9 @@ const Sidebar = () => {
       { label: 'Add', icon: addIcon, path: '/add-transaction' },
       { label: 'Manage', icon: manageIcon, path: '/manage-transaction' }
     ] },
-    { title: 'Expenses', path: '/monthly-expenses', icon: expensesIcon, dropdown: [
+    { title: 'Expenses', path: '/expenses', icon: expensesIcon, dropdown: [
       { label: 'Add', icon: addIcon, path: '/add-expenses' },
-      { label: 'Manage', icon: manageIcon, path: '/monthly-expenses' }
+      { label: 'Manage', icon: manageIcon, path: '/manage-expenses' }
     ] },
     { title: 'Monthly', path: '/monthly-income', icon: annualIcon },
     { title: 'Referrals', path: '/referrals', icon: referralIcon },
@@ -55,12 +55,17 @@ const Sidebar = () => {
     if (location.pathname === itemPath) return true;
     
     if (itemPath === '/transaction') {
-      return ['/add-transaction', '/add-expenses', '/transaction'].includes(location.pathname) || 
+      return ['/add-transaction', '/manage-transaction'].includes(location.pathname) || 
              location.pathname.startsWith('/transaction/');
     }
+    else if (itemPath === '/expenses') {
+      return ['/add-expenses', '/manage-expenses'].includes(location.pathname) ||
+             location.pathname.startsWith('/add-expenses');
+    }
     else if (itemPath === '/monthly-income') {
-      return ['/monthly-expenses', '/monthly-income'].includes(location.pathname) ||
-             location.pathname.startsWith('/monthly-income/');
+      return ['/monthly-income', '/monthly-expenses'].includes(location.pathname) ||
+             location.pathname.startsWith('/monthly-income/') ||
+             location.pathname.startsWith('/monthly-expenses');
     }
     else if (itemPath === '/settings') {
       return ['/view-accounts','/add-account', '/activity-log', '/department-management', '/test-management', '/referral-management', '/settings'].includes(location.pathname) ||
