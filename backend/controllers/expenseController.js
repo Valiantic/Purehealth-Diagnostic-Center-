@@ -34,6 +34,7 @@ const createExpense = async (req, res) => {
           purpose: item.purpose,
           categoryId: item.categoryId || null,
           amount: parseFloat(parseFloat(item.amount).toFixed(2)),
+          status: item.status || 'pending',
           createdAt: selectedDate, 
           updatedAt: selectedDate  
         }, { transaction })
@@ -227,7 +228,7 @@ const updateExpense = async (req, res) => {
     await Promise.all(
       ExpenseItems.map(item => {
         const formattedAmount = parseFloat(parseFloat(item.amount || 0).toFixed(2));
-        const validStatus = ['pending', 'paid', 'refunded'].includes(item.status) 
+        const validStatus = ['pending', 'reimbursed', 'paid', 'cancelled', 'refunded'].includes(item.status) 
           ? item.status 
           : 'pending';
         

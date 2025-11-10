@@ -78,16 +78,17 @@ const ExpenseTable = ({
 
   return (
     <div className="relative">
-      <div className="max-h-[70vh] overflow-y-auto">
-        <table className="min-w-full border-collapse text-sm md:text-base">
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-green-800 text-white">
-              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Payee Name</th>
-              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Purpose</th>
-              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Category</th>
-              <th className="py-1 md:py-2 px-2 md:px-3 text-left border border-green-200">Department</th>
-              <th className="py-1 md:py-2 px-2 md:px-3 text-right border border-green-200">Amount</th>
-              <th className="py-1 md:py-2 px-2 md:px-3 text-center border border-green-200 w-24">Action</th>
+            <tr className="bg-[#02542D] text-white">
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Payee</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Paid to</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Category</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Department</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Status</th>
+              <th className="py-3 px-4 text-right font-semibold border-r border-green-700">Amount</th>
+              <th className="py-3 px-4 text-center font-semibold w-16"></th>
             </tr>
           </thead>
           <tbody>
@@ -133,58 +134,64 @@ const ExpenseTable = ({
                 
                 const amount = parseFloat(expense.amount || expense.expenseAmount || 0);
                 const isRefunded = expense.status === 'refunded';
+                const isCancelled = expense.status === 'cancelled';
+                const statusToDisplay = expense.status || 'pending';
                 
                 return [(
                   <tr 
                     key={`exp-single-${expenseId}-${expenseIndex}`} 
-                    className={`border-b border-green-200 hover:bg-gray-50 text-xs md:text-sm ${
-                      isRefunded ? 'bg-gray-200 text-gray-500' : ''
+                    className={`border-b hover:bg-gray-50 ${
+                      isCancelled ? 'bg-red-50 text-red-600' : isRefunded ? 'bg-gray-100' : ''
                     }`}
                   >
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={isRefunded ? 'line-through' : ''}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
                         {payeeName}
                       </span>
-                      {isRefunded && (
-                        <span className="ml-1 text-xs text-red-500 italic">(Refunded)</span>
-                      )}
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={`font-medium ${isRefunded ? 'line-through' : ''}`}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={`${isCancelled || isRefunded ? 'line-through' : ''}`}>
                         {expensePurpose}
                       </span>
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={isRefunded ? 'line-through' : ''}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
                         {categoryName}
                       </span>
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={isRefunded ? 'line-through' : ''}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
                         {departmentName || 'N/A'}
                       </span>
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 text-right border border-green-200">
-                      <div>
-                        <span className={`font-medium ${isRefunded ? 'line-through' : ''}`}>
-                          {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </span>
-                        {isRefunded && (
-                          <span className="ml-1 text-xs text-red-500">→ 0.00</span>
-                        )}
-                      </div>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${
+                        statusToDisplay === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        statusToDisplay === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
+                        statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
+                        statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        statusToDisplay === 'refunded' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {statusToDisplay.charAt(0).toUpperCase() + statusToDisplay.slice(1)}
+                      </span>
                     </td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                    <td className="py-3 px-4 text-right border-r border-gray-200">
+                      <span className={`font-medium ${isCancelled || isRefunded ? 'line-through' : ''}`}>
+                        {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
                       <div className="relative">
                         <button 
                           type="button"
                           className="text-gray-600 hover:text-green-600 focus:outline-none"
                           onClick={(e) => toggleDropdown(expenseId, e)}
                         >
-                          <MoreVertical size={16} className="md:w-5 md:h-5" />
+                          <MoreVertical size={20} />
                         </button>
                         
                         {openDropdownId === expenseId && (
@@ -243,60 +250,64 @@ const ExpenseTable = ({
                 
                 const amount = parseFloat(expenseItem.amount || 0);
                 const isRefunded = expenseItem.status === 'refunded';
+                const isCancelled = expenseItem.status === 'cancelled';
+                const statusToDisplay = expenseItem.status || 'pending';
                 
                 return (
                   <tr 
                     key={uniqueItemKey} 
-                    className={`
-                      border-b border-green-200 hover:bg-gray-50 text-xs md:text-sm 
-                      ${itemIndex > 0 ? 'bg-gray-50' : ''}
-                      ${isRefunded ? 'bg-gray-200 text-gray-500' : ''}
-                    `}
+                    className={`border-b hover:bg-gray-50 ${
+                      isCancelled ? 'bg-red-50 text-red-600' : isRefunded ? 'bg-gray-100' : ''
+                    }`}
                   >
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={isRefunded ? 'line-through' : ''}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
                         {payeeName}
                       </span>
-                      {isRefunded && (
-                        <span className="ml-1 text-xs text-red-500 italic">(Refunded)</span>
-                      )}
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={`font-medium ${isRefunded ? 'line-through' : ''}`}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={`${isCancelled || isRefunded ? 'line-through' : ''}`}>
                         {expensePurpose}
                       </span>
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={isRefunded ? 'line-through' : ''}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
                         {categoryName}
                       </span>
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 border border-green-200">
-                      <span className={isRefunded ? 'line-through' : ''}>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
                         {departmentName || 'N/A'}
                       </span>
                     </td>
-                    <td className="py-1 md:py-2 px-2 md:px-3 text-right border border-green-200">
-                      <div>
-                        <span className={`font-medium ${isRefunded ? 'line-through' : ''}`}>
-                          {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </span>
-                        {isRefunded && (
-                          <span className="ml-1 text-xs text-red-500">→ 0.00</span>
-                        )}
-                      </div>
+                    <td className="py-3 px-4 border-r border-gray-200">
+                      <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${
+                        statusToDisplay === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        statusToDisplay === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
+                        statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
+                        statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        statusToDisplay === 'refunded' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {statusToDisplay.charAt(0).toUpperCase() + statusToDisplay.slice(1)}
+                      </span>
                     </td>
-                    <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+                    <td className="py-3 px-4 text-right border-r border-gray-200">
+                      <span className={`font-medium ${isCancelled || isRefunded ? 'line-through' : ''}`}>
+                        {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
                       <div className="relative">
                         <button 
                           type="button"
                           className="text-gray-600 hover:text-green-600 focus:outline-none"
                           onClick={(e) => toggleDropdown(`${expenseId}-item-${itemIndex}`, e)}
                         >
-                          <MoreVertical size={16} className="md:w-5 md:h-5" />
+                          <MoreVertical size={20} />
                         </button>
                         
                         {openDropdownId === `${expenseId}-item-${itemIndex}` && (
@@ -317,25 +328,9 @@ const ExpenseTable = ({
               });
             })}
 
-            {/* Active expenses total row */}
-            <tr className="bg-green-100">
-              <td colSpan="4" className="py-1 md:py-2 px-2 md:px-3 font-bold border border-green-200 text-green-800 text-left">TOTAL:</td>
-              <td className="py-1 md:py-2 px-2 md:px-3 text-right font-bold border border-green-200 text-green-800">
-                {activeTotalExpense.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}
-              </td>
-              <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
-            </tr>
+            {/* Total row - removed as it's shown elsewhere */}
           </tbody>
         </table>
-      </div>
-
-      <div className="flex justify-end mt-4 px-2">
-        <div className="text-sm text-gray-600">
-            Showing {filteredExpenses.length} {filteredExpenses.length === 1 ? 'expense' : 'expenses'}
-        </div>
       </div>
     </div>
   );

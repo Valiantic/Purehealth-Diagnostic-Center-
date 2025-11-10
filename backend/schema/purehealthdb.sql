@@ -238,7 +238,7 @@ CREATE TABLE `ExpenseItems` (
   `categoryId` INT,
   `purpose` VARCHAR(255) NOT NULL,
   `amount` DECIMAL(10, 2) NOT NULL,
-  `status` enum('pending','paid','refunded') NOT NULL DEFAULT 'pending',
+  `status` enum('pending', 'reimbursed','paid','refunded') NOT NULL DEFAULT 'pending',
   `createdAt` DATETIME NOT NULL,
   `updatedAt` DATETIME NOT NULL,
   PRIMARY KEY (`expenseItemId`),
