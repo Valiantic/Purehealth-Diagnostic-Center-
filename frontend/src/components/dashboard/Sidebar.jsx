@@ -42,7 +42,7 @@ const Sidebar = () => {
     ] },
     { title: 'Expenses', path: '/expenses', icon: expensesIcon, dropdown: [
       { label: 'Add', icon: addIcon, path: '/add-expenses' },
-      { label: 'Manage', icon: manageIcon, path: '/monthly-expenses' }
+      { label: 'Manage', icon: manageIcon, path: '/manage-expenses' }
     ] },
     { title: 'Monthly', path: '/monthly-income', icon: annualIcon },
     { title: 'Referrals', path: '/referrals', icon: referralIcon },
@@ -59,7 +59,7 @@ const Sidebar = () => {
              location.pathname.startsWith('/transaction/');
     }
     else if (itemPath === '/expenses') {
-      return ['/add-expenses'].includes(location.pathname) ||
+      return ['/add-expenses', '/manage-expenses'].includes(location.pathname) ||
              location.pathname.startsWith('/add-expenses');
     }
     else if (itemPath === '/monthly-income') {
