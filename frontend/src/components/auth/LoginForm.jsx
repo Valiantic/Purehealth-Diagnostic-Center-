@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { authenticateUser } from '../../utils/webauthn';
 import { Shield } from 'lucide-react';
 import MicroscopeBg from '../../assets/images/LoginCover.jpg';
 import PHDCILogo from '../../assets/icons/purehealth_logo.png';
 import AuthModal from './AuthModal';
+import useAuth from '../../hooks/auth/useAuth';
 
 const LoginForm = () => {
-  const navigate = useNavigate();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,18 +28,18 @@ const LoginForm = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!validateUsername()) return;
-    
+
     setLoading(true);
     setError('');
     setShowAuthModal(true);
-    
+
     try {
       const result = await authenticateUser(username);
-      
+
       if (result.success) {
-        localStorage.setItem('user', JSON.stringify(result.user));
         setShowAuthModal(false);
-        navigate('/dashboard');
+        // Use the login function from useAuth to properly update auth state and cache
+        login(result.user);
       } else {
         setShowAuthModal(false);
         setError(result.message || 'Authentication failed');
