@@ -4,7 +4,7 @@ import TransactionSummaryModal from '../components/transaction/TransactionSummar
 import ReferrerModal from '../components/referral-management/ReferrerModal';
 import useAuth from '../hooks/auth/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api';
+import { testAPI, departmentAPI, referrerAPI, transactionAPI, settingsAPI } from '../services/api';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Plus, X, Filter } from 'lucide-react';
@@ -58,10 +58,45 @@ const NewAddTransaction = () => {
     queryFn: async () => await referrerAPI.getAllReferrers(true),
   });
 
+  // Fetch discount categories
+  const {
+    data: discountCategoriesData
+  } = useQuery({
+    queryKey: ['discountCategories'],
+    queryFn: async () => {
+      const response = await settingsAPI.getAllDiscountCategories();
+      return response;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  // Fetch referral fee
+  const {
+    data: referralFeeData
+  } = useQuery({
+    queryKey: ['referralFeeSetting'],
+    queryFn: async () => {
+      const response = await settingsAPI.getSettingByKey('referral_fee_percentage');
+      return response;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
   const tests = Array.isArray(testsData) ? testsData : Array.isArray(testsData.data) ? testsData.data : [];
   const departments = Array.isArray(departmentsData) ? departmentsData : Array.isArray(departmentsData.data) ? departmentsData.data : [];
   const allReferrers = referrersData?.data?.data || [];
   const referrers = allReferrers.filter(referrer => referrer.status === 'active');
+
+  // Build dynamic idTypeOptions from discount categories
+  const discountCategories = discountCategoriesData?.data?.categories?.filter(cat => cat.status === 'active') || [];
+  const idTypeOptions = [
+    { value: 'Regular', label: 'Regular' },
+    ...(discountCategories.map(cat => ({ value: cat.categoryName, label: cat.categoryName })))
+  ];
 
   const filteredTests = tests.filter(test => {
     const matchesSearch = test?.testName?.toLowerCase?.().includes(searchTest.toLowerCase()) || false;
@@ -294,12 +329,12 @@ const NewAddTransaction = () => {
     const missingFields = [];
     if (!formData.firstName.trim()) missingFields.push("First Name");
     if (!formData.lastName.trim()) missingFields.push("Last Name");
-    if (!formData.id) missingFields.push("ID Type");
+    if (!formData.id) missingFields.push("Discount Type");
     if (!formData.birthDate) missingFields.push("Birth Date");
     if (!formData.sex) missingFields.push("Sex");
     
-    if ((formData.id === "Senior Citizen" || formData.id === "Person with Disability") && 
-        !formData.idNumber.trim()) {
+    // Require ID number for any discount category (not Regular)
+    if (formData.id !== "Regular" && !formData.idNumber.trim()) {
       missingFields.push("ID Number");
     }
 
@@ -327,19 +362,32 @@ const NewAddTransaction = () => {
     }
 
     try {
+      // Get transaction-level discount percentage from selected discount category
+      const selectedDiscountCategory = discountCategories.find(cat => cat.categoryName === formData.id);
+      const transactionDiscountPercentage = selectedDiscountCategory ? parseFloat(selectedDiscountCategory.percentage) : 0;
+
       const items = testsTable.map((test) => {
         const originalTest = selectedTests.find(st => st.testName === test.name);
         const discStr = test.disc.replace('%', '');
-        const discountPercentage = parseInt(discStr) || 0;
+        const individualDiscountPercentage = parseInt(discStr) || 0;
         const originalPrice = parseFloat(originalTest.price);
-        const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+        
+        // Apply individual test discount first (if any)
+        let priceAfterIndividualDiscount = originalPrice * (1 - individualDiscountPercentage / 100);
+        
+        // Then apply transaction-level discount from settings
+        // Formula: discountedPrice = price × (1 - discount% / 100)
+        // Example: If discount is 20%, customer saves 20%, pays 80% → price × 0.80
+        const discountedPrice = transactionDiscountPercentage > 0
+          ? priceAfterIndividualDiscount * (1 - transactionDiscountPercentage / 100)
+          : priceAfterIndividualDiscount;
 
         return {
           testId: originalTest.testId,
           testName: test.name,
           departmentId: originalTest.departmentId,
           originalPrice: originalPrice,
-          discountPercentage: discountPercentage,
+          discountPercentage: individualDiscountPercentage,
           discountedPrice: discountedPrice,
           cashAmount: parseFloat(test.cash) || 0,
           gCashAmount: parseFloat(test.gCash) || 0,
@@ -348,6 +396,17 @@ const NewAddTransaction = () => {
       });
 
       const referrerId = formData.referrer === "" || formData.referrer === "Out Patient" ? null : formData.referrer;
+
+      // Calculate totalAmount (total paid = cash + gcash)
+      const totalAmount = items.reduce((sum, item) => {
+        return sum + item.cashAmount + item.gCashAmount;
+      }, 0);
+
+      // Calculate totalDiscountAmount (total amount due after discount applied)
+      // This is: totalAmount × (1 - discount% / 100)
+      const totalDiscountAmount = transactionDiscountPercentage > 0
+        ? totalAmount * (1 - transactionDiscountPercentage / 100)
+        : totalAmount;
 
       const transactionData = {
         mcNo: generatedMcNo, 
@@ -359,7 +418,9 @@ const NewAddTransaction = () => {
         birthDate: formData.birthDate || null,
         sex: formData.sex,
         items: items,
-        userId: userId
+        userId: userId,
+        totalAmount: totalAmount,
+        totalDiscountAmount: totalDiscountAmount
       };
 
       createTransactionMutation.mutate(transactionData);
@@ -486,15 +547,17 @@ const NewAddTransaction = () => {
               </div>
 
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-2">ID Type</label>
+                <label className="block text-gray-700 text-sm font-medium mb-2">Discount Type</label>
                 <select
                   value={formData.id}
                   onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-green-600"
                 >
-                  <option>Regular</option>
-                  <option>Senior Citizen</option>
-                  <option>Person with Disability</option>
+                  {idTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -513,10 +576,18 @@ const NewAddTransaction = () => {
                 <label className="block text-gray-700 text-sm font-medium mb-2">Discount</label>
                 <select
                   disabled
-                  value={formData.id === 'Person with Disability' || formData.id === 'Senior Citizen' ? '20%' : '0%'}
+                  value={(() => {
+                    if (formData.id === 'Regular') return '0%';
+                    const selectedCategory = discountCategories.find(cat => cat.categoryName === formData.id);
+                    return selectedCategory ? `${selectedCategory.percentage}%` : '0%';
+                  })()}
                   className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
                 >
-                  <option>{formData.id === 'Person with Disability' || formData.id === 'Senior Citizen' ? '20%' : '0%'}</option>
+                  <option>{(() => {
+                    if (formData.id === 'Regular') return '0%';
+                    const selectedCategory = discountCategories.find(cat => cat.categoryName === formData.id);
+                    return selectedCategory ? `${selectedCategory.percentage}%` : '0%';
+                  })()}</option>
                 </select>
               </div>
             </div>
@@ -751,14 +822,27 @@ const NewAddTransaction = () => {
               TestDetails: testsTable.map((test, index) => {
                 const originalTest = selectedTests[index];
                 const discStr = test.disc.replace('%', '');
-                const discountPercentage = parseInt(discStr) || 0;
+                const individualDiscountPercentage = parseInt(discStr) || 0;
                 const originalPrice = parseFloat(originalTest?.price || 0);
-                const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+                
+                // Get transaction-level discount percentage
+                const selectedDiscountCategory = discountCategories.find(cat => cat.categoryName === formData.id);
+                const transactionDiscountPercentage = selectedDiscountCategory ? parseFloat(selectedDiscountCategory.percentage) : 0;
+                
+                // Apply individual test discount first (if any)
+                let priceAfterIndividualDiscount = originalPrice * (1 - individualDiscountPercentage / 100);
+                
+                // Then apply transaction-level discount from settings
+                // Formula: discountedPrice = price × (1 - discount% / 100)
+                // Example: If discount is 20%, customer saves 20%, pays 80% → price × 0.80
+                const discountedPrice = transactionDiscountPercentage > 0
+                  ? priceAfterIndividualDiscount * (1 - transactionDiscountPercentage / 100)
+                  : priceAfterIndividualDiscount;
                 
                 return {
                   testName: test.name,
                   originalPrice: originalPrice,
-                  discountPercentage: discountPercentage,
+                  discountPercentage: individualDiscountPercentage,
                   discountedPrice: discountedPrice,
                   cashAmount: parseFloat(test.cash) || 0,
                   gCashAmount: parseFloat(test.gCash) || 0,
@@ -775,11 +859,8 @@ const NewAddTransaction = () => {
           isRefundMode={false}
           selectedRefunds={[]}
           referrers={referrers}
-          idTypeOptions={[
-            { value: 'Regular', label: 'Regular' },
-            { value: 'Senior Citizen', label: 'Senior Citizen' },
-            { value: 'Person with Disability', label: 'Person with Disability' }
-          ]}
+          idTypeOptions={idTypeOptions}
+          discountCategories={discountCategories}
           mcNoExists={false}
           isMcNoChecking={false}
           mutations={{}}

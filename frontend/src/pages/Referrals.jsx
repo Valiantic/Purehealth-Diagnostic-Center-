@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import { ArrowUp, ArrowDown, PlusCircle } from 'lucide-react'
-import { referrerAPI, transactionAPI, departmentAPI } from '../services/api'
+import { referrerAPI, transactionAPI, departmentAPI, settingsAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
 import DateSelector from '../components/transaction/DateSelector'
 import ReferrerModal from '../components/referral-management/ReferrerModal'
@@ -22,6 +22,25 @@ const Referrals = () => {
       setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
       resetForm, validateForm, getFormData
     } = useReferrerForm();
+
+  // Fetch referral fee percentage from settings
+  const { data: referralFeeData } = useQuery({
+    queryKey: ['referralFeeSetting'],
+    queryFn: async () => {
+      const response = await settingsAPI.getSettingByKey('referral_fee_percentage');
+      return response;
+    },
+    staleTime: 60000, // Cache for 1 minute
+    enabled: !!user
+  });
+
+  // Get referral fee percentage (default to 12 if not found)
+  const referralFeePercentage = useMemo(() => {
+    if (referralFeeData?.data?.success && referralFeeData?.data?.setting) {
+      return parseFloat(referralFeeData.data.setting.settingValue);
+    }
+    return 12; // Default to 12%
+  }, [referralFeeData]);
 
   const { data: departmentsData, isLoading: isDepartmentsLoading } = useQuery({
     queryKey: ['departments'],
@@ -152,7 +171,8 @@ const Referrals = () => {
         renderableDepartments,
         selectedDate,
         calculateReferrerTotals,
-        getTestsForDepartment
+        getTestsForDepartment,
+        referralFeePercentage
       );
       toast.success('Rebate Report exported successfully!');
     } catch (error) {
@@ -376,7 +396,7 @@ const Referrals = () => {
         const grandTotal = Object.values(testDetailTotals).reduce(
           (sum, amount) => sum + parseFloat(amount || 0), 0
         );
-        rebatesSum += grandTotal * 0.20;
+        rebatesSum += grandTotal * (referralFeePercentage / 100);
       }
     });
 
@@ -384,7 +404,7 @@ const Referrals = () => {
       totalRebates: rebatesSum,
       totalReferredTransactions: transactionsCount
     };
-  }, [filteredReferrers, allReferrerTransactions]);
+  }, [filteredReferrers, allReferrerTransactions, referralFeePercentage]);
 
   return (
     <div className='flex flex-col md:flex-row h-screen bg-gray-50'>
@@ -649,7 +669,7 @@ const Referrals = () => {
                                 {renderableDepartments.map(department => {
                                   const deptId = String(department.departmentId);
                                   const deptTotal = testDetailTotals[deptId] || 0;
-                                  const deptRebate = deptTotal * 0.20;
+                                  const deptRebate = deptTotal * (referralFeePercentage / 100);
                                   
                                   return (
                                     <td 
@@ -663,7 +683,7 @@ const Referrals = () => {
                                 <td className="px-4 py-3 text-sm text-center text-green-800 font-bold">
                                   {(() => {
                                     const grandTotal = Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0);
-                                    const totalRebate = grandTotal * 0.20;
+                                    const totalRebate = grandTotal * (referralFeePercentage / 100);
                                     return totalRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                   })()}
                                 </td>

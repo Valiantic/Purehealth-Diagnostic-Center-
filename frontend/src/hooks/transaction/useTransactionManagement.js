@@ -8,7 +8,7 @@ import { formatTransactionForDisplay } from '../../utils/transactionUtils';
  * Custom hook to manage transaction-related state and actions.
  */
 
-export const useTransactionManagement = (user, selectedDate, departments, referrers) => {
+export const useTransactionManagement = (user, selectedDate, departments, referrers, discountCategories = []) => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openExpenseMenuId, setOpenExpenseMenuId] = useState(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -320,6 +320,22 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     if (field === 'idType') {
       const newIdType = e.target.value;
       
+      // Get the new discount percentage
+      const selectedCategory = discountCategories.find(cat => cat.categoryName === newIdType);
+      const newDiscountPercentage = selectedCategory ? parseFloat(selectedCategory.percentage) : 0;
+      
+      // Recalculate all test prices with the new discount
+      const updatedTestDetails = editedSummaryTransaction.originalTransaction.TestDetails.map(test => {
+        const originalPrice = parseFloat(test.originalPrice) || 0;
+        // Apply the new transaction-level discount to the original price
+        const discountedPrice = originalPrice * (1 - newDiscountPercentage / 100);
+        
+        return {
+          ...test,
+          discountedPrice: discountedPrice
+        };
+      });
+      
       // If idType is changed to "Regular", automatically set ID number to "XXXX-XXXX"
       if (newIdType === 'Regular') {
         setEditedSummaryTransaction({
@@ -327,7 +343,8 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           originalTransaction: {
             ...editedSummaryTransaction.originalTransaction,
             idType: newIdType,
-            idNumber: 'XXXX-XXXX' // Force set ID number when Regular is selected
+            idNumber: 'XXXX-XXXX', // Force set ID number when Regular is selected
+            TestDetails: updatedTestDetails
           }
         });
         return;
@@ -339,7 +356,8 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
           originalTransaction: {
             ...editedSummaryTransaction.originalTransaction,
             idType: newIdType,
-            idNumber: '' // Clear the ID number
+            idNumber: '', // Clear the ID number
+            TestDetails: updatedTestDetails
           }
         });
         return;

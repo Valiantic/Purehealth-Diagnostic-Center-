@@ -22,6 +22,7 @@ const monthlyIncomeRoutes = require('./routes/monthlyIncomeRoutes');
 const monthlyExpenseRoutes = require('./routes/monthlyExpenseRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const rebateRoutes = require('./routes/rebateRoute');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -59,6 +60,7 @@ app.use('/api/monthly-income', monthlyIncomeRoutes);
 app.use('/api/monthly-expenses', monthlyExpenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/rebates', rebateRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { transactionAPI, departmentAPI, referrerAPI, revenueAPI, expenseAPI } from '../../services/api';
 import { isTestRefunded } from '../../utils/transactionUtils';
 
 /**
  * Custom hook to handle data fetching and basic processing for the Transaction page
  */
-export const useTransactionData = (selectedDate, expenseDate) => {
+export const useTransactionData = (selectedDate, expenseDate, discountCategories = []) => {
   const queryClient = useQueryClient();
   
   // Transactions data query
@@ -171,7 +172,7 @@ export const useTransactionData = (selectedDate, expenseDate) => {
     });
   }
 
-  const processTransactions = (transactions, departments, referrers, searchTerm) => {
+  const processTransactions = useCallback((transactions, departments, referrers, searchTerm) => {
     // Process transactions into the format needed for display
     const processedTransactions = transactions
       .filter((transaction) => {
@@ -214,24 +215,8 @@ export const useTransactionData = (selectedDate, expenseDate) => {
           });
         }
         
-        let grossDeposit = 0;
-        // Use the transaction's totalAmount which includes PWD/Senior discount, minus total balance
-        if (transaction.totalAmount !== undefined && transaction.totalAmount !== null) {
-          const totalAmount = parseFloat(transaction.totalAmount) || 0;
-          const totalBalance = parseFloat(transaction.totalBalanceAmount) || 0;
-          grossDeposit = totalAmount - totalBalance;
-        } else if (transaction.TestDetails && transaction.TestDetails.length > 0) {
-          // Fallback: calculate from test details for older transactions
-          grossDeposit = transaction.TestDetails
-            .filter(test => test.status !== 'refunded')
-            .reduce((sum, test) => {
-              const testPrice = parseFloat(test.discountedPrice) || 0;
-              const balanceAmount = parseFloat(test.balanceAmount) || 0;
-              return sum + (testPrice - balanceAmount);
-            }, 0);
-        } else {
-          grossDeposit = parseFloat(transaction.totalCashAmount) + parseFloat(transaction.totalGCashAmount);
-        }
+        // Simple: just use totalAmount from transaction
+        const grossDeposit = parseFloat(transaction.totalAmount) || 0;
         let referrerName = 'Out Patient';
         
         if (transaction.referrerId) {
@@ -269,7 +254,7 @@ export const useTransactionData = (selectedDate, expenseDate) => {
       }) : processedTransactions;
 
     return filteredTransactions;
-  };
+  }, [selectedDate, discountCategories]); // Re-create when discountCategories changes
 
   // Calculate department totals from transactions
   const calculateDepartmentTotals = (filteredTransactions) => {
@@ -312,28 +297,9 @@ export const useTransactionData = (selectedDate, expenseDate) => {
         return sum;
       }
 
-      // Use the transaction's totalAmount which includes PWD/Senior discount, minus total balance
-      if (transaction.originalTransaction?.totalAmount !== undefined && transaction.originalTransaction?.totalAmount !== null) {
-        const totalAmount = parseFloat(transaction.originalTransaction.totalAmount) || 0;
-        const totalBalance = parseFloat(transaction.originalTransaction.totalBalanceAmount) || 0;
-        return sum + (totalAmount - totalBalance);
-      }
-
-      // Fallback: Use grossDeposit if available
+      // Use the grossDeposit which is already calculated with discount applied
       if (typeof transaction.grossDeposit === 'number') {
         return sum + transaction.grossDeposit;
-      }
-
-      // Last resort: calculate from test details (for older transactions)
-      if (transaction.originalTransaction?.TestDetails?.length > 0) {
-        let transactionTotal = transaction.originalTransaction.TestDetails
-          .filter(test => test.status !== 'cancelled' && test.status !== 'refunded')
-          .reduce((testSum, test) => {
-            const price = parseFloat(test.discountedPrice || 0);
-            const balance = parseFloat(test.balanceAmount || 0);
-            return testSum + (price - balance);
-          }, 0);
-        return sum + transactionTotal;
       }
       
       return sum + parseFloat(transaction.originalTransaction?.totalAmount || 0);

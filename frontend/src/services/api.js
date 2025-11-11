@@ -503,5 +503,38 @@ export const dashboardAPI = {
   }
 };
 
+// Settings API
+export const settingsAPI = {
+  getAllSettings: () => {
+    return apiClient.get('/settings/general');
+  },
+  getSettingByKey: (key) => {
+    return apiClient.get(`/settings/general/${key}`);
+  },
+  updateSetting: (key, settingValue, currentUserId) => {
+    return apiClient.put(`/settings/general/${key}`, { settingValue, currentUserId });
+  },
+  getAllDiscountCategories: () => {
+    return apiClient.get('/settings/discount-categories');
+  },
+  createDiscountCategory: (categoryData, currentUserId) => {
+    return apiClient.post('/settings/discount-categories', { 
+      ...categoryData, 
+      currentUserId 
+    });
+  },
+  updateDiscountCategory: (id, categoryData, currentUserId) => {
+    return apiClient.put(`/settings/discount-categories/${id}`, { 
+      ...categoryData, 
+      currentUserId 
+    });
+  },
+  deleteDiscountCategory: (id, currentUserId) => {
+    return apiClient.delete(`/settings/discount-categories/${id}`, {
+      data: { currentUserId }
+    });
+  }
+};
+
 export default apiClient;
 

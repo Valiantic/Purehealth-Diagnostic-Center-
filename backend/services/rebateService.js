@@ -4,6 +4,39 @@ const { Op } = require('sequelize');
 class RebateService {
   
   /**
+   * Get the referral fee percentage from settings
+   * @returns {Promise<number>} The referral fee percentage (as decimal, e.g., 0.20 for 20%)
+   */
+  static async getReferralFeePercentage() {
+    try {
+      const { Setting } = require('../models');
+      const setting = await Setting.findOne({
+        where: { settingKey: 'referral_fee_percentage' }
+      });
+      
+      if (setting && setting.settingValue) {
+        const percentage = parseFloat(setting.settingValue);
+        return percentage / 100; // Convert percentage to decimal (e.g., 20 -> 0.20)
+      }
+      
+      // Default to 12% if not found
+      return 0.12;
+    } catch (error) {
+      console.error('Error fetching referral fee percentage:', error);
+      return 0.12; // Default fallback
+    }
+  }
+
+  /**
+   * Get the referral fee percentage as a whole number for display
+   * @returns {Promise<string>} The referral fee percentage (e.g., "20" for 20%)
+   */
+  static async getReferralFeePercentageDisplay() {
+    const rate = await this.getReferralFeePercentage();
+    return (rate * 100).toFixed(0); // Convert decimal to percentage (e.g., 0.20 -> "20")
+  }
+  
+  /**
    * Calculate and record rebates for a transaction
    * @param {Object} transaction - The transaction object
    * @param {Array} testDetails - Array of test details
@@ -23,6 +56,9 @@ class RebateService {
         return;
       }
 
+      // Get referral fee percentage from settings
+      const referralFeeRate = await this.getReferralFeePercentage();
+
       // Group tests by department and calculate department totals
       const departmentTotals = {};
       
@@ -39,13 +75,13 @@ class RebateService {
         }
       });
 
-      // Calculate department rebates (20% of each department total)
+      // Calculate department rebates using dynamic percentage from settings
       let totalRebates = 0;
       const departmentRebates = {};
       
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
-        const deptRebate = deptTotal * 0.20; // 20% of department total
+        const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
         departmentRebates[deptId] = deptRebate;
         totalRebates += deptRebate;
       });
@@ -97,6 +133,9 @@ class RebateService {
    */
   static async recordRebateAsExpense(referrer, rebateAmount, expenseDate, userId, transaction) {
     try {
+      // Get the referral fee percentage for display
+      const feePercentage = await this.getReferralFeePercentageDisplay();
+      
       // Find or create "Rebates" category
       const { Category } = require('../models');
       const [rebateCategory] = await Category.findOrCreate({
@@ -129,7 +168,7 @@ class RebateService {
         where: {
           expenseId: expense.expenseId,
           paidTo: `Dr. ${referrer.lastName}`,
-          purpose: `Referrer Rebate - 20% of department totals`
+          purpose: `Referrer Rebate - ${feePercentage}% of department totals`
         },
         defaults: {
           amount: rebateAmount,
@@ -143,7 +182,8 @@ class RebateService {
       if (!itemCreated) {
         await expenseItem.update({
           amount: parseFloat(expenseItem.amount) + rebateAmount,
-          categoryId: rebateCategory.categoryId // Ensure category is set to "Rebates"
+          categoryId: rebateCategory.categoryId, // Ensure category is set to "Rebates"
+          purpose: `Referrer Rebate - ${feePercentage}% of department totals` // Update purpose to reflect current percentage
         }, { transaction });
       }
 
@@ -251,6 +291,9 @@ class RebateService {
         return;
       }
 
+      // Get referral fee percentage from settings
+      const referralFeeRate = await this.getReferralFeePercentage();
+
       // Calculate the total rebate amount that was previously calculated for this transaction
       const departmentTotals = {};
       
@@ -262,11 +305,11 @@ class RebateService {
         departmentTotals[deptId] += parseFloat(test.discountedPrice) || 0;
       });
 
-      // Calculate department rebates (20% of each department total)
+      // Calculate department rebates using dynamic percentage from settings
       let totalRebateToDeduct = 0;
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
-        const deptRebate = deptTotal * 0.20;
+        const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
         totalRebateToDeduct += deptRebate;
       });
 
@@ -336,6 +379,9 @@ class RebateService {
         return;
       }
 
+      // Get referral fee percentage from settings
+      const referralFeeRate = await this.getReferralFeePercentage();
+
       // Calculate the rebate amount to deduct based on refunded test details
       const departmentTotals = {};
       
@@ -347,11 +393,11 @@ class RebateService {
         departmentTotals[deptId] += parseFloat(test.discountedPrice) || 0;
       });
 
-      // Calculate department rebates (20% of each department total)
+      // Calculate department rebates using dynamic percentage from settings
       let totalRebateToDeduct = 0;
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
-        const deptRebate = deptTotal * 0.20;
+        const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
         totalRebateToDeduct += deptRebate;
       });
 
@@ -409,12 +455,14 @@ class RebateService {
       });
 
       if (expense) {
-        // Find the expense item for this specific referrer
+        // Find the expense item for this specific referrer (use LIKE to match any percentage)
         const expenseItem = await ExpenseItem.findOne({
           where: {
             expenseId: expense.expenseId,
             paidTo: `Dr. ${referrer.lastName}`,
-            purpose: `Referrer Rebate - 20% of department totals`
+            purpose: {
+              [Op.like]: 'Referrer Rebate - %% of department totals'
+            }
           },
           transaction
         });
@@ -516,12 +564,14 @@ class RebateService {
         const oldReferrer = await Referrer.findByPk(oldReferrerId, { transaction: t });
         
         if (expense && oldReferrer) {
-          // Check if there's an existing expense item for the old referrer
+          // Check if there's an existing expense item for the old referrer (use LIKE to match any percentage)
           const existingExpenseItem = await ExpenseItem.findOne({
             where: {
               expenseId: expense.expenseId,
               paidTo: `Dr. ${oldReferrer.lastName}`,
-              purpose: `Referrer Rebate - 20% of department totals`
+              purpose: {
+                [Op.like]: 'Referrer Rebate - %% of department totals'
+              }
             },
             transaction: t
           });
@@ -561,6 +611,9 @@ class RebateService {
       const referrer = await Referrer.findByPk(referrerId, { transaction: dbTransaction });
       if (!referrer) return;
 
+      // Get referral fee percentage from settings
+      const referralFeeRate = await this.getReferralFeePercentage();
+
       // Calculate the rebate amount to remove
       const departmentTotals = {};
       
@@ -577,7 +630,7 @@ class RebateService {
       let totalRebateToRemove = 0;
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
-        const deptRebate = deptTotal * 0.20;
+        const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
         totalRebateToRemove += deptRebate;
       });
 
@@ -648,20 +701,26 @@ class RebateService {
       });
 
       if (expense) {
-        // Find the old expense item for the old referrer
+        // Find the old expense item for the old referrer (use LIKE to match any percentage)
         const expenseItem = await ExpenseItem.findOne({
           where: {
             expenseId: expense.expenseId,
             paidTo: `Dr. ${oldReferrer.lastName}`,
-            purpose: `Referrer Rebate - 20% of department totals`
+            purpose: {
+              [Op.like]: 'Referrer Rebate - %% of department totals'
+            }
           },
           transaction: dbTransaction
         });
 
         if (expenseItem) {
-          // Update the paidTo field to the new referrer
+          // Get current referral fee percentage for display
+          const feePercentage = await this.getReferralFeePercentageDisplay();
+          
+          // Update the paidTo field to the new referrer and ensure purpose reflects current percentage
           await expenseItem.update({
-            paidTo: `Dr. ${newReferrer.lastName}`
+            paidTo: `Dr. ${newReferrer.lastName}`,
+            purpose: `Referrer Rebate - ${feePercentage}% of department totals`
           }, { transaction: dbTransaction });
 
           console.log(`Updated expense item paidTo from Dr. ${oldReferrer.lastName} to Dr. ${newReferrer.lastName}`);
@@ -697,6 +756,9 @@ class RebateService {
 
       if (!transaction) return;
 
+      // Get referral fee percentage from settings
+      const referralFeeRate = await this.getReferralFeePercentage();
+
       // Calculate the rebate amount
       const departmentTotals = {};
       transaction.TestDetails.forEach(test => {
@@ -712,7 +774,7 @@ class RebateService {
       let totalRebateAmount = 0;
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
-        const deptRebate = deptTotal * 0.20;
+        const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
         totalRebateAmount += deptRebate;
       });
 
@@ -786,6 +848,9 @@ class RebateService {
       const referrer = await Referrer.findByPk(referrerId, { transaction: dbTransaction });
       if (!referrer) return;
 
+      // Get referral fee percentage from settings
+      const referralFeeRate = await this.getReferralFeePercentage();
+
       // Calculate the rebate amount to add
       const departmentTotals = {};
       
@@ -802,7 +867,7 @@ class RebateService {
       let totalRebateToAdd = 0;
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
-        const deptRebate = deptTotal * 0.20;
+        const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
         totalRebateToAdd += deptRebate;
       });
 
@@ -858,12 +923,14 @@ class RebateService {
       });
 
       if (expense) {
-        // Find the expense item for this specific referrer
+        // Find the expense item for this specific referrer (use LIKE to match any percentage)
         const expenseItem = await ExpenseItem.findOne({
           where: {
             expenseId: expense.expenseId,
             paidTo: `Dr. ${referrer.lastName}`,
-            purpose: `Referrer Rebate - 20% of department totals`
+            purpose: {
+              [Op.like]: 'Referrer Rebate - %% of department totals'
+            }
           },
           transaction
         });
