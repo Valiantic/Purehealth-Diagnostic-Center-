@@ -18,10 +18,16 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
   } = useQuery({
     queryKey: ['transactions', selectedDate],
     queryFn: async () => {
+      // Format date using local timezone components to avoid UTC conversion
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
       const response = await transactionAPI.getAllTransactions({
         page: 1,
         limit: 50,
-        date: selectedDate.toISOString().split('T')[0] 
+        date: dateString
       });
       return response.data;
     },
@@ -61,8 +67,14 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
   } = useQuery({
     queryKey: ['refunds', selectedDate],
     queryFn: async () => {
+      // Format date using local timezone components to avoid UTC conversion
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
       const response = await revenueAPI.getRefundsByDepartment({
-        date: selectedDate.toISOString().split('T')[0]
+        date: dateString
       });
       return response.data;
     },
@@ -79,7 +91,12 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     queryKey: ['expenses', expenseDate],
     queryFn: async () => {
       try {
-        const dateStr = expenseDate.toISOString().split('T')[0];
+        // Format date using local timezone components to avoid UTC conversion
+        const year = expenseDate.getFullYear();
+        const month = String(expenseDate.getMonth() + 1).padStart(2, '0');
+        const day = String(expenseDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        
         const response = await expenseAPI.getExpenses({ date: dateStr });
         return response;
       } catch (error) {
@@ -436,13 +453,25 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     let dateStr;
     try {
       if (dateToUse instanceof Date && !isNaN(dateToUse.getTime())) {
-        dateStr = dateToUse.toISOString().split('T')[0];
+        // Format date using local timezone components to avoid UTC conversion
+        const year = dateToUse.getFullYear();
+        const month = String(dateToUse.getMonth() + 1).padStart(2, '0');
+        const day = String(dateToUse.getDate()).padStart(2, '0');
+        dateStr = `${year}-${month}-${day}`;
       } else {
-        dateStr = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        dateStr = `${year}-${month}-${day}`;
       }
     } catch (error) {
       console.error('Error formatting date:', error);
-      dateStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      dateStr = `${year}-${month}-${day}`;
     }
         
     queryClient.invalidateQueries({ queryKey: ['expenses'] });
