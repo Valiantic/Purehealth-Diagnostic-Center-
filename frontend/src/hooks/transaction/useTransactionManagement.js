@@ -972,6 +972,25 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       });
     }
     
+    // Calculate totalAmount (total paid = cash + gcash from non-refunded tests)
+    let totalAmount = 0;
+    editedSummaryTransaction.originalTransaction.TestDetails.forEach(test => {
+      if (test.status !== 'refunded' && !selectedRefunds[test.testDetailId]) {
+        totalAmount += (parseFloat(test.cashAmount) || 0) + (parseFloat(test.gCashAmount) || 0);
+      }
+    });
+    
+    // Calculate totalDiscountAmount based on discount type
+    // Get discount percentage from discountCategories
+    const idType = editedSummaryTransaction.originalTransaction.idType || 'Regular';
+    const discountCategory = discountCategories.find(cat => cat.categoryName === idType);
+    const discountPercentage = discountCategory ? parseFloat(discountCategory.percentage) : 0;
+    
+    // Apply discount: totalAmount × (1 - discount% / 100)
+    const totalDiscountAmount = discountPercentage > 0
+      ? totalAmount * (1 - discountPercentage / 100)
+      : totalAmount;
+    
     // Prepare data with guaranteed transaction ID and including test details
     const transactionData = {
       transactionId: transactionId,
@@ -989,6 +1008,8 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
       departmentRefunds: departmentRefunds, 
       refundDate: new Date().toISOString(),
       excessRefunds: refundAmounts || {},
+      totalAmount: totalAmount,
+      totalDiscountAmount: totalDiscountAmount
     };
     
     // Validate before saving

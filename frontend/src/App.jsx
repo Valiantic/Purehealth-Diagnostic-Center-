@@ -39,7 +39,6 @@ function App() {
           
           {/* Routes accessible to all authenticated users */}
           <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
-          <Route path="transaction" element={<ProtectedRoute component={Transaction} />} />
           <Route path="manage-transaction" element={<ProtectedRoute component={NewTransaction} />} />
           <Route path="manage-expenses" element={<ProtectedRoute component={Expenses} />} />
           <Route path="add-transaction" element={<ProtectedRoute component={NewAddTransaction} />} />

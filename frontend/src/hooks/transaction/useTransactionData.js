@@ -215,8 +215,46 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
           });
         }
         
-        // Simple: just use totalAmount from transaction
-        const grossDeposit = parseFloat(transaction.totalAmount) || 0;
+        // Calculate gross: Should match TOTAL AMOUNT DUE in modal
+        // TOTAL AMOUNT DUE = Total Paid × (1 - discount% / 100)
+        let grossDeposit = 0;
+        
+        // First, calculate total paid (cash + gcash) from test details
+        let totalPaid = 0;
+        if (transaction.TestDetails && transaction.TestDetails.length > 0) {
+          transaction.TestDetails.forEach(test => {
+            if (test.status !== 'refunded') {
+              const cashAmount = parseFloat(test.cashAmount) || 0;
+              const gCashAmount = parseFloat(test.gCashAmount) || 0;
+              totalPaid += cashAmount + gCashAmount;
+            }
+          });
+        }
+        
+        // Check if we have totalDiscountAmount saved in database
+        if (transaction.totalDiscountAmount !== null && transaction.totalDiscountAmount !== undefined) {
+          // Use the saved totalDiscountAmount
+          grossDeposit = parseFloat(transaction.totalDiscountAmount) || 0;
+        } else if (totalPaid > 0) {
+          // Calculate discount on the fly if totalDiscountAmount doesn't exist
+          // Get discount percentage from idType
+          const idType = transaction.idType || '';
+          const discountCategory = discountCategories.find(
+            cat => cat.categoryName === idType
+          );
+          
+          if (discountCategory && discountCategory.percentage > 0) {
+            // Apply discount: totalPaid × (1 - discount% / 100)
+            grossDeposit = totalPaid * (1 - discountCategory.percentage / 100);
+          } else {
+            // No discount
+            grossDeposit = totalPaid;
+          }
+        } else {
+          // Fallback to totalAmount
+          grossDeposit = parseFloat(transaction.totalAmount) || 0;
+        }
+        
         let referrerName = 'Out Patient';
         
         if (transaction.referrerId) {

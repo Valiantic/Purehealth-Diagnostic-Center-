@@ -18,7 +18,9 @@ exports.createTransaction = async (req, res) => {
       birthDate,
       sex,
       items,
-      userId
+      userId,
+      totalAmount,
+      totalDiscountAmount
     } = req.body;
 
     // Validate required fields
@@ -48,7 +50,7 @@ exports.createTransaction = async (req, res) => {
 
     // Calculate totals from items
     let subtotalAmount = 0;
-    let totalDiscountAmount = 0;
+    let calculatedTotalDiscountAmount = 0;
     let totalCashAmount = 0;
     let totalGCashAmount = 0;
     let totalBalanceAmount = 0;
@@ -62,18 +64,20 @@ exports.createTransaction = async (req, res) => {
     
       // Sum up individual test prices (after individual test discounts)
       subtotalAmount += discountedPrice; 
-      totalDiscountAmount += (originalPrice - discountedPrice);
+      calculatedTotalDiscountAmount += (originalPrice - discountedPrice);
       totalCashAmount += cashAmount;
       totalGCashAmount += gCashAmount;
       totalBalanceAmount += balanceAmount;  
     });
 
-    // Apply PWD/Senior Citizen 20% discount to the final transaction total
-    let totalAmount = subtotalAmount;
-    if (idType && (idType.toLowerCase().trim() === 'person with disability' || idType.toLowerCase().trim() === 'senior citizen')) {
-      totalAmount = subtotalAmount * 0.8; // Apply 20% discount to subtotal
-      totalDiscountAmount += (subtotalAmount * 0.2); // Add PWD/Senior discount to total discount amount
-    }
+   
+    const finalTotalAmount = totalAmount !== undefined && totalAmount !== null 
+      ? parseFloat(totalAmount) 
+      : totalCashAmount + totalGCashAmount;
+    
+    const finalTotalDiscountAmount = totalDiscountAmount !== undefined && totalDiscountAmount !== null
+      ? parseFloat(totalDiscountAmount)
+      : finalTotalAmount; // If no discount provided, use total amount as-is
     // Generate sequential MC number if not provided
     let generatedMcNo;
     if (mcNo) {
@@ -114,8 +118,8 @@ exports.createTransaction = async (req, res) => {
       birthDate: birthDate || null,
       sex,
       transactionDate: new Date(),
-      totalAmount,
-      totalDiscountAmount,
+      totalAmount: finalTotalAmount,
+      totalDiscountAmount: finalTotalDiscountAmount,
       totalCashAmount,
       totalGCashAmount,
       totalBalanceAmount,
@@ -460,7 +464,9 @@ exports.updateTransaction = async (req, res) => {
       userId,
       testDetails,
       isRefundProcessing,
-      excessRefunds
+      excessRefunds,
+      totalAmount,
+      totalDiscountAmount
     } = req.body;
     
     const transaction = await Transaction.findByPk(id);
@@ -498,7 +504,7 @@ exports.updateTransaction = async (req, res) => {
     let totalGCashAmount = 0;
     let totalBalanceAmount = 0;
     let totalRefundAmount = 0;
-    let totalDiscountAmount = 0;
+    let calculatedTotalDiscountAmount = 0;
     let totalExcessRefundAmount = 0;
     let refundedTestDetails = []; // Track refunded test details for rebate adjustment
 
@@ -522,7 +528,7 @@ exports.updateTransaction = async (req, res) => {
           
           // Calculate discount amount explicitly
           const discountAmount = originalPrice - discountedPrice;
-          totalDiscountAmount += discountAmount;
+          calculatedTotalDiscountAmount += discountAmount;
           
           // Calculate refund if payment exceeds discounted price or if item was explicitly marked for refund
           let refundAmount = 0;
@@ -632,6 +638,16 @@ exports.updateTransaction = async (req, res) => {
         }, 0);
       }
       
+      // Recalculate totalAmount and totalDiscountAmount based on discount type
+      // Use values from frontend if provided, otherwise calculate
+      const finalTotalAmount = totalAmount !== undefined && totalAmount !== null
+        ? parseFloat(totalAmount)
+        : totalCashAmount + totalGCashAmount;
+      
+      const finalTotalDiscountAmount = totalDiscountAmount !== undefined && totalDiscountAmount !== null
+        ? parseFloat(totalDiscountAmount)
+        : finalTotalAmount; // If no discount provided, use total amount as-is
+      
       // Handle rebate adjustments for refunded test details
       if (refundedTestDetails.length > 0) {
         try {
@@ -654,14 +670,15 @@ exports.updateTransaction = async (req, res) => {
       
       // Update transaction totals
       await transaction.update({
+        totalAmount: finalTotalAmount,
+        totalDiscountAmount: finalTotalDiscountAmount,
         totalCashAmount,
         totalGCashAmount,
         totalBalanceAmount,
-        totalDiscountAmount,
         metadata: JSON.stringify({
           ...JSON.parse(transaction.metadata || '{}'),
           totalRefundAmount,
-          totalDiscountAmount,
+          totalDiscountAmount: finalTotalDiscountAmount,
           excessRefundAmount: totalExcessRefundAmount,
           excessRefunds: excessRefunds || {},
           refundProcessed: isRefundProcessing ? true : false,
