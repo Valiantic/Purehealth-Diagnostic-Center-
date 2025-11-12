@@ -16,6 +16,8 @@ import TransactionSummaryModal from '../components/transaction/TransactionSummar
 import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
 import { useTransactionData } from '../hooks/transaction/useTransactionData';
 import { exportIncomeToExcel } from '../utils/incomeExcelExporter';
+import { settingsAPI } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
 
 const NewTransaction = () => {
   const { user, isAuthenticating } = useAuth();
@@ -38,10 +40,27 @@ const NewTransaction = () => {
     clearError
   } = useProtectedAction();
   
+  // Fetch discount categories
+  const {
+    data: discountCategoriesData
+  } = useQuery({
+    queryKey: ['discountCategories'],
+    queryFn: async () => {
+      const response = await settingsAPI.getAllDiscountCategories();
+      return response;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  // Get active discount categories
+  const discountCategories = discountCategoriesData?.data?.categories?.filter(cat => cat.status === 'active') || [];
+  
+  // Build idTypeOptions dynamically
   const idTypeOptions = [
     { value: 'Regular', label: 'Regular' },
-    { value: 'Person with Disability', label: 'PWD' },
-    { value: 'Senior Citizen', label: 'Senior Citizen' }
+    ...(discountCategories.map(cat => ({ value: cat.categoryName, label: cat.categoryName })))
   ];
   
   const incomeDateInputRef = useRef(null);
@@ -107,7 +126,7 @@ const NewTransaction = () => {
     clearRefundAmounts,
     mutations,
     refundAmounts
-  } = useTransactionManagement(user, selectedDate);
+  } = useTransactionManagement(user, selectedDate, departments, referrers, discountCategories);
 
   // Protected refund mode handler
   const protectedToggleRefundMode = useCallback(async () => {
@@ -543,6 +562,7 @@ const NewTransaction = () => {
           selectedRefunds={selectedRefunds}
           referrers={referrers}
           idTypeOptions={idTypeOptions}
+          discountCategories={discountCategories}
           mcNoExists={mcNoExists}
           isMcNoChecking={isMcNoChecking}
           mutations={mutations}

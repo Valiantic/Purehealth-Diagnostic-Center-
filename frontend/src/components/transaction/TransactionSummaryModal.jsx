@@ -20,6 +20,7 @@ const TransactionSummaryModal = ({
   selectedRefunds,
   referrers,
   idTypeOptions,
+  discountCategories = [], // Add discount categories prop
   mcNoExists,
   isMcNoChecking,
   mutations,
@@ -198,7 +199,7 @@ const TransactionSummaryModal = ({
                       )}
                     </div>
 
-                    <div className="font-bold text-green-800">ID Type:</div>
+                    <div className="font-bold text-green-800">Discount Type:</div>
                     <div className="col-span-2 text-green-700">
                       {isEditingSummary ? (
                         <select
@@ -279,9 +280,7 @@ const TransactionSummaryModal = ({
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
                           <div className="text-xs md:text-sm font-medium">
-                            {test.originalPrice !== undefined && test.originalPrice !== '' && !isNaN(parseFloat(test.originalPrice))
-                              ? parseFloat(test.originalPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                              : 'N/A'}
+                            {parseFloat(test.discountedPrice || test.originalPrice || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         </td>
                         <td className="p-1 md:p-2 border-b border-gray-200">
@@ -467,25 +466,13 @@ const TransactionSummaryModal = ({
                           </td>
                         )}
                       </tr>
-                      {/* Total Transaction Row */}
-                      <tr className="bg-green-50 font-bold">
-                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
-                          TOTAL TRANSACTION
-                          {(() => {
-                            const idType = (isEditingSummary
-                              ? editedTransaction?.originalTransaction?.idType
-                              : transaction?.originalTransaction?.idType
-                            ) || '';
-                            const normalized = idType.trim().toLowerCase();
-                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
-                              return ' (20% PWD/Senior Discount Applied)';
-                            }
-                            return null;
-                          })()}
+                      {/* Total Paid Row */}
+                      <tr className="bg-blue-50 font-bold">
+                        <td className="p-2 border-b border-gray-200 text-blue-800" colSpan={2}>
+                          TOTAL PAID
                         </td>
-                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
+                        <td className="p-2 border-b border-gray-200 text-blue-800" colSpan={2}>
                           {(() => {
-                            // Calculate total transaction as sum of actual payments made
                             let totalPaid = 0;
                             const testDetails = isEditingSummary
                               ? editedTransaction?.originalTransaction?.TestDetails
@@ -494,26 +481,75 @@ const TransactionSummaryModal = ({
                             if (testDetails) {
                               testDetails.forEach(test => {
                                 if (test.status !== 'refunded') {
-                                  // Sum the actual payment amounts (cash + gCash)
-                                  const cashAmount = parseFloat(test.cashAmount || 0);
-                                  const gCashAmount = parseFloat(test.gCashAmount || 0);
+                                  const cashAmount = parseFloat(test.cashAmount) || 0;
+                                  const gCashAmount = parseFloat(test.gCashAmount) || 0;
                                   totalPaid += cashAmount + gCashAmount;
                                 }
                               });
                             }
                             
-                            // Apply 20% PWD/Senior discount on the total
+                            return totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-blue-800" colSpan={isEditingSummary && isRefundMode ? 2 : 1}></td>
+                      </tr>
+                      <tr className="bg-green-50 font-bold">
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
+                          TOTAL AMOUNT DUE
+                          {(() => {
                             const idType = (isEditingSummary
                               ? editedTransaction?.originalTransaction?.idType
                               : transaction?.originalTransaction?.idType
                             ) || '';
-                            const normalized = idType.trim().toLowerCase();
-                            let finalTotal = totalPaid;
-                            if (normalized === 'person with disability' || normalized === 'senior citizen') {
-                              finalTotal = totalPaid * 0.8; // Apply 20% discount
+                            
+                            const discountCategory = discountCategories.find(
+                              cat => cat.categoryName === idType
+                            );
+                            
+                            if (discountCategory && discountCategory.percentage > 0) {
+                              return ` (${discountCategory.percentage}% ${discountCategory.categoryName} Discount Applied)`;
+                            }
+                            return null;
+                          })()}
+                        </td>
+                        <td className="p-2 border-b border-gray-200 text-green-800" colSpan={2}>
+                          {(() => {
+                            const testDetails = isEditingSummary
+                              ? editedTransaction?.originalTransaction?.TestDetails
+                              : transaction?.originalTransaction?.TestDetails;
+                            
+                            // Calculate TOTAL PAID first
+                            let totalPaid = 0;
+                            if (testDetails) {
+                              testDetails.forEach(test => {
+                                if (test.status !== 'refunded') {
+                                  const cashAmount = parseFloat(test.cashAmount) || 0;
+                                  const gCashAmount = parseFloat(test.gCashAmount) || 0;
+                                  totalPaid += cashAmount + gCashAmount;
+                                }
+                              });
                             }
                             
-                            return finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            // Get discount percentage
+                            const idType = (isEditingSummary
+                              ? editedTransaction?.originalTransaction?.idType
+                              : transaction?.originalTransaction?.idType
+                            ) || '';
+                            
+                            const discountCategory = discountCategories.find(
+                              cat => cat.categoryName === idType
+                            );
+                            
+                            let totalAmountDue = totalPaid;
+                            
+                            // Apply discount percentage to TOTAL PAID
+                            // Formula: Total Paid × (1 - discount% / 100)
+                            // Example: ₱12,500 with 20% discount = ₱12,500 × 0.80 = ₱10,000
+                            if (discountCategory && discountCategory.percentage > 0) {
+                              totalAmountDue = totalPaid * (1 - discountCategory.percentage / 100);
+                            }
+                            
+                            return totalAmountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         <td className="p-2 border-b border-gray-200 text-green-800" colSpan={isEditingSummary && isRefundMode ? 2 : 1}></td>

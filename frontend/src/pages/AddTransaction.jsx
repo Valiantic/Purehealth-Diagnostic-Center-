@@ -7,7 +7,7 @@ import useAuth from '../hooks/auth/useAuth'
 import useReferrerForm from '../hooks/referral-management/useReferrerForm'
 import useTestQueue from '../hooks/transaction/useTestQueue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { testAPI, departmentAPI, referrerAPI, transactionAPI } from '../services/api'
+import { testAPI, departmentAPI, referrerAPI, transactionAPI, settingsAPI } from '../services/api'
 import { handleDecimalKeyPress } from '../utils/decimalUtils'
 import { X, Plus } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify'
@@ -121,6 +121,34 @@ const AddIncome = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Fetch discount categories
+  const {
+    data: discountCategoriesData,
+    isLoadingDiscounts
+  } = useQuery({
+    queryKey: ['discountCategories'],
+    queryFn: async () => {
+      const response = await settingsAPI.getAllDiscountCategories();
+      return response;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  // Fetch referral fee setting
+  const {
+    data: referralFeeData
+  } = useQuery({
+    queryKey: ['referralFeeSetting'],
+    queryFn: async () => {
+      const response = await settingsAPI.getSettingByKey('referral_fee_percentage');
+      return response;
+    },
+    staleTime: 10000,
+    refetchOnWindowFocus: true,
+  });
+
   const tests = Array.isArray(testsData) ? testsData :
     Array.isArray(testsData.data) ? testsData.data : [];
 
@@ -129,6 +157,23 @@ const AddIncome = () => {
 
   const allReferrers = referrersData?.data?.data || [];
   const referrers = allReferrers.filter(referrer => referrer.status === 'active');
+
+  // Get active discount categories
+  const discountCategories = discountCategoriesData?.data?.categories?.filter(cat => cat.status === 'active') || [];
+  
+  // Get referral fee percentage
+  const referralFeePercentage = referralFeeData?.data?.setting?.settingValue 
+    ? parseFloat(referralFeeData.data.setting.settingValue) 
+    : 12; // Default to 12% if not set
+
+  // Build idTypeOptions dynamically
+  const idTypeOptions = [
+    { value: 'Regular', label: 'Regular' },
+    ...(discountCategories.length > 0 
+      ? discountCategories.map(cat => ({ value: cat.categoryName, label: cat.categoryName }))
+      : []
+    )
+  ];
 
   const filteredTests = tests.filter(test => {
     const matchesSearch = test?.testName?.toLowerCase?.().includes(searchTest.toLowerCase()) || false;
@@ -415,6 +460,17 @@ const AddIncome = () => {
   const handleIdTypeChange = (e) => {
     const newIdType = e.target.value;
     setFormData({ ...formData, id: newIdType });
+    
+    // Find the discount percentage for the selected category
+    const selectedCategory = discountCategories.find(cat => cat.categoryName === newIdType);
+    if (selectedCategory) {
+      setDiscount(parseFloat(selectedCategory.percentage));
+    } else if (newIdType === 'Regular') {
+      setDiscount(0);
+    } else {
+      // Fallback to 20% for legacy categories (Senior Citizen, PWD)
+      setDiscount(20);
+    }
   };
 
   const handleReferrerChange = (e) => {
@@ -583,6 +639,10 @@ const AddIncome = () => {
     }
 
     try {
+      // Get transaction-level discount percentage from selected discount category
+      const selectedDiscountCategory = discountCategories.find(cat => cat.categoryName === formData.id);
+      const transactionDiscountPercentage = selectedDiscountCategory ? parseFloat(selectedDiscountCategory.percentage) : 0;
+
       const items = testsTable.map((test) => {
         const originalTest = selectedTests.find(st => st.testName === test.name);
 
@@ -594,22 +654,25 @@ const AddIncome = () => {
         }
 
         const discStr = test.disc.replace('%', '');
-        const discountPercentage = parseInt(discStr) || 0;
+        const individualDiscountPercentage = parseInt(discStr) || 0;
 
         const originalPrice = parseFloat(originalTest.price);
         const cashAmount = parseFloat(test.cash) || 0;
         const gCashAmount = parseFloat(test.gCash) || 0;
         const balAmount = parseFloat(test.bal) || 0;
 
-        // Calculate the actual discounted price based on original price and discount percentage
-        const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+        // Apply individual test discount first
+        let priceAfterIndividualDiscount = originalPrice * (1 - individualDiscountPercentage / 100);
+        
+        // Then apply transaction-level discount (e.g., 50% Loyalty discount)
+        const discountedPrice = priceAfterIndividualDiscount * (1 - transactionDiscountPercentage / 100);
 
         return {
           testId: originalTest.testId,
           testName: test.name,
           departmentId: originalTest.departmentId,
           originalPrice: originalPrice,
-          discountPercentage: discountPercentage,
+          discountPercentage: individualDiscountPercentage,
           discountedPrice: discountedPrice,
           cashAmount: cashAmount,
           gCashAmount: gCashAmount,
@@ -980,8 +1043,15 @@ const AddIncome = () => {
                     className="w-full border-2 border-green-800 rounded p-2"
                   >
                     <option>Regular</option>
-                    <option>Senior Citizen</option>
-                    <option>Person with Disability</option>
+                    {isLoadingDiscounts ? (
+                      <option disabled>Loading discount types...</option>
+                    ) : (
+                      discountCategories.map(category => (
+                        <option key={category.discountCategoryId} value={category.categoryName}>
+                          {category.categoryName}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1455,7 +1525,8 @@ const AddIncome = () => {
           isRefundMode={false}
           selectedRefunds={{}}
           referrers={referrers}
-          idTypeOptions={[]}
+          idTypeOptions={idTypeOptions}
+          discountCategories={discountCategories}
           mcNoExists={false}
           isMcNoChecking={false}
           mutations={{}}

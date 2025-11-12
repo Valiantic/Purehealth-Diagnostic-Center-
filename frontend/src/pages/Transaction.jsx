@@ -19,7 +19,7 @@ import TransactionSummaryModal from '../components/transaction/TransactionSummar
 import ExpenseSummaryModal from '../components/transaction/ExpenseSummaryModal';
 import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
 import { useTransactionData } from '../hooks/transaction/useTransactionData';
-import { expenseAPI } from '../services/api';
+import { expenseAPI, settingsAPI } from '../services/api';
 import { exportIncomeToExcel } from '../utils/incomeExcelExporter';
 import { exportExpenseToExcel } from '../utils/expenseExcelExporter';
 
@@ -58,6 +58,23 @@ const Transaction = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Fetch discount categories FIRST (needed by useTransactionData)
+  const {
+    data: discountCategoriesData
+  } = useQuery({
+    queryKey: ['discountCategories'],
+    queryFn: async () => {
+      const response = await settingsAPI.getAllDiscountCategories();
+      return response;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  // Get active discount categories
+  const discountCategories = discountCategoriesData?.data?.categories?.filter(cat => cat.status === 'active') || [];
+
   // Use our new custom hook to handle data fetching and processing
   const {
     transactions,
@@ -80,7 +97,7 @@ const Transaction = () => {
     departmentTotals,
     departmentBalanceTotals,
     departmentRefundTotals
-  } = useTransactionData(selectedDate, expenseDate);
+  } = useTransactionData(selectedDate, expenseDate, discountCategories);
 
   // Fetch categories for the expense modal
   const { data: categoriesData } = useQuery({
@@ -130,7 +147,7 @@ const Transaction = () => {
     clearRefundAmounts,
     mutations,
     refundAmounts
-  } = useTransactionManagement(user, selectedDate);
+  } = useTransactionManagement(user, selectedDate, departments, referrers, discountCategories);
 
   // Protected refund mode handler
   const protectedToggleRefundMode = useCallback(async () => {
@@ -641,6 +658,7 @@ const Transaction = () => {
           selectedRefunds={selectedRefunds}
           referrers={referrers}
           idTypeOptions={idTypeOptions}
+          discountCategories={discountCategories}
           mcNoExists={mcNoExists}
           isMcNoChecking={isMcNoChecking}
           mutations={mutations}

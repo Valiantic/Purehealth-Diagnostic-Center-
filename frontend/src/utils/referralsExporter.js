@@ -6,7 +6,8 @@ export const exportReferralsToExcel = async (
   renderableDepartments, 
   selectedDate,
   calculateReferrerTotals,
-  getTestsForDepartment
+  getTestsForDepartment,
+  referralFeePercentage = 12 // Default to 12% if not provided
 ) => {
   try {
     const workbook = new ExcelJS.Workbook();
@@ -213,9 +214,9 @@ export const exportReferralsToExcel = async (
 
       currentRow += 1;
 
-      // REBATES (20%) row
+      // REBATES row (dynamic percentage)
       const rebateCell1 = worksheet.getCell(currentRow, 1);
-      rebateCell1.value = 'REBATES (20%):';
+      rebateCell1.value = `REBATES (${referralFeePercentage}%):`;
       rebateCell1.font = { bold: true, color: { argb: 'FF166534' } };
       rebateCell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       rebateCell1.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -236,11 +237,11 @@ export const exportReferralsToExcel = async (
         right: { style: 'thin', color: { argb: 'FF166534' } }
       };
 
-      // Department rebates (20% of each department total)
+      // Department rebates (dynamic percentage of each department total)
       renderableDepartments.forEach((department, deptIndex) => {
         const deptId = String(department.departmentId);
         const deptTotal = testDetailTotals[deptId] || 0;
-        const deptRebate = deptTotal * 0.20;
+        const deptRebate = deptTotal * (referralFeePercentage / 100);
 
         const rebateCell = worksheet.getCell(currentRow, 3 + deptIndex);
         rebateCell.value = deptRebate > 0 ? deptRebate.toFixed(2) : '';
@@ -261,7 +262,7 @@ export const exportReferralsToExcel = async (
       const grandTotal = Object.values(testDetailTotals).reduce(
         (sum, amount) => sum + parseFloat(amount || 0), 0
       );
-      const totalRebates = grandTotal * 0.20;
+      const totalRebates = grandTotal * (referralFeePercentage / 100);
 
       worksheet.mergeCells(currentRow, 1, currentRow, totalColumns);
       const totalRebatesCell = worksheet.getCell(currentRow, 1);
