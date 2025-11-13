@@ -56,15 +56,9 @@ const Authenticator = sequelize.define('Authenticator', {
     defaultValue: false
   },
   transports: {
-    type: DataTypes.TEXT,
+    type: DataTypes.JSONB,
     allowNull: true,
-    get() {
-      const value = this.getDataValue('transports');
-      return value ? JSON.parse(value) : null;
-    },
-    set(value) {
-      this.setDataValue('transports', value ? JSON.stringify(value) : null);
-    }
+    defaultValue: null
   },
   isPrimary: {
     type: DataTypes.BOOLEAN,
