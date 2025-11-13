@@ -11,7 +11,7 @@ const dashboardController = {
       // Get monthly revenue from active transactions only (exclude cancelled)
       const monthlyRevenueResult = await TestDetails.findAll({
         attributes: [
-          [sequelize.fn('SUM', sequelize.literal('discountedPrice - balanceAmount')), 'totalRevenue']
+          [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalRevenue']
         ],
         include: [
           {
@@ -395,7 +395,7 @@ const dashboardController = {
         // Get revenue for this month from non-refunded test details in non-cancelled transactions, excluding balance amounts
         const revenueResult = await TestDetails.findAll({
           attributes: [
-            [sequelize.fn('SUM', sequelize.literal('discountedPrice - balanceAmount')), 'totalRevenue']
+            [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalRevenue']
           ],
           include: [
             {

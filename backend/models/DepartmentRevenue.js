@@ -33,22 +33,9 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     metadata: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSONB,
       allowNull: true,
-      get() {
-        const metadataStr = this.getDataValue('metadata');
-        if (metadataStr) {
-          try {
-            return JSON.parse(metadataStr);
-          } catch (e) {
-            return {};
-          }
-        }
-        return {};
-      },
-      set(value) {
-        this.setDataValue('metadata', JSON.stringify(value));
-      }
+      defaultValue: {}
     }
   }, {
     timestamps: true,
