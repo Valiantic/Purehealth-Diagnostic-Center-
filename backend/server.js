@@ -78,11 +78,23 @@ app.use((err, req, res, next) => {
 });
 
 // Sync database and start server
-sequelize.sync({ alter: process.env.NODE_ENV === 'development' })
+// Only use sync in development, use migrations in production
+const syncOptions = process.env.NODE_ENV === 'development' ? { alter: true } : { alter: false };
+
+sequelize.authenticate()
+  .then(() => {
+    console.log('Database connection established successfully.');
+    // Only sync in development, skip sync in production (use migrations instead)
+    if (process.env.NODE_ENV === 'development') {
+      return sequelize.sync(syncOptions);
+    }
+    return Promise.resolve();
+  })
   .then(() => {
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Socket.IO enabled for real-time updates`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
     });
   })
   .catch(err => {
