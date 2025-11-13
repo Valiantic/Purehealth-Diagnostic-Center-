@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-reac
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
-import { collectibleIncomeAPI, monthlyIncomeAPI } from '../services/api'
+import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import { exportMonthlyIncomeToExcel } from '../utils/monthlyIncomeExporter';
 import 'react-toastify/dist/ReactToastify.css';
@@ -252,11 +252,201 @@ const Monthly = () => {
         });
       }
 
-      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, allCollectibles, currentMonth);
+      // Fetch profit & loss data for current and previous month
+      const profitLossData = await fetchProfitLossData();
+
+      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, allCollectibles, currentMonth, profitLossData);
       toast.success('Monthly Income Report exported successfully!');
     } catch (error) {
       console.error('Error exporting report:', error);
       toast.error('Failed to export report. Please try again.');
+    }
+  };
+
+  const fetchProfitLossData = async () => {
+    try {
+      const currentMonth = currentDate.month;
+      const currentYear = currentDate.year;
+      
+      // Calculate previous month
+      let previousMonth = currentMonth - 1;
+      let previousYear = currentYear;
+      if (previousMonth === 0) {
+        previousMonth = 12;
+        previousYear = currentYear - 1;
+      }
+
+      // Month names for display
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      
+      // Fetch current month data
+      const currentIncomeResponse = await monthlyIncomeAPI.getMonthlyIncomeSummary(currentMonth, currentYear);
+      const currentExpenseResponse = await monthlyExpenseAPI.getMonthlyExpenses(currentMonth, currentYear);
+      
+      // Fetch previous month data
+      const previousIncomeResponse = await monthlyIncomeAPI.getMonthlyIncomeSummary(previousMonth, previousYear);
+      const previousExpenseResponse = await monthlyExpenseAPI.getMonthlyExpenses(previousMonth, previousYear);
+
+      // Get collectible income for both months
+      const collectiblesResponse = await collectibleIncomeAPI.getAllCollectibleIncome();
+      let currentCollectibleTotal = 0;
+      let previousCollectibleTotal = 0;
+
+      if (collectiblesResponse && collectiblesResponse.data && collectiblesResponse.data.success) {
+        const allCollectibles = collectiblesResponse.data.data || [];
+        
+        // Current month collectibles
+        const currentMonthCollectibles = allCollectibles.filter(item => {
+          const itemDate = new Date(item.dateConducted);
+          return itemDate.getMonth() + 1 === currentMonth && itemDate.getFullYear() === currentYear;
+        });
+        currentCollectibleTotal = currentMonthCollectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome || 0), 0);
+        
+        // Previous month collectibles
+        const previousMonthCollectibles = allCollectibles.filter(item => {
+          const itemDate = new Date(item.dateConducted);
+          return itemDate.getMonth() + 1 === previousMonth && itemDate.getFullYear() === previousYear;
+        });
+        previousCollectibleTotal = previousMonthCollectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome || 0), 0);
+      }
+
+
+      // Extract department totals and GCash from summary responses
+      const currentDepartmentTotals = currentIncomeResponse.data?.data?.departmentTotals || {};
+      const previousDepartmentTotals = previousIncomeResponse.data?.data?.departmentTotals || {};
+      const currentTotalGCash = currentIncomeResponse.data?.data?.totalGCash || 0;
+      const previousTotalGCash = previousIncomeResponse.data?.data?.totalGCash || 0;
+      const departments = currentIncomeResponse.data?.data?.departments || [];
+
+
+      // Prepare department revenue data
+      const departmentRevenueData = [];
+      const allDepartmentIds = new Set([
+        ...Object.keys(currentDepartmentTotals),
+        ...Object.keys(previousDepartmentTotals)
+      ]);
+
+      allDepartmentIds.forEach(deptId => {
+        const dept = departments.find(d => d.departmentId === parseInt(deptId));
+        const deptName = dept?.departmentName || 'Unknown';
+        
+        departmentRevenueData.push({
+          name: deptName,
+          previousMonth: parseFloat(previousDepartmentTotals[deptId] || 0),
+          currentMonth: parseFloat(currentDepartmentTotals[deptId] || 0)
+        });
+      });
+
+      // Calculate total revenue (including GCash)
+      const currentTotalRevenue = departmentRevenueData.reduce((sum, dept) => sum + dept.currentMonth, 0) + currentCollectibleTotal + currentTotalGCash;
+      const previousTotalRevenue = departmentRevenueData.reduce((sum, dept) => sum + dept.previousMonth, 0) + previousCollectibleTotal + previousTotalGCash;
+
+      // Process current month expenses - extract from API response
+      const currentExpenses = currentExpenseResponse.data?.data?.dailyExpenses || [];
+      const currentExpenseCategories = {};
+      
+      currentExpenses.forEach(dailyExpense => {
+        Object.values(dailyExpense.departments || {}).forEach(dept => {
+          (dept.items || []).forEach(item => {
+            const category = item.categoryName || 'Other Expenses';
+            currentExpenseCategories[category] = (currentExpenseCategories[category] || 0) + parseFloat(item.amount || 0);
+          });
+        });
+      });
+
+      // Process previous month expenses
+      const previousExpenses = previousExpenseResponse.data?.data?.dailyExpenses || [];
+      const previousExpenseCategories = {};
+      
+      previousExpenses.forEach(dailyExpense => {
+        Object.values(dailyExpense.departments || {}).forEach(dept => {
+          (dept.items || []).forEach(item => {
+            const category = item.categoryName || 'Other Expenses';
+            previousExpenseCategories[category] = (previousExpenseCategories[category] || 0) + parseFloat(item.amount || 0);
+          });
+        });
+      });
+
+      // Prepare expense categories data
+      const allExpenseCategories = new Set([
+        ...Object.keys(currentExpenseCategories),
+        ...Object.keys(previousExpenseCategories)
+      ]);
+
+      const expenseCategoriesData = [];
+      allExpenseCategories.forEach(category => {
+        expenseCategoriesData.push({
+          name: category,
+          previousMonth: previousExpenseCategories[category] || 0,
+          currentMonth: currentExpenseCategories[category] || 0
+        });
+      });
+
+
+      // Calculate total expenses
+      const currentTotalExpenses = Object.values(currentExpenseCategories).reduce((sum, val) => sum + val, 0);
+      const previousTotalExpenses = Object.values(previousExpenseCategories).reduce((sum, val) => sum + val, 0);
+
+
+      // Calculate income before tax
+      const currentIncomeBeforeTax = currentTotalRevenue - currentTotalExpenses;
+      const previousIncomeBeforeTax = previousTotalRevenue - previousTotalExpenses;
+
+      // Calculate income tax (12%)
+      const currentIncomeTax = currentIncomeBeforeTax * 0.12;
+      const previousIncomeTax = previousIncomeBeforeTax * 0.12;
+
+      // Calculate net profit
+      const currentNetProfit = currentIncomeBeforeTax - currentIncomeTax;
+      const previousNetProfit = previousIncomeBeforeTax - previousIncomeTax;
+      
+      // Format date for display
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      return {
+        date: formattedDate,
+        previousMonth: `${monthNames[previousMonth - 1]}\nprevious month`,
+        currentMonth: `${monthNames[currentMonth - 1]}\ncurrent month`,
+        revenue: {
+          departments: departmentRevenueData,
+          additionalIncome: {
+            previousMonth: previousCollectibleTotal,
+            currentMonth: currentCollectibleTotal
+          },
+          gCashIncome: {
+            previousMonth: previousTotalGCash,
+            currentMonth: currentTotalGCash
+          },
+          total: {
+            previousMonth: previousTotalRevenue,
+            currentMonth: currentTotalRevenue
+          }
+        },
+        expenses: {
+          categories: expenseCategoriesData,
+          total: {
+            previousMonth: previousTotalExpenses,
+            currentMonth: currentTotalExpenses
+          }
+        },
+        incomeBeforeTax: {
+          previousMonth: previousIncomeBeforeTax,
+          currentMonth: currentIncomeBeforeTax
+        },
+        incomeTax: {
+          previousMonth: previousIncomeTax,
+          currentMonth: currentIncomeTax
+        },
+        netProfit: {
+          previousMonth: previousNetProfit,
+          currentMonth: currentNetProfit
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching profit & loss data:', error);
+      return null;
     }
   };
 
