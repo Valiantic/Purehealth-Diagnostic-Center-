@@ -121,7 +121,7 @@ exports.getRevenueTrend = async (req, res) => {
       case 'weekly':
         // Format: YYYY-Week WW
         timePeriodAttribute = [
-          sequelize.literal(`CONCAT(YEAR(revenueDate), '-Week ', WEEK(revenueDate))`),
+          sequelize.literal(`CONCAT(EXTRACT(YEAR FROM "revenueDate")::text, '-Week ', EXTRACT(WEEK FROM "revenueDate")::text)`),
           'timePeriod'
         ];
         break;
@@ -129,7 +129,7 @@ exports.getRevenueTrend = async (req, res) => {
       default:
         // Format: YYYY-MM
         timePeriodAttribute = [
-          sequelize.fn('DATE_FORMAT', sequelize.col('revenueDate'), '%Y-%m'),
+          sequelize.fn('TO_CHAR', sequelize.col('revenueDate'), 'YYYY-MM'),
           'timePeriod'
         ];
         break;
@@ -190,7 +190,7 @@ exports.getRefundsByDepartment = async (req, res) => {
       ...whereClause,
       [Op.or]: [
         { status: 'refunded' },
-        sequelize.literal("JSON_EXTRACT(metadata, '$.isRefunded') = 'true'")
+        sequelize.literal("(metadata->>'isRefunded') = 'true'")
       ]
     };
 
@@ -198,8 +198,8 @@ exports.getRefundsByDepartment = async (req, res) => {
     const cancellationWhereClause = {
       ...whereClause,
       [Op.and]: [
-        { status: 'cancelled' }, 
-        sequelize.literal("JSON_EXTRACT(metadata, '$.isCancellation') = 'true'")
+        { status: 'cancelled' },
+        sequelize.literal("(metadata->>'isCancellation') = 'true'")
       ]
     };
 
@@ -212,9 +212,9 @@ exports.getRefundsByDepartment = async (req, res) => {
         [
           sequelize.literal(`
             SUM(
-              CASE WHEN JSON_VALID(metadata) AND JSON_EXTRACT(metadata, '$.refundAmount') IS NOT NULL 
-              THEN CAST(JSON_EXTRACT(metadata, '$.refundAmount') AS DECIMAL(10,2))
-              ELSE 0 
+              CASE WHEN metadata IS NOT NULL AND (metadata->>'refundAmount') IS NOT NULL
+              THEN CAST((metadata->>'refundAmount') AS DECIMAL(10,2))
+              ELSE 0
               END
             )
           `),
@@ -260,12 +260,12 @@ exports.getRefundsByDepartment = async (req, res) => {
         [
           sequelize.literal(`
             SUM(
-              CASE WHEN JSON_VALID(metadata) AND JSON_EXTRACT(metadata, '$.refundAmount') IS NOT NULL 
-              THEN CAST(JSON_EXTRACT(metadata, '$.refundAmount') AS DECIMAL(10,2))
-              ELSE 0 
+              CASE WHEN metadata IS NOT NULL AND (metadata->>'refundAmount') IS NOT NULL
+              THEN CAST((metadata->>'refundAmount') AS DECIMAL(10,2))
+              ELSE 0
               END
             )
-          `), 
+          `),
           'totalMetadataRefund'
         ]
       ],
