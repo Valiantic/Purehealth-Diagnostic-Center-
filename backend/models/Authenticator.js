@@ -17,7 +17,29 @@ const Authenticator = sequelize.define('Authenticator', {
   },
   credentialPublicKey: {
     type: DataTypes.BLOB,
-    allowNull: false
+    allowNull: false,
+    get() {
+      const value = this.getDataValue('credentialPublicKey');
+      // Ensure it's always returned as Buffer
+      if (Buffer.isBuffer(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        // If stored as hex string (PostgreSQL BYTEA format), convert to Buffer
+        return Buffer.from(value, 'hex');
+      }
+      return value;
+    },
+    set(value) {
+      // Store as Buffer
+      if (Buffer.isBuffer(value)) {
+        this.setDataValue('credentialPublicKey', value);
+      } else if (typeof value === 'string') {
+        this.setDataValue('credentialPublicKey', Buffer.from(value, 'base64'));
+      } else {
+        this.setDataValue('credentialPublicKey', value);
+      }
+    }
   },
   counter: {
     type: DataTypes.INTEGER,
