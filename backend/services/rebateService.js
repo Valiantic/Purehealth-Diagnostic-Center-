@@ -241,8 +241,8 @@ class RebateService {
         ],
         where: {
           [Op.and]: [
-            sequelize.where(sequelize.fn('MONTH', sequelize.col('rebateDate')), month),
-            sequelize.where(sequelize.fn('YEAR', sequelize.col('rebateDate')), year)
+            sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "rebateDate"`)), month),
+            sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "rebateDate"`)), year)
           ],
           status: 'active'
         },

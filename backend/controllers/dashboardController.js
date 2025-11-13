@@ -19,8 +19,8 @@ const dashboardController = {
             where: {
               transactionDate: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Transaction.transactionDate')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Transaction.transactionDate')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Transaction"."transactionDate"`)), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Transaction"."transactionDate"`)), year)
                 ]
               },
               status: {
@@ -46,8 +46,8 @@ const dashboardController = {
             where: {
               date: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Expense"."date"`)), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Expense"."date"`)), year)
                 ]
               },
               status: {
@@ -69,8 +69,8 @@ const dashboardController = {
         where: {
           createdAt: {
             [Op.and]: [
-              sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
-              sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "CollectibleIncome"."createdAt"`)), month),
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "CollectibleIncome"."createdAt"`)), year)
             ]
           }
         }
@@ -157,8 +157,8 @@ const dashboardController = {
       // Get daily income from non-refunded test details in non-cancelled transactions, excluding balance amounts
       const dailyData = await TestDetails.findAll({
         attributes: [
-          [sequelize.fn('DAY', sequelize.col('Transaction.transactionDate')), 'day'],
-          [sequelize.fn('DAYNAME', sequelize.col('Transaction.transactionDate')), 'dayName'],
+          [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "Transaction"."transactionDate"`)), 'day'],
+          [sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day'), 'dayName'],
           [sequelize.fn('SUM', sequelize.literal('TestDetails.discountedPrice - TestDetails.balanceAmount')), 'totalAmount']
         ],
         include: [
@@ -167,8 +167,8 @@ const dashboardController = {
             where: {
               transactionDate: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Transaction.transactionDate')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Transaction.transactionDate')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Transaction"."transactionDate"`)), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Transaction"."transactionDate"`)), year)
                 ]
               },
               status: {
@@ -183,28 +183,28 @@ const dashboardController = {
             [Op.ne]: 'refunded'
           }
         },
-        group: [sequelize.fn('DAY', sequelize.col('Transaction.transactionDate')), sequelize.fn('DAYNAME', sequelize.col('Transaction.transactionDate'))],
-        order: [[sequelize.fn('DAY', sequelize.col('Transaction.transactionDate')), 'ASC']],
+        group: [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "Transaction"."transactionDate"`)), sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day')],
+        order: [[sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "Transaction"."transactionDate"`)), 'ASC']],
         raw: true
       });
 
       // Get daily collectible income
       const dailyCollectibleData = await CollectibleIncome.findAll({
         attributes: [
-          [sequelize.fn('DAY', sequelize.col('createdAt')), 'day'],
-          [sequelize.fn('DAYNAME', sequelize.col('createdAt')), 'dayName'],
+          [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "CollectibleIncome"."createdAt"`)), 'day'],
+          [sequelize.fn('TO_CHAR', sequelize.col('createdAt'), 'Day'), 'dayName'],
           [sequelize.fn('SUM', sequelize.col('totalIncome')), 'totalCollectible']
         ],
         where: {
           createdAt: {
             [Op.and]: [
-              sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
-              sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "CollectibleIncome"."createdAt"`)), month),
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "CollectibleIncome"."createdAt"`)), year)
             ]
           }
         },
-        group: [sequelize.fn('DAY', sequelize.col('createdAt')), sequelize.fn('DAYNAME', sequelize.col('createdAt'))],
-        order: [[sequelize.fn('DAY', sequelize.col('createdAt')), 'ASC']],
+        group: [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "CollectibleIncome"."createdAt"`)), sequelize.fn('TO_CHAR', sequelize.col('createdAt'), 'Day')],
+        order: [[sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "CollectibleIncome"."createdAt"`)), 'ASC']],
         raw: true
       });
 
@@ -273,8 +273,8 @@ const dashboardController = {
             where: {
               date: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Expense"."date"`)), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Expense"."date"`)), year)
                 ]
               },
               status: {
@@ -301,8 +301,8 @@ const dashboardController = {
             where: {
               date: {
                 [Op.and]: [
-                  sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                  sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Expense"."date"`)), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Expense"."date"`)), year)
                 ]
               },
               status: {
