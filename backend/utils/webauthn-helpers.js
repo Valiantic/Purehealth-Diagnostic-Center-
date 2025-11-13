@@ -77,7 +77,25 @@ async function verifyRegResponse(user, response, isPrimary = true) {
     if (verification.verified && verification.registrationInfo) {
       const { credentialPublicKey, credentialID, counter, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
 
-      // Create new authenticator record
+      // For temporary users, return the authenticator data without saving to DB
+      if (user.isTemporary) {
+        const authenticatorData = {
+          credentialId: Buffer.from(credentialID).toString('base64'),
+          credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64'),
+          counter,
+          credentialDeviceType,
+          credentialBackedUp,
+          transports: response.response.transports || [],
+          isPrimary
+        };
+
+        return {
+          verified: true,
+          authenticator: { get: () => authenticatorData }
+        };
+      }
+
+      // For real users, create the authenticator record
       const newAuthenticator = await Authenticator.create({
         userId: user.userId,
         credentialId: Buffer.from(credentialID).toString('base64'),
