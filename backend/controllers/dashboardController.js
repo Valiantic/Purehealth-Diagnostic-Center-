@@ -82,8 +82,8 @@ const dashboardController = {
           status: { [Op.ne]: 'cancelled' },
           transactionDate: {
             [Op.and]: [
-              sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), month),
-              sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), year)
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "transactionDate"`)), month),
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "transactionDate"`)), year)
             ]
           }
         }
@@ -101,8 +101,8 @@ const dashboardController = {
           status: { [Op.ne]: 'cancelled' },
           transactionDate: {
             [Op.and]: [
-              sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), prevMonth),
-              sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), prevYear)
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "transactionDate"`)), prevMonth),
+              sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "transactionDate"`)), prevYear)
             ]
           }
         }
@@ -453,8 +453,8 @@ const dashboardController = {
           where: {
             createdAt: {
               [Op.and]: [
-                sequelize.where(sequelize.fn('MONTH', sequelize.col('createdAt')), month),
-                sequelize.where(sequelize.fn('YEAR', sequelize.col('createdAt')), year)
+                sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "createdAt"`)), month),
+                sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "createdAt"`)), year)
               ]
             }
           }

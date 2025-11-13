@@ -86,7 +86,7 @@ exports.createTransaction = async (req, res) => {
       // Find the highest MC number in the database using Sequelize literal to cast as integer
       const highestMcTransaction = await Transaction.findOne({
         attributes: ['mcNo'],
-        order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+        order: [sequelize.literal('CAST("mcNo" AS INTEGER) DESC')],
         transaction: t
       });
       

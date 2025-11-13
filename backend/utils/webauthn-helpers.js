@@ -34,8 +34,9 @@ async function generateRegOptions(user, isPrimary = true) {
       })),
       authenticatorSelection: {
         residentKey: 'preferred',
-        userVerification: 'preferred',
-        authenticatorAttachment: 'platform'
+        userVerification: 'preferred'
+        // Removed authenticatorAttachment to allow both platform (Windows Hello, Face ID) 
+        // and cross-platform authenticators (USB keys, phones)
       }
     });
 
