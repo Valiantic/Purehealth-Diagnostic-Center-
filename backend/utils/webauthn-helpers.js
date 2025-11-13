@@ -1,130 +1,205 @@
-import {
-  startRegistration,
-  startAuthentication
-} from '@simplewebauthn/browser';
-import { userAPI, webauthnAPI } from '../services/api';
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse
+} = require('@simplewebauthn/server');
+const { Authenticator } = require('../models');
+const { rpName, rpID, expectedOrigin } = require('./webauthn-config');
 
 /**
- * Start the registration process for a new user
+ * Generate registration options for WebAuthn
  */
-export async function registerUser(userData) {
+async function generateRegOptions(user, isPrimary = true) {
   try {
-    // Step 1: Get registration options for a temporary user
-    const optionsResponse = await webauthnAPI.getTempRegistrationOptions(userData);
-    const { options, tempRegistrationId } = optionsResponse.data;
-    // Step 2: Always ensure we're using the correct RP ID
-    if (options.rp) {
-      console.log('Registration: Changing RP ID from', options.rp.id, 'to', window.location.hostname);
-      options.rp.id = window.location.hostname;
-    } else {
-      console.error('Registration options missing rp object:', options);
+    // Get existing authenticators for the user if it's not a temporary user
+    let userAuthenticators = [];
+    if (!user.isTemporary) {
+      userAuthenticators = await Authenticator.findAll({
+        where: { userId: user.userId }
+      });
     }
-    
-    // Step 3: Start registration with the browser WebAuthn API
-    const attResp = await startRegistration(options);
-    
-    // Step 4: Verify registration with the server and create the user
-    const verificationResponse = await webauthnAPI.verifyTempRegistration(tempRegistrationId, attResp, userData);
-    
-    return {
-      success: true,
-      userId: verificationResponse.data.user.userId,
-      message: 'Account and passkey created successfully'
-    };
+
+    const options = await generateRegistrationOptions({
+      rpName,
+      rpID,
+      userID: user.userId,
+      userName: user.email,
+      userDisplayName: `${user.firstName} ${user.lastName}`,
+      attestationType: 'none',
+      excludeCredentials: userAuthenticators.map(auth => ({
+        id: Buffer.from(auth.credentialId, 'base64'),
+        type: 'public-key',
+        transports: auth.transports || []
+      })),
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred',
+        authenticatorAttachment: 'platform'
+      }
+    });
+
+    // Store challenge in user object (or in a temporary storage)
+    if (user.update) {
+      await user.update({ currentChallenge: options.challenge });
+    } else {
+      // For temporary users, the challenge will be stored in the controller
+      user.currentChallenge = options.challenge;
+    }
+
+    return options;
   } catch (error) {
-    console.error('Registration error:', error);
-    
-    // Handle user cancellation specifically
-    if (
-      error.name === 'AbortError' || 
-      error.message?.includes('The operation either timed out or was not allowed') ||
-      error.message?.includes('user canceled')
-    ) {
+    console.error('Error generating registration options:', error);
+    throw error;
+  }
+}
+
+/**
+ * Verify registration response from WebAuthn
+ */
+async function verifyRegResponse(user, response, isPrimary = true) {
+  try {
+    // Get the expected challenge
+    const expectedChallenge = user.currentChallenge;
+
+    if (!expectedChallenge) {
+      throw new Error('No challenge found for user');
+    }
+
+    const verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin: Array.isArray(expectedOrigin) ? expectedOrigin : [expectedOrigin],
+      expectedRPID: rpID,
+      requireUserVerification: false
+    });
+
+    if (verification.verified && verification.registrationInfo) {
+      const { credentialPublicKey, credentialID, counter, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+
+      // Create new authenticator record
+      const newAuthenticator = await Authenticator.create({
+        userId: user.userId,
+        credentialId: Buffer.from(credentialID).toString('base64'),
+        credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64'),
+        counter,
+        credentialDeviceType,
+        credentialBackedUp,
+        transports: response.response.transports || [],
+        isPrimary
+      });
+
+      // Clear the challenge
+      if (user.update) {
+        await user.update({ currentChallenge: null });
+      }
+
       return {
-        success: false,
-        message: 'Passkey registration was canceled. Your account has not been created.'
+        verified: true,
+        authenticator: newAuthenticator
       };
     }
-    
-    // Better error message extraction from axios error responses
-    if (error.response?.data) {
-      return {
-        success: false,
-        message: error.response.data.message || error.response.data.error || 'Registration failed'
-      };
-    }
-    
-    return {
-      success: false,
-      message: error.message || 'Registration failed due to an unexpected error'
-    };
+
+    return { verified: false };
+  } catch (error) {
+    console.error('Error verifying registration:', error);
+    throw error;
   }
 }
 
 /**
- * Register a backup passkey for an existing user
+ * Generate authentication options for WebAuthn
  */
-export async function registerBackupPasskey(userId) {
+async function generateAuthOptions(user) {
   try {
-    // Step 1: Get registration options for backup passkey
-    const optionsResponse = await webauthnAPI.getRegistrationOptions(userId, false);
-    const options = optionsResponse.data.options;
-    
-    // Step 2: Always ensure we're using the correct RP ID
-    if (options.rp) {
-      console.log('Backup registration: Changing RP ID from', options.rp.id, 'to', window.location.hostname);
-      options.rp.id = window.location.hostname;
-    } else {
-      console.error('Backup registration options missing rp object:', options);
+    // Get user's authenticators
+    const userAuthenticators = await Authenticator.findAll({
+      where: { userId: user.userId }
+    });
+
+    if (userAuthenticators.length === 0) {
+      throw new Error('No authenticators found for user');
     }
-    
-    // Step 3: Start registration with the browser WebAuthn API
-    const attResp = await startRegistration(options);
-    
-    // Step 4: Verify registration with the server
-    const verificationResponse = await webauthnAPI.verifyRegistration(userId, attResp, false);
-    
-    return {
-      success: true,
-      message: 'Backup passkey registration successful'
-    };
+
+    const options = await generateAuthenticationOptions({
+      rpID,
+      allowCredentials: userAuthenticators.map(auth => ({
+        id: Buffer.from(auth.credentialId, 'base64'),
+        type: 'public-key',
+        transports: auth.transports || []
+      })),
+      userVerification: 'preferred'
+    });
+
+    // Store challenge
+    await user.update({ currentChallenge: options.challenge });
+
+    return options;
   } catch (error) {
-    console.error('Backup registration error:', error);
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Backup passkey registration failed'
-    };
+    console.error('Error generating authentication options:', error);
+    throw error;
   }
 }
 
 /**
- * Authenticate a user using WebAuthn
+ * Verify authentication response from WebAuthn
  */
-export async function authenticateUser(email) {
+async function verifyAuthResponse(user, response) {
   try {
-    // Step 1: Get authentication options from the server
-    const optionsResponse = await webauthnAPI.getAuthenticationOptions(email);
-    const { options, userId } = optionsResponse.data;    // Step 2: Always set the RP ID to match the current hostname
-    // This fixes issues where backend config might not match the actual frontend origin
-    console.log('Authentication: Changing RP ID from', options.rpId, 'to', window.location.hostname);
-    options.rpId = window.location.hostname;
-    
-    // Step 3: Start authentication with the browser WebAuthn API
-    const authResp = await startAuthentication(options);
-    
-    // Step 3: Verify authentication with the server
-    const verificationResponse = await webauthnAPI.verifyAuthentication(userId, authResp);
-    
-    return {
-      success: true,
-      user: verificationResponse.data.user,
-      message: 'Authentication successful'
-    };
+    const expectedChallenge = user.currentChallenge;
+
+    if (!expectedChallenge) {
+      throw new Error('No challenge found for user');
+    }
+
+    // Find the authenticator used
+    const credentialId = Buffer.from(response.rawId, 'base64').toString('base64');
+    const authenticator = await Authenticator.findOne({
+      where: {
+        userId: user.userId,
+        credentialId
+      }
+    });
+
+    if (!authenticator) {
+      throw new Error('Authenticator not found');
+    }
+
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin: Array.isArray(expectedOrigin) ? expectedOrigin : [expectedOrigin],
+      expectedRPID: rpID,
+      authenticator: {
+        credentialID: Buffer.from(authenticator.credentialId, 'base64'),
+        credentialPublicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+        counter: authenticator.counter
+      },
+      requireUserVerification: false
+    });
+
+    if (verification.verified) {
+      // Update counter
+      await authenticator.update({
+        counter: verification.authenticationInfo.newCounter
+      });
+
+      // Clear challenge
+      await user.update({ currentChallenge: null });
+
+      return { verified: true };
+    }
+
+    return { verified: false };
   } catch (error) {
-    console.error('Authentication error:', error);
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Authentication failed'
-    };
+    console.error('Error verifying authentication:', error);
+    throw error;
   }
 }
+
+module.exports = {
+  generateRegOptions,
+  verifyRegResponse,
+  generateAuthOptions,
+  verifyAuthResponse
+};
