@@ -159,7 +159,7 @@ const dashboardController = {
         attributes: [
           [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "Transaction"."transactionDate"`)), 'day'],
           [sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day'), 'dayName'],
-          [sequelize.fn('SUM', sequelize.literal('TestDetails.discountedPrice - TestDetails.balanceAmount')), 'totalAmount']
+          [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalAmount']
         ],
         include: [
           {
@@ -330,13 +330,13 @@ const dashboardController = {
           }
         },
         group: [
-          'Expense.departmentId', 
-          'Expense->Department.departmentId', 
+          'Expense.departmentId',
+          'Expense->Department.departmentId',
           'Expense->Department.departmentName',
           'Category.categoryId',
           'Category.name'
         ],
-        having: sequelize.literal('SUM(ExpenseItem.amount) > 0'),
+        having: sequelize.literal('SUM("ExpenseItem"."amount") > 0'),
         raw: true
       });
 
@@ -403,8 +403,8 @@ const dashboardController = {
               where: {
                 transactionDate: {
                   [Op.and]: [
-                    sequelize.where(sequelize.fn('MONTH', sequelize.col('Transaction.transactionDate')), month),
-                    sequelize.where(sequelize.fn('YEAR', sequelize.col('Transaction.transactionDate')), year)
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Transaction"."transactionDate"`)), month),
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Transaction"."transactionDate"`)), year)
                   ]
                 },
                 status: {
@@ -430,8 +430,8 @@ const dashboardController = {
               where: {
                 date: {
                   [Op.and]: [
-                    sequelize.where(sequelize.fn('MONTH', sequelize.col('Expense.date')), month),
-                    sequelize.where(sequelize.fn('YEAR', sequelize.col('Expense.date')), year)
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Expense"."date"`)), month),
+                    sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Expense"."date"`)), year)
                   ]
                 },
                 status: {
