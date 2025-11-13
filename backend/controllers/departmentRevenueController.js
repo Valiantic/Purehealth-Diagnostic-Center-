@@ -33,7 +33,7 @@ exports.getRevenueByDepartment = async (req, res) => {
           attributes: ['departmentName']
         }
       ],
-      group: ['departmentId', 'Department.departmentId'],
+      group: ['DepartmentRevenue.departmentId', 'Department.departmentId'],
       order: [[sequelize.fn('sum', sequelize.col('amount')), 'DESC']]
     });
 
@@ -228,7 +228,7 @@ exports.getRefundsByDepartment = async (req, res) => {
           attributes: ['departmentName']
         }
       ],
-      group: ['departmentId', 'Department.departmentId'],
+      group: ['DepartmentRevenue.departmentId', 'Department.departmentId'],
       order: [[sequelize.fn('sum', sequelize.col('amount')), 'DESC']]
     });
 
@@ -245,7 +245,7 @@ exports.getRefundsByDepartment = async (req, res) => {
           attributes: ['departmentName']
         }
       ],
-      group: ['departmentId', 'Department.departmentId'],
+      group: ['DepartmentRevenue.departmentId', 'Department.departmentId'],
       order: [[sequelize.fn('sum', sequelize.col('amount')), 'DESC']]
     });
 
