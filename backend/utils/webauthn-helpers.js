@@ -81,7 +81,7 @@ async function verifyRegResponse(user, response, isPrimary = true) {
       if (user.isTemporary) {
         const authenticatorData = {
           credentialId: Buffer.from(credentialID).toString('base64'),
-          credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64'),
+          credentialPublicKey: Buffer.from(credentialPublicKey), // Store as Buffer
           counter,
           credentialDeviceType,
           credentialBackedUp,
@@ -99,7 +99,7 @@ async function verifyRegResponse(user, response, isPrimary = true) {
       const newAuthenticator = await Authenticator.create({
         userId: user.userId,
         credentialId: Buffer.from(credentialID).toString('base64'),
-        credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64'),
+        credentialPublicKey: Buffer.from(credentialPublicKey), // Store as Buffer for PostgreSQL BYTEA
         counter,
         credentialDeviceType,
         credentialBackedUp,
@@ -183,6 +183,16 @@ async function verifyAuthResponse(user, response) {
       throw new Error('Authenticator not found');
     }
 
+    // Handle credentialPublicKey - it might be stored as base64 string or as Buffer/BYTEA
+    let credentialPublicKeyBuffer;
+    if (Buffer.isBuffer(authenticator.credentialPublicKey)) {
+      credentialPublicKeyBuffer = authenticator.credentialPublicKey;
+    } else if (typeof authenticator.credentialPublicKey === 'string') {
+      credentialPublicKeyBuffer = Buffer.from(authenticator.credentialPublicKey, 'base64');
+    } else {
+      throw new Error('Invalid credentialPublicKey format');
+    }
+
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge,
@@ -190,7 +200,7 @@ async function verifyAuthResponse(user, response) {
       expectedRPID: rpID,
       authenticator: {
         credentialID: Buffer.from(authenticator.credentialId, 'base64'),
-        credentialPublicKey: Buffer.from(authenticator.credentialPublicKey, 'base64'),
+        credentialPublicKey: credentialPublicKeyBuffer,
         counter: authenticator.counter
       },
       requireUserVerification: false
