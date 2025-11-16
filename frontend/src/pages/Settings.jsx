@@ -495,8 +495,8 @@ const Settings = () => {
                           <Key className="w-6 h-6 text-orange-700" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-gray-500 font-medium">Change Passkey</p>
-                          <p className="text-base font-semibold text-gray-800">Update Security</p>
+                          <p className="text-sm text-gray-500 font-medium">Manage Passkeys</p>
+                          <p className="text-base font-semibold text-gray-800">Add or Remove</p>
                         </div>
                       </div>
                     </div>

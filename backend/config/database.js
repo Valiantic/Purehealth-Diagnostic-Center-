@@ -8,7 +8,8 @@ const sequelize = new Sequelize(
   {
     host: config.host,
     dialect: config.dialect,
-    logging: console.log
+    dialectOptions: config.dialectOptions || {},
+    logging: config.logging !== undefined ? config.logging : console.log
   }
 );
 

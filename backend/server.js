@@ -78,11 +78,26 @@ app.use((err, req, res, next) => {
 });
 
 // Sync database and start server
-sequelize.sync({ alter: process.env.NODE_ENV === 'development' })
+// FORCE_DB_SYNC=true will sync models regardless of environment
+const shouldSync = process.env.FORCE_DB_SYNC === 'true' || process.env.NODE_ENV === 'development';
+const syncOptions = process.env.NODE_ENV === 'development' ? { alter: true } : { alter: false };
+
+sequelize.authenticate()
+  .then(() => {
+    console.log('Database connection established successfully.');
+    // Sync if in development or FORCE_DB_SYNC is true
+    if (shouldSync) {
+      console.log('Syncing database models...');
+      return sequelize.sync(syncOptions);
+    }
+    console.log('Skipping database sync (use migrations or set FORCE_DB_SYNC=true)');
+    return Promise.resolve();
+  })
   .then(() => {
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Socket.IO enabled for real-time updates`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
     });
   })
   .catch(err => {
