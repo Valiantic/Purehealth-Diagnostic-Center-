@@ -202,6 +202,26 @@ const NewTransaction = () => {
     setCurrentPage(1);
   }, [selectedDate]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (openMenuId === null) return;
+
+    const handleClickOutside = (event) => {
+      // Close menu if clicking outside
+      toggleIncomeMenu(openMenuId);
+    };
+
+    // Small delay to prevent immediate closing when menu opens
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [openMenuId]);
+
   if (isAuthenticating) {
     return null;
   }

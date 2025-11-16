@@ -12,7 +12,7 @@ module.exports = {
     // For MySQL
     else if (queryInterface.sequelize.getDialect() === 'mysql') {
       await queryInterface.changeColumn('ExpenseItems', 'status', {
-        type: Sequelize.ENUM('pending', 'reimbursed', 'paid', 'cancelled', 'refunded'),
+        type: Sequelize.ENUM('pending', 'reimbursed', 'paid', 'cancelled'),
         allowNull: false,
         defaultValue: 'pending'
       });
@@ -23,7 +23,7 @@ module.exports = {
     // For MySQL - rollback to original ENUM values
     if (queryInterface.sequelize.getDialect() === 'mysql') {
       await queryInterface.changeColumn('ExpenseItems', 'status', {
-        type: Sequelize.ENUM('pending', 'paid', 'refunded'),
+        type: Sequelize.ENUM('pending', 'paid'),
         allowNull: false,
         defaultValue: 'pending'
       });
