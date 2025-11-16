@@ -359,7 +359,13 @@ const TransactionSummaryModal = ({
                             {(() => {
                               const hasBalance = parseFloat(test.balanceAmount || 0) > 0;
                               const isAlreadyRefunded = test.status === 'refunded';
-                              const isDisabled = isAlreadyRefunded || hasBalance;
+                              const cashAmount = parseFloat(test.cashAmount || 0);
+                              const gCashAmount = parseFloat(test.gCashAmount || 0);
+                              const balanceAmount = parseFloat(test.balanceAmount || 0);
+                              
+                              // Disable refund if no payments were made (all values are 0)
+                              const hasNoPayments = cashAmount === 0 && gCashAmount === 0 && balanceAmount === 0;
+                              const isDisabled = isAlreadyRefunded || hasBalance || hasNoPayments;
                               
                               return (
                                 <>
@@ -370,12 +376,14 @@ const TransactionSummaryModal = ({
                                     className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                                     disabled={isDisabled}
                                   />
-                                  {(!!selectedRefunds[test.testDetailId] || isAlreadyRefunded || hasBalance) && (
+                                  {(!!selectedRefunds[test.testDetailId] || isAlreadyRefunded || hasBalance || hasNoPayments) && (
                                     <div className="text-xs mt-1 font-medium">
                                       {isAlreadyRefunded ? (
                                         <span className="text-red-600">Already refunded</span>
                                       ) : hasBalance ? (
                                         <span className="text-orange-600">Has balance</span>
+                                      ) : hasNoPayments ? (
+                                        <span className="text-gray-500">No payment</span>
                                       ) : (
                                         <span className="text-red-600">Will be refunded</span>
                                       )}

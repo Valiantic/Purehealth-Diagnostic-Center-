@@ -61,19 +61,10 @@ const ExpenseTable = ({
   const activeTotalExpense = filteredExpenses.reduce((total, expense) => {
     if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
       return total + expense.ExpenseItems
-        .filter(item => item.status !== 'refunded' && item.status !== 'paid')
+        .filter(item => item.status !== 'paid')
         .reduce((itemTotal, item) => itemTotal + parseFloat(item.amount || 0), 0);
     }
-    return expense.status !== 'refunded' && expense.status !== 'paid' ? total + parseFloat(expense.amount || 0) : total;
-  }, 0);
-
-  const refundedTotalExpense = filteredExpenses.reduce((total, expense) => {
-    if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
-      return total + expense.ExpenseItems
-        .filter(item => item.status === 'refunded')
-        .reduce((itemTotal, item) => itemTotal + parseFloat(item.amount || 0), 0);
-    }
-    return expense.status === 'refunded' ? total + parseFloat(expense.amount || 0) : total;
+    return expense.status !== 'paid' ? total + parseFloat(expense.amount || 0) : total;
   }, 0);
 
   return (
@@ -133,7 +124,6 @@ const ExpenseTable = ({
                 }
                 
                 const amount = parseFloat(expense.amount || expense.expenseAmount || 0);
-                const isRefunded = expense.status === 'refunded';
                 const isCancelled = expense.status === 'cancelled';
                 const statusToDisplay = expense.status || 'pending';
                 
@@ -141,26 +131,26 @@ const ExpenseTable = ({
                   <tr 
                     key={`exp-single-${expenseId}-${expenseIndex}`} 
                     className={`border-b hover:bg-gray-50 ${
-                      isCancelled ? 'bg-red-50 text-red-600' : isRefunded ? 'bg-gray-100' : ''
+                      isCancelled ? 'bg-red-50 text-red-600' : ''
                     }`}
                   >
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
+                      <span className={isCancelled ? 'line-through' : ''}>
                         {payeeName}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={`${isCancelled || isRefunded ? 'line-through' : ''}`}>
+                      <span className={`${isCancelled ? 'line-through' : ''}`}>
                         {expensePurpose}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
+                      <span className={isCancelled ? 'line-through' : ''}>
                         {categoryName}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
+                      <span className={isCancelled ? 'line-through' : ''}>
                         {departmentName || 'N/A'}
                       </span>
                     </td>
@@ -170,14 +160,13 @@ const ExpenseTable = ({
                         statusToDisplay === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
                         statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
                         statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        statusToDisplay === 'refunded' ? 'bg-gray-100 text-gray-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {statusToDisplay.charAt(0).toUpperCase() + statusToDisplay.slice(1)}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right border-r border-gray-200">
-                      <span className={`font-medium ${isCancelled || isRefunded ? 'line-through' : ''}`}>
+                      <span className={`font-medium ${isCancelled ? 'line-through' : ''}`}>
                         {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2
@@ -249,7 +238,6 @@ const ExpenseTable = ({
                 }
                 
                 const amount = parseFloat(expenseItem.amount || 0);
-                const isRefunded = expenseItem.status === 'refunded';
                 const isCancelled = expenseItem.status === 'cancelled';
                 const statusToDisplay = expenseItem.status || 'pending';
                 
@@ -257,26 +245,26 @@ const ExpenseTable = ({
                   <tr 
                     key={uniqueItemKey} 
                     className={`border-b hover:bg-gray-50 ${
-                      isCancelled ? 'bg-red-50 text-red-600' : isRefunded ? 'bg-gray-100' : ''
+                      isCancelled ? 'bg-red-50 text-red-600' : ''
                     }`}
                   >
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
+                      <span className={isCancelled ? 'line-through' : ''}>
                         {payeeName}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={`${isCancelled || isRefunded ? 'line-through' : ''}`}>
+                      <span className={`${isCancelled ? 'line-through' : ''}`}>
                         {expensePurpose}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
+                      <span className={isCancelled ? 'line-through' : ''}>
                         {categoryName}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={isCancelled || isRefunded ? 'line-through' : ''}>
+                      <span className={isCancelled ? 'line-through' : ''}>
                         {departmentName || 'N/A'}
                       </span>
                     </td>
@@ -286,14 +274,13 @@ const ExpenseTable = ({
                         statusToDisplay === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
                         statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
                         statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        statusToDisplay === 'refunded' ? 'bg-gray-100 text-gray-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {statusToDisplay.charAt(0).toUpperCase() + statusToDisplay.slice(1)}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right border-r border-gray-200">
-                      <span className={`font-medium ${isCancelled || isRefunded ? 'line-through' : ''}`}>
+                      <span className={`font-medium ${isCancelled ? 'line-through' : ''}`}>
                         {isNaN(amount) ? '0.00' : amount.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2

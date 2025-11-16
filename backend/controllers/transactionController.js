@@ -81,53 +81,101 @@ exports.createTransaction = async (req, res) => {
     // Generate sequential MC number if not provided
     let generatedMcNo;
     if (mcNo) {
-      generatedMcNo = mcNo;
-    } else {
-      // Find the highest MC number in the database using Sequelize literal to cast as integer
-      const highestMcTransaction = await Transaction.findOne({
-        attributes: ['mcNo'],
-        order: [sequelize.literal('CAST("mcNo" AS INTEGER) DESC')],
+      // Verify the provided mcNo doesn't already exist
+      const existingTransaction = await Transaction.findOne({
+        where: { mcNo },
         transaction: t
       });
       
-      // Generate the next MC number
+      if (existingTransaction) {
+        throw new Error(`MC# ${mcNo} already exists`);
+      }
+      
+      generatedMcNo = mcNo;
+    } else {
+      // Use FOR UPDATE lock to prevent race conditions when multiple devices create transactions simultaneously
+      // This ensures only one transaction can read and increment the counter at a time
+      const highestMcTransaction = await Transaction.findOne({
+        attributes: ['mcNo'],
+        order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+        lock: t.LOCK.UPDATE, // Row-level lock
+        transaction: t
+      });
+      
+      // Generate the next MC number atomically
       if (highestMcTransaction && highestMcTransaction.mcNo) {
         // Convert string to number, increment, then format back to string with leading zeros
         const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
         const nextNumber = currentNumber + 1;
         
         generatedMcNo = String(nextNumber).padStart(5, '0');
-        console.log(`Found highest mcNo: ${highestMcTransaction.mcNo}, generating next: ${generatedMcNo}`);
       } else {
         // If no existing transactions, start from 10000
         generatedMcNo = '10000';
-        console.log('No existing transactions found, starting from: 10000');
       }
     }
     
     console.log(`Using mcNo: ${generatedMcNo}`);
 
-    // Create the transaction record
-    const transaction = await Transaction.create({
-      mcNo: generatedMcNo,
-      firstName,
-      lastName,
-      idType,
-      idNumber,  
-      referrerId: referrerId || null,
-      birthDate: birthDate || null,
-      sex,
-      transactionDate: new Date(),
-      totalAmount: finalTotalAmount,
-      totalDiscountAmount: finalTotalDiscountAmount,
-      totalCashAmount,
-      totalGCashAmount,
-      totalBalanceAmount,
-      status: 'active',
-      userId
-    }, { transaction: t });
-
-    console.log(`Created transaction with ID: ${transaction.transactionId}`);
+    // Create the transaction record with retry logic for duplicate mcNo
+    let transaction;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        transaction = await Transaction.create({
+          mcNo: generatedMcNo,
+          firstName,
+          lastName,
+          idType,
+          idNumber,  
+          referrerId: referrerId || null,
+          birthDate: birthDate || null,
+          sex,
+          transactionDate: new Date(),
+          totalAmount: finalTotalAmount,
+          totalDiscountAmount: finalTotalDiscountAmount,
+          totalCashAmount,
+          totalGCashAmount,
+          totalBalanceAmount,
+          status: 'active',
+          userId
+        }, { transaction: t });
+        
+        console.log(`Created transaction with ID: ${transaction.transactionId}`);
+        break; // Success, exit retry loop
+        
+      } catch (createError) {
+        // Check if error is due to duplicate mcNo
+        if (createError.name === 'SequelizeUniqueConstraintError' || 
+            (createError.parent && createError.parent.code === 'ER_DUP_ENTRY')) {
+          
+          retryCount++;
+          console.log(`Duplicate mcNo detected (${generatedMcNo}), retrying... (attempt ${retryCount}/${maxRetries})`);
+          
+          if (retryCount >= maxRetries) {
+            throw new Error('Failed to generate unique MC number after multiple attempts');
+          }
+          
+          // Generate a new MC number by querying again with lock
+          const retryHighest = await Transaction.findOne({
+            attributes: ['mcNo'],
+            order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+            lock: t.LOCK.UPDATE,
+            transaction: t
+          });
+          
+          const retryCurrentNumber = parseInt(retryHighest?.mcNo || '10000', 10);
+          generatedMcNo = String(retryCurrentNumber + 1).padStart(5, '0');
+          console.log(`Generated new mcNo: ${generatedMcNo}`);
+          
+        } else {
+          // Different error, rethrow
+          throw createError;
+        }
+      }
+    }
 
     // Create the test detail records with explicit logging
     const testDetails = [];

@@ -23,7 +23,6 @@ const TransactionRow = ({
 
   return (
     <tr 
-      key={transaction.id} 
       className={transaction.status === 'cancelled' 
         ? 'bg-gray-100 text-gray-500' 
         : 'bg-white'
@@ -140,6 +139,7 @@ const TransactionRow = ({
               <button 
                 className="text-gray-600 hover:text-green-600 focus:outline-none"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   toggleIncomeMenu(transaction.id);
                 }}
@@ -151,7 +151,10 @@ const TransactionRow = ({
             {openMenuId === transaction.id && !editingId && (
               <div 
                 className="absolute top-full mt-1 w-24 bg-white shadow-lg rounded-md border border-gray-200 z-20 -right-2 sm:right-0"
-                onClick={handleDropdownClick}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <button 
                   className="flex items-center w-full px-3 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
