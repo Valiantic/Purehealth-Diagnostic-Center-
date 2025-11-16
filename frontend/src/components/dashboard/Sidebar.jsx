@@ -15,16 +15,19 @@ import manageIcon from '../../assets/icons/manageIcon.png';
 import expensesIcon from '../../assets/icons/ExpenseIcon.png';
 import annualIcon from '../../assets/icons/annual.png';
 import referralIcon from '../../assets/icons/network.png';
-import PDCHI from '../../assets/icons/purehealth_logo.jpg'; 
+import PDCHI from '../../assets/icons/purehealth_logo.jpg';
+import LogoutConfirmModal from './LogoutConfirmModal';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation(); 
   const isLogged = localStorage.getItem('user');
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
     navigate('/login');
+    setIsLogoutModalOpen(false);
   }
 
   const [isOpen, setIsOpen] = useState(false);
@@ -176,7 +179,7 @@ const Sidebar = () => {
             {/* Logout item with onClick handler */}
             <li>
               <div
-                onClick={handleLogout}
+                onClick={() => setIsLogoutModalOpen(true)}
                 className="flex items-center p-4 rounded-lg transition-all duration-300 bg-transparent hover:bg-green-600 cursor-pointer"
               >
                 <span className="mr-4 text-white relative z-10">
@@ -189,6 +192,13 @@ const Sidebar = () => {
           </ul>
         </nav>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 };

@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/auth/useAuth';
 
 const NotFound = () => {
+  const { user, isAuthenticating } = useAuth();
+  const navigate = useNavigate();
   const [redirectPath, setRedirectPath] = useState('/login');
 
   useEffect(() => {
- 
-    const user = localStorage.getItem('user');
-    if (user) {
-      setRedirectPath('/dashboard');
-    } else {
-      setRedirectPath('/login');
+    // Only set redirect path based on actual authentication state
+    if (!isAuthenticating) {
+      if (user) {
+        setRedirectPath('/dashboard');
+      } else {
+        setRedirectPath('/login');
+      }
     }
-  }, []);
+  }, [user, isAuthenticating]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">

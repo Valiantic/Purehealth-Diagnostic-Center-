@@ -13,6 +13,7 @@ module.exports = (sequelize) => {
     mcNo: {
       type: DataTypes.STRING(10),
       allowNull: false,
+      unique: true,
       defaultValue: () => {
         const num = Math.floor(10000 + Math.random() * 90000);
         return num.toString();

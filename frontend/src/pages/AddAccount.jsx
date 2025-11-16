@@ -108,7 +108,9 @@ const AddAccount = () => {
           localStorage.setItem('user', JSON.stringify(userData));
         }
         
-        navigate('/view-accounts', { 
+        // Redirect based on role: receptionist -> dashboard, admin -> view-accounts
+        const redirectPath = userData?.role === 'receptionist' ? '/dashboard' : '/view-accounts';
+        navigate(redirectPath, { 
           state: { 
             success: true, 
             message: 'Account successfully created!'
@@ -123,19 +125,6 @@ const AddAccount = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const skipBackupRegistration = () => {   
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData));
-    }
-  
-    navigate('/view-accounts', { 
-      state: { 
-        success: true, 
-        message: 'Account successfully created!'
-      }
-    });
   };
   
   const goToLogin = () => {
@@ -314,7 +303,21 @@ const AddAccount = () => {
                     className="w-48 h-auto"
                   />
                 </div>
-                <p className="text-green-800 text-sm md:text-base mb-2">Would you like to set up a backup security key?</p>
+                <p className="text-green-800 text-sm md:text-base mb-2 font-semibold">Set up a backup security key</p>
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        <strong>Important:</strong> A backup passkey is essential for account recovery. Without it, you may lose access to your account if your primary device is lost or damaged. This step is highly recommended for account security.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className='space-y-3'>
@@ -329,14 +332,6 @@ const AddAccount = () => {
                 >
                   <Shield className="mr-2" size={18} />
                   {loading ? 'Setting up...' : 'Set up Backup Passkey'}
-                </button>
-                 
-                <button 
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-green-800 py-3 px-4 rounded"
-                  onClick={skipBackupRegistration}
-                  disabled={loading}
-                >
-                  Skip for Now
                 </button>
               </div>
             </div>

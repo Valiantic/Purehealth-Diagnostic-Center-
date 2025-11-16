@@ -87,7 +87,8 @@ const NewAddTransaction = () => {
   });
 
   const tests = Array.isArray(testsData) ? testsData : Array.isArray(testsData.data) ? testsData.data : [];
-  const departments = Array.isArray(departmentsData) ? departmentsData : Array.isArray(departmentsData.data) ? departmentsData.data : [];
+  const allDepartments = Array.isArray(departmentsData) ? departmentsData : Array.isArray(departmentsData.data) ? departmentsData.data : [];
+  const departments = allDepartments.filter(dept => dept.status === 'active');
   const allReferrers = referrersData?.data?.data || [];
   const referrers = allReferrers.filter(referrer => referrer.status === 'active');
 

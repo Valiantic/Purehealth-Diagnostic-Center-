@@ -156,7 +156,7 @@ const updateExpense = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const { firstName, lastName, departmentId, date, totalAmount, ExpenseItems, userId } = req.body;
+    const { firstName, lastName, departmentId, date, ExpenseItems, userId } = req.body;
         
     const existingExpense = await Expense.findByPk(id);
     if (!existingExpense) {
@@ -187,13 +187,12 @@ const updateExpense = async (req, res) => {
       formattedDate = new Date(); 
     }
     
-    const activeItems = ExpenseItems.filter(item => item.status !== 'refunded');
-    const activeTotal = activeItems.reduce(
+    const totalAmount = ExpenseItems.reduce(
       (sum, item) => sum + parseFloat(parseFloat(item.amount || 0).toFixed(2)), 
       0
     ).toFixed(2);
     
-    const formattedTotalAmount = parseFloat(activeTotal);
+    const formattedTotalAmount = parseFloat(totalAmount);
     
     await existingExpense.update({
       firstName,
@@ -206,19 +205,6 @@ const updateExpense = async (req, res) => {
       updatedAt: formattedDate 
     }, { transaction });
     
-    const refundedItems = [];
-    const existingItems = await ExpenseItem.findAll({
-      where: { expenseId: id },
-      transaction
-    });
-
-    const existingItemMap = {};
-    existingItems.forEach(item => {
-      existingItemMap[item.id] = item.dataValues;
-    });
-
-    const newlyRefundedItems = [];
-    
     await ExpenseItem.destroy({
       where: { expenseId: id },
       transaction
@@ -228,7 +214,7 @@ const updateExpense = async (req, res) => {
     await Promise.all(
       ExpenseItems.map(item => {
         const formattedAmount = parseFloat(parseFloat(item.amount || 0).toFixed(2));
-        const validStatus = ['pending', 'reimbursed', 'paid', 'cancelled', 'refunded'].includes(item.status) 
+        const validStatus = ['pending', 'reimbursed', 'paid', 'cancelled'].includes(item.status) 
           ? item.status 
           : 'pending';
         
@@ -247,16 +233,11 @@ const updateExpense = async (req, res) => {
     );
     
     // Log activity with formatted amount
-    let activityDetails = `Updated expense record for ${firstName} ${lastName} with total active amount ${formattedTotalAmount.toFixed(2)}`;
-    
-    if (newlyRefundedItems.length > 0) {
-      const refundTotal = newlyRefundedItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2);
-      activityDetails += `. Marked ${newlyRefundedItems.length} item(s) as refunded, total refund: ${refundTotal}`;
-    }
+    const activityDetails = `Updated expense record for ${firstName} ${lastName} with total amount ${formattedTotalAmount.toFixed(2)}`;
     
     await ActivityLog.create({
       userId,
-      action: newlyRefundedItems.length > 0 ? 'REFUND' : 'UPDATE',
+      action: 'UPDATE',
       resourceType: 'EXPENSE',
       resourceId: id,
       details: activityDetails,
@@ -293,9 +274,7 @@ const updateExpense = async (req, res) => {
     
     res.json({
       success: true,
-      message: newlyRefundedItems.length > 0 
-        ? `Expense updated. ${newlyRefundedItems.length} item(s) marked as refunded.`
-        : 'Expense updated successfully',
+      message: 'Expense updated successfully',
       data: updatedExpense
     });
   } catch (error) {
