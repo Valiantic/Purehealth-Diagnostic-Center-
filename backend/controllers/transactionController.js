@@ -281,11 +281,13 @@ exports.getAllTransactions = async (req, res) => {
     }
     
     if (date) {
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
+      // Parse date as UTC to avoid timezone issues
+      // The frontend sends the date in Philippines local time (UTC+8)
+      // We need to query for transactions that occurred during that calendar day in Philippines time
+      // Philippines is UTC+8, so we shift the UTC range back by 8 hours
+      // Example: For Philippines Jan 15, we want UTC Jan 14 16:00:00 to Jan 15 15:59:59
+      const startDate = new Date(date + 'T00:00:00.000+08:00'); // Midnight Philippines time
+      const endDate = new Date(date + 'T23:59:59.999+08:00');   // End of day Philippines time
       
       whereClause.transactionDate = {
         [Op.between]: [startDate, endDate]
@@ -905,12 +907,9 @@ exports.getTransactionsByReferrerId = async (req, res) => {
     
     // Add date filter if provided
     if (date) {
-      // Create a date range for the entire day
-      const startDate = new Date(date);
-      startDate.setHours(0, 0, 0, 0);
-      
-      const endDate = new Date(date);
-      endDate.setHours(23, 59, 59, 999);
+      // Parse date with Philippines timezone offset (UTC+8)
+      const startDate = new Date(date + 'T00:00:00.000+08:00');
+      const endDate = new Date(date + 'T23:59:59.999+08:00');
       
       whereClause.transactionDate = {
         [Op.between]: [startDate, endDate]

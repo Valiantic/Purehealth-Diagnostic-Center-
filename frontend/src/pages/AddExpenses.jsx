@@ -541,7 +541,6 @@ const AddExpenses = () => {
                   <option value="reimbursed">Reimbursed</option>
                   <option value="paid">Paid</option>
                   <option value="cancelled">Cancelled</option>
-                  <option value="refunded">Refunded</option>
                 </select>
                 {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status}</p>}
               </div>

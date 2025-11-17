@@ -11,7 +11,7 @@ exports.getRevenueByDepartment = async (req, res) => {
     // Add date filter if provided
     if (startDate && endDate) {
       whereClause.revenueDate = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate + 'T00:00:00.000+08:00'), new Date(endDate + 'T23:59:59.999+08:00')]
       };
     }
 
@@ -46,8 +46,8 @@ exports.getRevenueByDepartment = async (req, res) => {
     const refundWhereClause = { status: { [Op.in]: ['refunded', 'cancelled'] } };
     
     if (startDate && endDate) {
-      refundWhereClause.revenueDate = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
+      revenueWhereClause.revenueDate = {
+        [Op.between]: [new Date(startDate + 'T00:00:00.000+08:00'), new Date(endDate + 'T23:59:59.999+08:00')]
       };
     }
     
@@ -95,7 +95,7 @@ exports.getRevenueTrend = async (req, res) => {
     
     if (startDate && endDate) {
       whereClause.revenueDate = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate + 'T00:00:00.000+08:00'), new Date(endDate + 'T23:59:59.999+08:00')]
       };
     }
     
@@ -171,17 +171,15 @@ exports.getRefundsByDepartment = async (req, res) => {
     // Add date filter based on provided parameters
     if (startDate && endDate) {
       whereClause.revenueDate = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate + 'T00:00:00.000+08:00'), new Date(endDate + 'T23:59:59.999+08:00')]
       };
     } else if (date) {
-      // If single date is provided, get refunds for that specific day
-      const targetDate = new Date(date);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // If single date is provided, get refunds for that specific day in Philippines timezone
+      const targetDate = new Date(date + 'T00:00:00.000+08:00');
+      const nextDay = new Date(date + 'T23:59:59.999+08:00');
       
       whereClause.revenueDate = {
-        [Op.gte]: targetDate,
-        [Op.lt]: nextDay
+        [Op.between]: [targetDate, nextDay]
       };
     }
     
@@ -290,16 +288,14 @@ exports.getRefundsByDepartment = async (req, res) => {
     
     if (startDate && endDate) {
       testDetailWhereClause.updatedAt = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate + 'T00:00:00.000+08:00'), new Date(endDate + 'T23:59:59.999+08:00')]
       };
     } else if (date) {
-      const targetDate = new Date(date);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      const targetDate = new Date(date + 'T00:00:00.000+08:00');
+      const nextDay = new Date(date + 'T23:59:59.999+08:00');
       
       testDetailWhereClause.updatedAt = {
-        [Op.gte]: targetDate,
-        [Op.lt]: nextDay
+        [Op.between]: [targetDate, nextDay]
       };
     }
     
