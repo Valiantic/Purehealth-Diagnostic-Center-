@@ -32,10 +32,27 @@ const PORT = process.env.PORT || 5000;
 socketManager.init(server);
 
 // Configure CORS more explicitly
+const allowedOrigins = [
+  'https://purehealth-diagnostic-center.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.CORS_ORIGIN === origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // Middleware
@@ -43,6 +60,9 @@ app.use(express.json());
 
 // Security headers
 app.use(helmet());
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Routes
 app.use('/api/users', userRoutes);
