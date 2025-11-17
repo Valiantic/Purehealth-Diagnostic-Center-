@@ -126,7 +126,8 @@ const RegistrationForm = () => {
           <form onSubmit={handleSubmit}>
             <div className='text-center mb-6'>
               <h3 className="text-xl font-bold text-green-700 text-4xl">Create an Account</h3>
-              <h6 className="text-green-700 mt-4 text-sm">NOTE: This is for Development Stage Account Creation!</h6>
+              <h6 className="text-green-700 mt-4 text-sm">"Welcome! You are now creating an account as an <strong>IT Expert</strong>. Please note that our Revenue Management System employs FIDO2 WebAuthn for security purposes. This ensures robust protection of financial data, 
+                which is critical to the integrity of our capstone study."</h6>
             </div>
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
