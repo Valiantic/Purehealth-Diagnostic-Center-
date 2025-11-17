@@ -8,7 +8,11 @@ const sequelize = new Sequelize(
   {
     host: config.host,
     dialect: config.dialect,
-    logging: console.log
+    logging: console.log,
+    timezone: '+00:00', // Store all dates in UTC
+    dialectOptions: {
+      timezone: '+00:00' // Ensure MySQL connection uses UTC
+    }
   }
 );
 

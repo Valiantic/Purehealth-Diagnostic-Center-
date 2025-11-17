@@ -6,12 +6,10 @@ import 'react-toastify/dist/ReactToastify.css';
 import Login from './pages/Login';
 import Register from './pages/Register'; 
 import Dashboard from './pages/Dashboard';
-import Transaction from './pages/Transaction'
-import NewTransaction from './pages/NewTransaction';
+import Transaction from './pages/Transaction';
 import AddExpenses from './pages/AddExpenses';
 import Expenses from './pages/Expenses';
 import AddTransaction from './pages/AddTransaction';
-import NewAddTransaction from './pages/NewAddTransaction';
 import MonthlyIncome from './pages/MonthlyIncome';
 import MonthlyExpenses from './pages/MonthlyExpenses';
 import Referrals from './pages/Referrals';
@@ -39,9 +37,9 @@ function App() {
           
           {/* Routes accessible to all authenticated users */}
           <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
-          <Route path="manage-transaction" element={<ProtectedRoute component={NewTransaction} />} />
+          <Route path="manage-transaction" element={<ProtectedRoute component={Transaction} />} />
           <Route path="manage-expenses" element={<ProtectedRoute component={Expenses} />} />
-          <Route path="add-transaction" element={<ProtectedRoute component={NewAddTransaction} />} />
+          <Route path="add-transaction" element={<ProtectedRoute component={AddTransaction} />} />
           <Route path="referrals" element={<ProtectedRoute component={Referrals} />} />
           <Route path="settings" element={<ProtectedRoute component={Settings} />} />
           <Route path="add-expenses" element={<ProtectedRoute component={AddExpenses} />} />
