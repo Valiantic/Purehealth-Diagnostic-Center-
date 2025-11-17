@@ -1,4 +1,4 @@
-const { Transaction, TestDetails, ReferrerRebate, Referrer, Expense, ExpenseItem, sequelize } = require('../models');
+const { Transaction, TestDetails, ReferrerRebate, Referrer, Expense, ExpenseItem, Settings, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 class RebateService {
@@ -9,8 +9,7 @@ class RebateService {
    */
   static async getReferralFeePercentage() {
     try {
-      const { Setting } = require('../models');
-      const setting = await Setting.findOne({
+      const setting = await Settings.findOne({
         where: { settingKey: 'referral_fee_percentage' }
       });
       
