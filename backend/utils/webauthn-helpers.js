@@ -4,172 +4,125 @@ const {
   generateAuthenticationOptions,
   verifyAuthenticationResponse
 } = require('@simplewebauthn/server');
-const { rpID, rpName, expectedOrigin } = require('./webauthn-config');
-const { User, Authenticator } = require('../models');
+const { Authenticator } = require('../models');
+const { rpName, rpID, expectedOrigin } = require('./webauthn-config');
 
 /**
  * Generate registration options for WebAuthn
  */
 async function generateRegOptions(user, isPrimary = true) {
-  // Check if this is a temporary user (not a Sequelize model)
-  const isTemporaryUser = user.isTemporary === true;
-
-  // Don't exclude credentials - this allows the same device to register multiple passkeys
-  // This is useful for backup passkeys on the same device
-  // If you want to prevent duplicate devices, set excludeCredentials to the existing authenticators
-  const userAuthenticators = [];
-
-  // OPTIONAL: Uncomment the code below to prevent the same device from registering multiple times
-  // if (!isTemporaryUser) {
-  //   const existingAuthenticators = await Authenticator.findAll({
-  //     where: { userId: user.userId }
-  //   });
-  //
-  //   existingAuthenticators.forEach(authenticator => {
-  //     userAuthenticators.push({
-  //       id: Buffer.from(authenticator.credentialId, 'base64url'),
-  //       type: 'public-key',
-  //       transports: authenticator.transports
-  //     });
-  //   });
-  // }
-
-  // Generate registration options
-  const options = await generateRegistrationOptions({
-    rpName,
-    rpID,
-    userID: user.userId.toString(),
-    userName: user.email,
-    userDisplayName: `${user.firstName} ${user.lastName}`,
-    attestationType: 'none',
-    excludeCredentials: userAuthenticators, // Empty array = no exclusions
-    authenticatorSelection: {
-      // For fingerprint, use platform authenticator
-      authenticatorAttachment: isPrimary ? 'platform' : 'cross-platform',
-      requireResidentKey: true,
-      userVerification: 'preferred'
+  try {
+    // Get existing authenticators for the user if it's not a temporary user
+    let userAuthenticators = [];
+    if (!user.isTemporary) {
+      userAuthenticators = await Authenticator.findAll({
+        where: { userId: user.userId }
+      });
     }
-  });
 
-  // Save the challenge to the user
-  if (isTemporaryUser) {
-    // For temporary users, we don't call save() but return the challenge
-    return { ...options, challenge: options.challenge };
-  } else {
-    // For real users (Sequelize models), save the challenge to the database
-    user.currentChallenge = options.challenge;
-    await user.save();
+    const options = await generateRegistrationOptions({
+      rpName,
+      rpID,
+      userID: user.userId,
+      userName: user.email,
+      userDisplayName: `${user.firstName} ${user.lastName}`,
+      attestationType: 'none',
+      excludeCredentials: userAuthenticators.map(auth => ({
+        id: Buffer.from(auth.credentialId, 'base64'),
+        type: 'public-key',
+        transports: auth.transports || []
+      })),
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred'
+        // Removed authenticatorAttachment to allow both platform (Windows Hello, Face ID) 
+        // and cross-platform authenticators (USB keys, phones)
+      }
+    });
+
+    // Store challenge in user object (or in a temporary storage)
+    if (user.update) {
+      await user.update({ currentChallenge: options.challenge });
+    } else {
+      // For temporary users, the challenge will be stored in the controller
+      user.currentChallenge = options.challenge;
+    }
+
     return options;
+  } catch (error) {
+    console.error('Error generating registration options:', error);
+    throw error;
   }
 }
 
-
 /**
- * Verify registration response from client
+ * Verify registration response from WebAuthn
  */
 async function verifyRegResponse(user, response, isPrimary = true) {
   try {
+    // Get the expected challenge
     const expectedChallenge = user.currentChallenge;
-    
+
     if (!expectedChallenge) {
-      throw new Error('Challenge not found for user');
+      throw new Error('No challenge found for user');
     }
-    
 
-   
-    const needsConversion = typeof response.rawId === 'string' || Array.isArray(response.rawId);
+    const verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin: Array.isArray(expectedOrigin) ? expectedOrigin : [expectedOrigin],
+      expectedRPID: rpID,
+      requireUserVerification: false
+    });
 
-    const formattedResponse = needsConversion ? {
-      id: response.rawId,
-      rawId: response.rawId,
-      response: {
-        attestationObject: response.response.attestationObject,
-        clientDataJSON: response.response.clientDataJSON,
-        transports: response.response.transports || []
-      },
-      type: response.type,
-      clientExtensionResults: response.clientExtensionResults || {}
-    } : response;
+    if (verification.verified && verification.registrationInfo) {
+      const { credentialPublicKey, credentialID, counter, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
 
-    if (needsConversion && formattedResponse.response.clientDataJSON) {
-      try {
-        const decodedClientData = Buffer.from(formattedResponse.response.clientDataJSON, 'base64url').toString('utf-8');
-        const parsedClientData = JSON.parse(decodedClientData);
-      } catch (e) {
-        console.error('Error decoding clientDataJSON:', e.message);
+      // For temporary users, return the authenticator data without saving to DB
+      if (user.isTemporary) {
+        const authenticatorData = {
+          credentialId: Buffer.from(credentialID).toString('base64'),
+          credentialPublicKey: Buffer.from(credentialPublicKey), // Store as Buffer
+          counter,
+          credentialDeviceType,
+          credentialBackedUp,
+          transports: response.response.transports || [],
+          isPrimary
+        };
+
+        return {
+          verified: true,
+          authenticator: { get: () => authenticatorData }
+        };
       }
-    }
-    
-    let verification;
-    try {
-      verification = await verifyRegistrationResponse({
-        response: formattedResponse,
-        expectedChallenge,
-        expectedOrigin,
-        expectedRPID: rpID
-      });
-    } catch (error) {
-      console.error('Registration verification error details:', error);
-      console.error('Error message:', error.message);
-      console.error('Formatted response id:', formattedResponse.id);
-      console.error('Formatted response rawId type:', typeof formattedResponse.rawId);
-      console.error('Formatted response rawId length:', formattedResponse.rawId?.length || formattedResponse.rawId?.byteLength);
-      throw new Error(`Registration verification failed: ${error.message}`);
-    }
 
-    const { verified, registrationInfo } = verification;
-
-    if (verified && registrationInfo) {
-      const {
-        credentialID,
-        credentialPublicKey,
+      // For real users, create the authenticator record
+      const newAuthenticator = await Authenticator.create({
+        userId: user.userId,
+        credentialId: Buffer.from(credentialID).toString('base64'),
+        credentialPublicKey: Buffer.from(credentialPublicKey), // Store as Buffer for PostgreSQL BYTEA
         counter,
         credentialDeviceType,
-        credentialBackedUp
-      } = registrationInfo;
+        credentialBackedUp,
+        transports: response.response.transports || [],
+        isPrimary
+      });
 
-      // For temporary users, create but don't save the authenticator yet
-      if (user.isTemporary) {
-        // Create authenticator in memory but don't save to DB yet
-        const newAuthenticator = Authenticator.build({
-          userId: user.userId, // Will be updated later with real user ID
-          credentialId: Buffer.from(credentialID).toString('base64url'),
-          credentialPublicKey: Buffer.from(credentialPublicKey),
-          counter,
-          credentialDeviceType,
-          credentialBackedUp,
-          transports: formattedResponse.response.transports || [],
-          isPrimary
-        });
-
-        return {
-          verified,
-          authenticator: newAuthenticator
-        };
-      } else {
-        // For existing users, save the authenticator
-        const newAuthenticator = await Authenticator.create({
-          userId: user.userId,
-          credentialId: Buffer.from(credentialID).toString('base64url'),
-          credentialPublicKey: Buffer.from(credentialPublicKey),
-          counter,
-          credentialDeviceType,
-          credentialBackedUp,
-          transports: formattedResponse.response.transports || [],
-          isPrimary
-        });
-
-        return {
-          verified,
-          authenticator: newAuthenticator
-        };
+      // Clear the challenge
+      if (user.update) {
+        await user.update({ currentChallenge: null });
       }
+
+      return {
+        verified: true,
+        authenticator: newAuthenticator
+      };
     }
 
-    return { verified };
+    return { verified: false };
   } catch (error) {
-    console.error('Error in verifyRegResponse:', error);
-    throw error; // Rethrow for proper error handling up the chain
+    console.error('Error verifying registration:', error);
+    throw error;
   }
 }
 
@@ -177,81 +130,100 @@ async function verifyRegResponse(user, response, isPrimary = true) {
  * Generate authentication options for WebAuthn
  */
 async function generateAuthOptions(user) {
-  // Get existing authenticators for the user
-  const existingAuthenticators = await Authenticator.findAll({
-    where: { userId: user.userId }
-  });
+  try {
+    // Get user's authenticators
+    const userAuthenticators = await Authenticator.findAll({
+      where: { userId: user.userId }
+    });
 
-  const allowCredentials = existingAuthenticators.map(authenticator => ({
-    id: Buffer.from(authenticator.credentialId, 'base64url'),
-    type: 'public-key',
-    transports: authenticator.transports
-  }));
+    if (userAuthenticators.length === 0) {
+      throw new Error('No authenticators found for user');
+    }
 
-  // Generate authentication options
-  const options = await generateAuthenticationOptions({
-    rpID,
-    allowCredentials,
-    userVerification: 'preferred'
-  });
+    const options = await generateAuthenticationOptions({
+      rpID,
+      allowCredentials: userAuthenticators.map(auth => ({
+        id: Buffer.from(auth.credentialId, 'base64'),
+        type: 'public-key',
+        transports: auth.transports || []
+      })),
+      userVerification: 'preferred'
+    });
 
-  // Save the challenge to the user
-  user.currentChallenge = options.challenge;
-  await user.save();
+    // Store challenge
+    await user.update({ currentChallenge: options.challenge });
 
-  return options;
+    return options;
+  } catch (error) {
+    console.error('Error generating authentication options:', error);
+    throw error;
+  }
 }
 
 /**
- * Verify authentication response from client
+ * Verify authentication response from WebAuthn
  */
 async function verifyAuthResponse(user, response) {
-  // Get the authenticator from the database
-  const authenticator = await Authenticator.findOne({
-    where: {
-      userId: user.userId,
-      credentialId: response.id
-    }
-  });
-
-  if (!authenticator) {
-    throw new Error('Authenticator not found');
-  }
-
-  const expectedChallenge = user.currentChallenge;
-
- 
-  let verification;
   try {
-    verification = await verifyAuthenticationResponse({
-      response: response, 
-      expectedChallenge,
-      expectedOrigin,
-      expectedRPID: rpID,
-      authenticator: {
-        credentialID: Buffer.from(authenticator.credentialId, 'base64url'),
-        credentialPublicKey: authenticator.credentialPublicKey,
-        counter: authenticator.counter
+    const expectedChallenge = user.currentChallenge;
+
+    if (!expectedChallenge) {
+      throw new Error('No challenge found for user');
+    }
+
+    // Find the authenticator used
+    const credentialId = Buffer.from(response.rawId, 'base64').toString('base64');
+    const authenticator = await Authenticator.findOne({
+      where: {
+        userId: user.userId,
+        credentialId
       }
     });
-  } catch (error) {
-    console.error('Authentication verification error:', error);
-    console.error('Failed with direct pass-through, error details:', {
-      message: error.message,
-      stack: error.stack
+
+    if (!authenticator) {
+      throw new Error('Authenticator not found');
+    }
+
+    // Handle credentialPublicKey - it might be stored as base64 string or as Buffer/BYTEA
+    let credentialPublicKeyBuffer;
+    if (Buffer.isBuffer(authenticator.credentialPublicKey)) {
+      credentialPublicKeyBuffer = authenticator.credentialPublicKey;
+    } else if (typeof authenticator.credentialPublicKey === 'string') {
+      credentialPublicKeyBuffer = Buffer.from(authenticator.credentialPublicKey, 'base64');
+    } else {
+      throw new Error('Invalid credentialPublicKey format');
+    }
+
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin: Array.isArray(expectedOrigin) ? expectedOrigin : [expectedOrigin],
+      expectedRPID: rpID,
+      authenticator: {
+        credentialID: Buffer.from(authenticator.credentialId, 'base64'),
+        credentialPublicKey: credentialPublicKeyBuffer,
+        counter: authenticator.counter
+      },
+      requireUserVerification: false
     });
-    throw new Error(`Verification failed: ${error.message}`);
+
+    if (verification.verified) {
+      // Update counter
+      await authenticator.update({
+        counter: verification.authenticationInfo.newCounter
+      });
+
+      // Clear challenge
+      await user.update({ currentChallenge: null });
+
+      return { verified: true };
+    }
+
+    return { verified: false };
+  } catch (error) {
+    console.error('Error verifying authentication:', error);
+    throw error;
   }
-
-  const { verified, authenticationInfo } = verification;
-
-  if (verified) {
-    // Update the authenticator counter
-    authenticator.counter = authenticationInfo.newCounter;
-    await authenticator.save();
-  }
-
-  return { verified, authenticator };
 }
 
 module.exports = {
