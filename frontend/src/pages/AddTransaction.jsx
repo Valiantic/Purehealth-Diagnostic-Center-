@@ -273,10 +273,7 @@ const NewAddTransaction = () => {
   // Transaction handling
   const createTransactionMutation = useMutation({
     mutationFn: (transactionData) => transactionAPI.createTransaction(transactionData, user?.userId || user?.id),
-    onSuccess: () => {
-      const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
-      localStorage.setItem('mcNumberCounter', (currentCounter + 1).toString());
-      
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction saved successfully');
       setIsTransactionSummaryOpen(false);
@@ -291,9 +288,16 @@ const NewAddTransaction = () => {
         sex: 'Male',
         idNumber: ''
       });
-      
-      const nextMcNumber = getNextMcNumber();
-      setGeneratedMcNo(nextMcNumber);
+
+      // Fetch the next mcNo from the database
+      try {
+        const response = await transactionAPI.getNextMcNo();
+        if (response.success && response.mcNo) {
+          setGeneratedMcNo(response.mcNo);
+        }
+      } catch (error) {
+        console.error('Error fetching next MC number:', error);
+      }
     },
     onError: (error) => {
       console.error('Transaction error:', error);
@@ -430,17 +434,22 @@ const NewAddTransaction = () => {
     }
   };
 
-  const getNextMcNumber = () => {
-    const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
-    const nextCounter = currentCounter + 1;
-    return nextCounter >= 10 ? `041${nextCounter}` : `0410${nextCounter}`;
-  };
-
+  // Fetch the next MC number from database on component mount
   useEffect(() => {
-    if (localStorage.getItem('mcNumberCounter') === null) {
-      localStorage.setItem('mcNumberCounter', '0');
-    }
-    setGeneratedMcNo(getNextMcNumber());
+    const fetchNextMcNo = async () => {
+      try {
+        const response = await transactionAPI.getNextMcNo();
+        if (response.success && response.mcNo) {
+          setGeneratedMcNo(response.mcNo);
+        }
+      } catch (error) {
+        console.error('Error fetching next MC number:', error);
+        // Fallback to a default value if fetch fails
+        setGeneratedMcNo('04101');
+      }
+    };
+
+    fetchNextMcNo();
   }, []);
 
   if (isAuthenticating || !user) return null;

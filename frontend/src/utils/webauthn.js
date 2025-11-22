@@ -13,10 +13,11 @@ export async function registerUser(userData) {
     const optionsResponse = await webauthnAPI.getTempRegistrationOptions(userData);
     const { options, tempRegistrationId } = optionsResponse.data;
 
-    // Step 2: Always ensure we're using the correct RP ID
+    // Step 2: Log the RP ID for debugging
     if (options.rp) {
-      console.log('Registration: Changing RP ID from', options.rp.id, 'to', window.location.hostname);
-      options.rp.id = window.location.hostname;
+      console.log('Registration RP ID:', options.rp.id);
+      console.log('Current hostname:', window.location.hostname);
+      console.log('Current origin:', window.location.origin);
     } else {
       console.error('Registration options missing rp object:', options);
     }
@@ -71,10 +72,10 @@ export async function registerBackupPasskey(userId) {
     const optionsResponse = await webauthnAPI.getRegistrationOptions(userId, false);
     const options = optionsResponse.data.options;
 
-    // Step 2: Always ensure we're using the correct RP ID
+    // Step 2: Log the RP ID for debugging
     if (options.rp) {
-      console.log('Backup registration: Changing RP ID from', options.rp.id, 'to', window.location.hostname);
-      options.rp.id = window.location.hostname;
+      console.log('Backup registration RP ID:', options.rp.id);
+      console.log('Current hostname:', window.location.hostname);
     } else {
       console.error('Backup registration options missing rp object:', options);
     }
@@ -107,10 +108,9 @@ export async function authenticateUser(email) {
     const optionsResponse = await webauthnAPI.getAuthenticationOptions(email);
     const { options, userId } = optionsResponse.data;
 
-    // Step 2: Always set the RP ID to match the current hostname
-    // This fixes issues where backend config might not match the actual frontend origin
-    console.log('Authentication: Changing RP ID from', options.rpId, 'to', window.location.hostname);
-    options.rpId = window.location.hostname;
+    // Step 2: Log the RP ID for debugging
+    console.log('Authentication RP ID:', options.rpId);
+    console.log('Current hostname:', window.location.hostname);
 
     // Step 3: Start authentication with the browser WebAuthn API
     const authResp = await startAuthentication(options);
