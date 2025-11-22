@@ -86,21 +86,21 @@ const RegistrationForm = () => {
   const handleBackupRegistration = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       const result = await registerBackupPasskey(userId);
-      
+
       if (result.success) {
         // Store user data in localStorage
         if (userData) {
           localStorage.setItem('user', JSON.stringify(userData));
         }
-        
+
         // Redirect based on role: receptionist -> dashboard, admin -> view-accounts
         const redirectPath = userData?.role === 'receptionist' ? '/dashboard' : '/view-accounts';
-        navigate(redirectPath, { 
-          state: { 
-            success: true, 
+        navigate(redirectPath, {
+          state: {
+            success: true,
             message: 'Account successfully created!'
           }
         });
@@ -113,6 +113,20 @@ const RegistrationForm = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSkipBackup = () => {
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    const redirectPath = userData?.role === 'receptionist' ? '/dashboard' : '/view-accounts';
+    navigate(redirectPath, {
+      state: {
+        success: true,
+        message: 'Account successfully created!'
+      }
+    });
   };
 
   const goToLogin = () => {
@@ -265,6 +279,14 @@ const RegistrationForm = () => {
                 disabled={loading}
               >
                 {loading ? 'Setting up...' : 'Set up Backup Passkey'}
+              </button>
+
+              <button
+                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                onClick={handleSkipBackup}
+                disabled={loading}
+              >
+                Skip for now
               </button>
             </div>
           </div>

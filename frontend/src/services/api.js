@@ -323,10 +323,10 @@ export const transactionAPI = {
       if (currentTransactionId) {
         url += `&currentId=${encodeURIComponent(currentTransactionId)}`;
       }
-      
+
       // Use axios directly instead of apiClient for better debugging
       const response = await axios.get(url);
-      
+
       return response.data;
     } catch (error) {
       console.error('MC# validation error:', error);
@@ -334,6 +334,17 @@ export const transactionAPI = {
         message: error.response?.data?.message || error.message || 'Failed to check MC#',
         exists: false
       };
+    }
+  },
+
+  // Get the next available MC number from database
+  getNextMcNo: async () => {
+    try {
+      const response = await apiClient.get('/transactions/next-mcno');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting next MC number:', error);
+      throw error;
     }
   },
 };
