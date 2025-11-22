@@ -291,12 +291,9 @@ const NewAddTransaction = () => {
 
       // Fetch the next mcNo from the database
       try {
-        console.log('Fetching next MC number after transaction...');
         const response = await transactionAPI.getNextMcNo();
-        console.log('MC number response after transaction:', response);
 
         if (response.success && response.mcNo) {
-          console.log('Setting mcNo to:', response.mcNo);
           setGeneratedMcNo(response.mcNo);
         } else {
           console.error('Invalid response from getNextMcNo after transaction:', response);
@@ -446,12 +443,9 @@ const NewAddTransaction = () => {
   useEffect(() => {
     const fetchNextMcNo = async () => {
       try {
-        console.log('Fetching next MC number from database...');
         const response = await transactionAPI.getNextMcNo();
-        console.log('MC number response:', response);
 
         if (response.success && response.mcNo) {
-          console.log('Setting mcNo to:', response.mcNo);
           setGeneratedMcNo(response.mcNo);
         } else {
           console.error('Invalid response from getNextMcNo:', response);
