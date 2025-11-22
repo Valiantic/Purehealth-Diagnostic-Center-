@@ -837,10 +837,16 @@ exports.checkMcNoExists = async (req, res) => {
 exports.getNextMcNo = async (req, res) => {
   try {
     // Find the highest mcNo in the database
+    // Use CAST for PostgreSQL compatibility (works for both MySQL and PostgreSQL)
     const highestMcTransaction = await Transaction.findOne({
       attributes: ['mcNo'],
-      order: [[sequelize.literal('CAST(mcNo AS UNSIGNED)'), 'DESC']]
+      order: [[sequelize.literal('CAST("mcNo" AS INTEGER)'), 'DESC']],
+      where: {
+        status: 'active' // Only consider active transactions
+      }
     });
+
+    console.log('Highest MC Transaction:', highestMcTransaction);
 
     let nextMcNo;
     if (highestMcTransaction && highestMcTransaction.mcNo) {
@@ -848,9 +854,11 @@ exports.getNextMcNo = async (req, res) => {
       const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
       const nextNumber = currentNumber + 1;
       nextMcNo = String(nextNumber).padStart(5, '0');
+      console.log(`Current highest: ${currentNumber}, Next mcNo: ${nextMcNo}`);
     } else {
       // If no existing transactions, start from 04101
       nextMcNo = '04101';
+      console.log('No transactions found, starting from 04101');
     }
 
     res.json({
