@@ -422,7 +422,7 @@ const NewTransaction = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {/* On-hand Card */}
-            <div className="bg-purple-600 rounded-lg p-4 md:p-6 text-white shadow-md">
+            <div className="bg-yellow-500 rounded-lg p-4 md:p-6 text-white shadow-md">
               <div className="flex items-center justify-between mb-2">
                 <div className="bg-white bg-opacity-20 rounded-full p-2">
                   <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
