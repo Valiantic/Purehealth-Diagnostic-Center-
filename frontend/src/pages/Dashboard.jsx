@@ -410,47 +410,46 @@ const DashboardContent = () => {
               })()}
             </div>
 
-            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-64">
-              <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2">Expenses by Category</h3>
+           <div className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-auto min-h-[256px] max-h-[320px] overflow-hidden">
+              <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2 flex-shrink-0">Expenses by Category</h3>
               {Array.isArray(expensesByDepartment) && expensesByDepartment.length > 0 ? (
-                <div className="mt-2 flex flex-col gap-2 h-full justify-between">
-                  {/* Bars */}
-                  <div className="flex flex-col gap-2 relative flex-1 justify-center">
+                <div className="flex flex-col gap-1 flex-1 min-h-0">
+                  {/* Bars - responsive scrollable container for many categories */}
+                  <div
+                    className="flex flex-col gap-1 overflow-y-auto pr-1 py-1"
+                    style={{ maxHeight: '220px' }}
+                  >
                     {(() => {
                       const amounts = expensesByDepartment.map(item => item.amount || 0);
                       const total = amounts.reduce((sum, val) => sum + val, 0);
                       const defaultColors = ["#15803d", "#22c55e", "#16a34a", "#65a30d", "#166534", "#84cc16", "#4ade80", "#22d3ee", "#facc15", "#eab308"];
-                      
                       return expensesByDepartment.map((item, idx) => {
                         const percentage = total > 0 ? Math.round((amounts[idx] / total) * 100) : 0;
                         const color = item.color || defaultColors[idx % defaultColors.length];
                         const label = item.category || item.department || 'Category';
-                        
                         return (
-                          <div key={idx} className="flex items-center mb-1 w-full">
-                            <span className="w-28 text-sm text-gray-800 font-bold mr-2">{label}</span>
-                            <div className="relative flex-1 flex items-center">
-                              <div className="h-3 rounded-full" style={{ backgroundColor: color, width: `${percentage}%`, minWidth: '8px', maxWidth: '100%' }}></div>
+                          <div key={idx} className="flex items-center py-1 w-full min-w-0 flex-shrink-0">
+                            <span className="w-24 min-w-[70px] truncate text-sm text-gray-800 font-bold mr-2" title={label}>{label}</span>
+                            <div className="relative flex-1 flex items-center min-w-0">
+                              <div
+                                className="h-3 rounded-full"
+                                style={{ backgroundColor: color, width: `${percentage}%`, minWidth: '8px', maxWidth: '100%' }}
+                              ></div>
                             </div>
-                            <span className="text-sm text-gray-800 font-bold ml-2">{percentage}%</span>
+                            <span className="text-sm text-gray-800 font-bold ml-2 whitespace-nowrap">{percentage}%</span>
                           </div>
                         );
                       });
                     })()}
-                  </div>
-                  {/* Centered axis below bars */}
-                  <div className="w-full flex justify-center mt-2">
-                    <div className="flex items-center text-xs text-gray-500">
-                      {[0,2,4,6,8,10,12,14,16,18,20,22].map(val => (
-                        <span key={val} className="mx-1" style={{ minWidth: '18px' }}>{val === 0 ? '0k' : `${val}k`}</span>
-                      ))}
-                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-xs text-gray-500">No expense data available</div>
               )}
             </div>
+          </div>
+
+
           </div>
 
           {/* Right Column: Income Trend Chart */}
@@ -540,7 +539,6 @@ const DashboardContent = () => {
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
