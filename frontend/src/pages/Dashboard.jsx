@@ -410,7 +410,7 @@ const DashboardContent = () => {
               })()}
             </div>
 
-           <div className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-auto min-h-[256px] max-h-[320px] overflow-hidden">
+            <div className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-auto min-h-[256px] max-h-[320px] overflow-hidden">
               <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2 flex-shrink-0">Expenses by Category</h3>
               {Array.isArray(expensesByDepartment) && expensesByDepartment.length > 0 ? (
                 <div className="flex flex-col gap-1 flex-1 min-h-0">
@@ -447,9 +447,6 @@ const DashboardContent = () => {
                 <div className="flex items-center justify-center h-full text-xs text-gray-500">No expense data available</div>
               )}
             </div>
-          </div>
-
-
           </div>
 
           {/* Right Column: Income Trend Chart */}
@@ -539,6 +536,7 @@ const DashboardContent = () => {
           </div>
         </div>
       </div>
+    </div>
   );
 };
 
