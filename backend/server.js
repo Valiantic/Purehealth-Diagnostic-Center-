@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { sequelize } = require('./models');
 const socketManager = require('./utils/socketManager');
@@ -61,12 +62,39 @@ app.use(express.json());
 // Security headers
 app.use(helmet());
 
+// Rate limiting - General API limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Limit each IP to 200 requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
+  },
+  standardHeaders: true, 
+  legacyHeaders: false, 
+});
+
+// Stricter rate limiting for auth routes (login, register, webauthn)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 auth requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many authentication attempts, please try again after 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiting to all requests
+app.use(generalLimiter);
+
 // Handle preflight requests
 app.options('*', cors());
 
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/webauthn', webauthnRoutes);
+app.use('/api/users', authLimiter, userRoutes);
+app.use('/api/webauthn', authLimiter, webauthnRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/tests', testRoutes);
