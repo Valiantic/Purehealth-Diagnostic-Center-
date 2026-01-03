@@ -5,6 +5,91 @@ import {
 import { userAPI, webauthnAPI } from '../services/api';
 
 /**
+ * Convert base64url string to Uint8Array
+ * @param {string} base64url - Base64url encoded string
+ * @returns {Uint8Array}
+ */
+export function base64urlToUint8Array(base64url) {
+  if (typeof base64url !== 'string') {
+    return new Uint8Array(base64url);
+  }
+  
+  // Convert base64url to base64
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // Add padding if needed
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const paddedBase64 = base64 + padding;
+  
+  try {
+    // Decode base64 to binary string
+    const binaryString = atob(paddedBase64);
+    
+    // Convert binary string to Uint8Array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    return bytes;
+  } catch (error) {
+    console.error('Error converting base64url to Uint8Array:', error);
+    throw new Error('Invalid base64url string');
+  }
+}
+
+/**
+ * Check if WebAuthn is supported in the current browser
+ * @returns {boolean}
+ */
+export function isWebAuthnSupported() {
+  return !!(navigator.credentials && 
+           navigator.credentials.create && 
+           navigator.credentials.get &&
+           window.PublicKeyCredential);
+}
+
+/**
+ * Check if the current context is secure (HTTPS or localhost)
+ * @returns {boolean}
+ */
+export function isSecureContext() {
+  return window.isSecureContext || 
+         location.hostname === 'localhost' || 
+         location.hostname === '127.0.0.1';
+}
+
+/**
+ * Get user-friendly error message for WebAuthn errors
+ * @param {Error} error - WebAuthn error
+ * @returns {string} - User-friendly error message
+ */
+export function getWebAuthnErrorMessage(error) {
+  switch (error.name) {
+    case 'NotAllowedError':
+      return 'Passkey operation was cancelled or failed. This could be due to user cancellation, device not supported, or security requirements not met. Make sure you\'re using HTTPS and your device supports WebAuthn.';
+    case 'InvalidStateError':
+      return 'This passkey is already registered for this account.';
+    case 'NotSupportedError':
+      return 'Your device or browser does not support passkeys.';
+    case 'SecurityError':
+      return 'Security error - make sure you\'re using HTTPS or localhost.';
+    case 'AbortError':
+      return 'Passkey operation was cancelled.';
+    case 'ConstraintError':
+      return 'The device does not meet the requirements for this passkey.';
+    case 'DataError':
+      return 'Invalid data provided for passkey operation.';
+    case 'NetworkError':
+      return 'Network error occurred during passkey operation.';
+    case 'UnknownError':
+      return 'An unknown error occurred during passkey operation.';
+    default:
+      return `Passkey operation failed: ${error.message || 'Unknown error'}`;
+  }
+}
+
+/**
  * Start the registration process for a new user
  */
 export async function registerUser(userData) {

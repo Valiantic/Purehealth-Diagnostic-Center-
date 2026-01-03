@@ -40,11 +40,14 @@ async function generateRegOptions(user, isPrimary = true) {
     attestationType: 'none',
     excludeCredentials: userAuthenticators,
     authenticatorSelection: {
-      // For fingerprint, use platform authenticator
-      authenticatorAttachment: isPrimary ? 'platform' : 'cross-platform',
-      requireResidentKey: true,
+      // Make requirements less restrictive to avoid NotAllowedError
+      authenticatorAttachment: isPrimary ? 'platform' : undefined,
+      requireResidentKey: false, // Changed from true to false
+      residentKey: 'preferred', // Add this for better compatibility
       userVerification: 'preferred'
-    }
+    },
+    supportedAlgorithmIDs: [-7, -257], // Support both ES256 and RS256
+    timeout: 60000 // 60 seconds timeout
   });
 
   // Save the challenge to the user
