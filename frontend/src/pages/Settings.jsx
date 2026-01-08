@@ -5,11 +5,12 @@ import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
 import usePasskeyManager from '../hooks/auth/usePasskeyManager'
 import PasskeyModal from '../components/auth/PasskeyModal'
-import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download } from 'lucide-react'
 import tabsConfig from '../config/tabsConfig'
 import { userAPI, settingsAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { exportFullBackup } from '../utils/backupExporter'
 
 const Settings = () => {
   const { user, isAuthenticating, refreshUser } = useAuth()
@@ -36,6 +37,9 @@ const Settings = () => {
   const [isEditingReferralFee, setIsEditingReferralFee] = useState(false)
   const [tempReferralFee, setTempReferralFee] = useState(12)
 
+  // Backup download state
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false)
+
   // Initialize passkey manager
   const passkeyManager = usePasskeyManager(user?.userId);
 
@@ -44,13 +48,13 @@ const Settings = () => {
     if (currentUser) {
       setUserData({
         firstName: currentUser.firstName || '',
-        middleName: currentUser.middleName !== undefined && currentUser.middleName !== null 
-          ? currentUser.middleName 
+        middleName: currentUser.middleName !== undefined && currentUser.middleName !== null
+          ? currentUser.middleName
           : '',
         lastName: currentUser.lastName || '',
         email: currentUser.email || ''
       });
-      
+
       if (currentUser.userId) {
         const fetchLatestUserData = async () => {
           try {
@@ -58,15 +62,15 @@ const Settings = () => {
             if (response.data && response.data.success) {
               const freshUserData = response.data.user;
 
-              const updatedUser = {...currentUser, ...freshUserData};
+              const updatedUser = { ...currentUser, ...freshUserData };
               localStorage.setItem('user', JSON.stringify(updatedUser));
-              
+
               refreshUser();
-            
+
               setUserData({
                 firstName: freshUserData.firstName || '',
-                middleName: freshUserData.middleName !== undefined && freshUserData.middleName !== null 
-                  ? freshUserData.middleName 
+                middleName: freshUserData.middleName !== undefined && freshUserData.middleName !== null
+                  ? freshUserData.middleName
                   : '',
                 lastName: freshUserData.lastName || '',
                 email: freshUserData.email || ''
@@ -76,11 +80,11 @@ const Settings = () => {
             console.error('Error fetching latest user data:', error);
           }
         };
-        
+
         fetchLatestUserData();
       }
     }
-    
+
     // Fetch discount categories and referral fee
     fetchDiscountCategories();
     fetchReferralFee();
@@ -113,7 +117,7 @@ const Settings = () => {
       }
     } catch (error) {
       // If setting doesn't exist, it will use default value
-     console.error('Referral fee setting not found, using default');
+      console.error('Referral fee setting not found, using default');
     }
   }
 
@@ -141,16 +145,16 @@ const Settings = () => {
         { categoryName: newDiscount.categoryName, percentage },
         user?.userId
       );
-      
+
       if (response.data && response.data.success) {
         toast.success('Discount category added successfully', { position: "top-right", autoClose: 3000 });
         setNewDiscount({ categoryName: '', percentage: '' });
         fetchDiscountCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add discount category', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to add discount category', {
+        position: "top-right",
+        autoClose: 3000
       });
     }
   }
@@ -172,7 +176,7 @@ const Settings = () => {
         { categoryName: data.categoryName, percentage },
         user?.userId
       );
-      
+
       if (response.data && response.data.success) {
         toast.success('Discount category updated successfully', { position: "top-right", autoClose: 3000 });
         setEditingDiscountId(null);
@@ -180,9 +184,9 @@ const Settings = () => {
         fetchDiscountCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update discount category', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to update discount category', {
+        position: "top-right",
+        autoClose: 3000
       });
     }
   }
@@ -195,15 +199,15 @@ const Settings = () => {
 
     try {
       const response = await settingsAPI.deleteDiscountCategory(id, user?.userId);
-      
+
       if (response.data && response.data.success) {
         toast.success('Discount category deleted successfully', { position: "top-right", autoClose: 3000 });
         fetchDiscountCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete discount category', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to delete discount category', {
+        position: "top-right",
+        autoClose: 3000
       });
     }
   }
@@ -222,17 +226,43 @@ const Settings = () => {
         fee.toString(),
         user?.userId
       );
-      
+
       if (response.data && response.data.success) {
         toast.success('Referral fee updated successfully', { position: "top-right", autoClose: 3000 });
         setReferralFee(fee);
         setIsEditingReferralFee(false);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update referral fee', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to update referral fee', {
+        position: "top-right",
+        autoClose: 3000
       });
+    }
+  }
+
+  // Handle download backup
+  const handleDownloadBackup = async () => {
+    setIsDownloadingBackup(true);
+    try {
+      toast.info('Preparing backup... This may take a moment.', {
+        position: "top-right",
+        autoClose: 3000
+      });
+
+      await exportFullBackup();
+
+      toast.success('Backup downloaded successfully!', {
+        position: "top-right",
+        autoClose: 3000
+      });
+    } catch (error) {
+      console.error('Backup download error:', error);
+      toast.error('Failed to download backup: ' + (error.message || 'Unknown error'), {
+        position: "top-right",
+        autoClose: 5000
+      });
+    } finally {
+      setIsDownloadingBackup(false);
     }
   }
 
@@ -284,16 +314,16 @@ const Settings = () => {
       }
 
       const response = await userAPI.updateUserDetails(currentUser.userId, userData);
-      
+
       if (response.data && response.data.success) {
-        const updatedUser = {...currentUser, ...response.data.user};
+        const updatedUser = { ...currentUser, ...response.data.user };
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        
+
         refreshUser();
-        
+
         setIsEditing(false);
         setIsLoading(false);
-        
+
         toast.success('Profile updated successfully', {
           position: "top-right",
           autoClose: 3000,
@@ -324,29 +354,29 @@ const Settings = () => {
     return null;
   }
 
-  if(!user) {
+  if (!user) {
     return null;
   }
 
   const currentPath = location.pathname;
   const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
-  const activeTab = filteredTabs.find(tab => 
+  const activeTab = filteredTabs.find(tab =>
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Account';
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen h-full bg-gray-100">
       <Sidebar />
-      
+
       {/* Toast Container */}
       <ToastContainer />
-      
+
       {/* Main content */}
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
           <TabNavigation tabsConfig={filteredTabs} />
-          
+
           {/* Content */}
           <div className="p-4 md:p-6">
             {activeTab === 'Account' && (
@@ -356,7 +386,7 @@ const Settings = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-semibold text-gray-800">User Account</h2>
                     {!isEditing ? (
-                      <button 
+                      <button
                         onClick={handleEditToggle}
                         className="flex items-center justify-center py-2 px-4 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
                       >
@@ -365,7 +395,7 @@ const Settings = () => {
                       </button>
                     ) : (
                       <div className="flex gap-3">
-                        <button 
+                        <button
                           onClick={handleSaveChanges}
                           disabled={isLoading}
                           className="flex items-center justify-center py-2 px-4 bg-green-800 hover:bg-green-700 text-white rounded-md transition disabled:opacity-50"
@@ -373,7 +403,7 @@ const Settings = () => {
                           <Save className="w-4 h-4 mr-2" />
                           {isLoading ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <button 
+                        <button
                           onClick={handleEditToggle}
                           className="flex items-center justify-center py-2 px-4 bg-gray-500 hover:bg-gray-400 text-white rounded-md transition"
                         >
@@ -395,10 +425,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change First Name</p>
                           {isEditing ? (
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               name="firstName"
-                              value={userData.firstName} 
+                              value={userData.firstName}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
@@ -420,10 +450,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change Middle Name</p>
                           {isEditing ? (
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               name="middleName"
-                              value={userData.middleName || ''} 
+                              value={userData.middleName || ''}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                               placeholder="Enter middle name (optional)"
@@ -446,10 +476,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change Last Name</p>
                           {isEditing ? (
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               name="lastName"
-                              value={userData.lastName} 
+                              value={userData.lastName}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
@@ -471,10 +501,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change Email Address</p>
                           {isEditing ? (
-                            <input 
-                              type="email" 
+                            <input
+                              type="email"
                               name="email"
-                              value={userData.email} 
+                              value={userData.email}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
@@ -486,7 +516,7 @@ const Settings = () => {
                     </div>
 
                     {/* Change Passkey Card */}
-                    <div 
+                    <div
                       onClick={!isEditing ? passkeyManager.openChangePasskeyModal : undefined}
                       className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                     >
@@ -503,7 +533,7 @@ const Settings = () => {
 
                     {/* Manage Accounts Card */}
                     {user.role !== 'receptionist' && (
-                      <div 
+                      <div
                         onClick={!isEditing ? handleViewAccounts : undefined}
                         className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                       >
@@ -514,6 +544,26 @@ const Settings = () => {
                           <div className="flex-1">
                             <p className="text-sm text-gray-500 font-medium">Manage Accounts</p>
                             <p className="text-base font-semibold text-gray-800">View All Users</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Download Backup Card - Admin Only */}
+                    {user.role === 'admin' && (
+                      <div
+                        onClick={!isEditing && !isDownloadingBackup ? handleDownloadBackup : undefined}
+                        className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing && !isDownloadingBackup ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Download className="w-6 h-6 text-blue-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 font-medium">Download Backup</p>
+                            <p className="text-base font-semibold text-gray-800">
+                              {isDownloadingBackup ? 'Downloading...' : 'Export All Data'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -531,7 +581,7 @@ const Settings = () => {
                 {user.role !== 'receptionist' && (
                   <div>
                     {/* Add Discount Button */}
-                    <button 
+                    <button
                       onClick={handleAddDiscount}
                       className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2"
                     >
@@ -790,7 +840,7 @@ const Settings = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Passkey Modal */}
       <PasskeyModal
         isOpen={passkeyManager.isModalOpen}
