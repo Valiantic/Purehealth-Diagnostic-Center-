@@ -118,10 +118,10 @@ async function getAllUsers(req, res) {
       users: users.map(user => ({
         userId: user.userId,
         name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
-        username: user.email.split('@')[0], 
+        username: user.email.split('@')[0],
         email: user.email,
         role: user.role,
-        status: user.status, 
+        status: user.status,
         createdAt: user.createdAt
       }))
     });
@@ -170,7 +170,7 @@ async function updateUserStatus(req, res) {
 
     // After updating user status
     await logActivity({
-      userId: currentUserId || userId, 
+      userId: currentUserId || userId,
       action: status === 'active' ? 'ACTIVATE_ACCOUNT' : 'DEACTIVATE_ACCOUNT',
       resourceType: 'USER',
       resourceId: user.userId,
@@ -200,36 +200,36 @@ async function updateUserStatus(req, res) {
 async function updateUserDetails(req, res) {
   try {
     const { userId } = req.params;
-    const { 
-      firstName, 
-      middleName, 
-      lastName, 
-      email, 
-      status, 
-      statusChanged, 
+    const {
+      firstName,
+      middleName,
+      lastName,
+      email,
+      status,
+      statusChanged,
       detailsChanged,
-      currentUserId  
+      currentUserId
     } = req.body;
-    
+
     console.log('Update request received with raw data:', JSON.stringify(req.body));
-    
+
     const boolStatusChanged = statusChanged === true || statusChanged === 'true';
     const boolDetailsChanged = detailsChanged === true || detailsChanged === 'true';
-    
+
     console.log('Parsed change flags:', {
       statusChanged: boolStatusChanged,
       detailsChanged: boolDetailsChanged
     });
-    
+
     const user = await User.findByPk(userId);
-    
+
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
       });
     }
-    
+
     // Save original values for logging
     const oldValues = {
       firstName: user.firstName,
@@ -238,11 +238,11 @@ async function updateUserDetails(req, res) {
       email: user.email,
       status: user.status
     };
-    
+
     // Fetch the editor (user making the changes) to include their email in the log
-    let editorEmail = user.email; 
-    let editorId = currentUserId || userId; 
-    
+    let editorEmail = user.email;
+    let editorId = currentUserId || userId;
+
     if (currentUserId) {
       try {
         const editor = await User.findByPk(currentUserId);
@@ -259,39 +259,39 @@ async function updateUserDetails(req, res) {
     } else {
       console.warn('No currentUserId provided for logging, using user being edited');
     }
-    
+
     const updatedStatus = status !== undefined ? status : user.status;
-    
+
     // Update user with new values
     await user.update({
       firstName,
       middleName,
       lastName,
       email,
-      status: updatedStatus 
+      status: updatedStatus
     });
-    
+
     await user.reload();
-    
+
     const shouldLogDetailsChange = boolDetailsChanged || false;
     const shouldLogStatusChange = boolStatusChanged || false;
-    
+
     console.log('Will log changes:', {
       detailsChange: shouldLogDetailsChange,
       statusChange: shouldLogStatusChange
     });
-    
-    if (shouldLogDetailsChange || 
-        oldValues.firstName !== firstName || 
-        oldValues.middleName !== middleName || 
-        oldValues.lastName !== lastName || 
-        oldValues.email !== email) {
-      
+
+    if (shouldLogDetailsChange ||
+      oldValues.firstName !== firstName ||
+      oldValues.middleName !== middleName ||
+      oldValues.lastName !== lastName ||
+      oldValues.email !== email) {
+
       console.log('Detected field changes, logging details update');
-      
+
       try {
         let detailsMessage;
-        
+
         // Check if email changed
         if (oldValues.email !== email) {
           // Email changed - show both old and new
@@ -332,15 +332,15 @@ async function updateUserDetails(req, res) {
         console.error('Failed to log user details change:', logError);
       }
     }
-        const hasStatusChanged = oldValues.status !== updatedStatus && updatedStatus !== undefined;
-    
+    const hasStatusChanged = oldValues.status !== updatedStatus && updatedStatus !== undefined;
+
     // INDEPENDENT OF STATUS LOG CHANGE
     if (hasStatusChanged) {
       console.log('Detected status change, logging status update');
-      
+
       try {
         const statusMessage = `User account ${updatedStatus === 'active' ? 'activated' : 'deactivated'} for ${email} (${oldValues.status} → ${updatedStatus}) by ${editorEmail}`;
-        
+
         const activityLog = await logActivity({
           userId: editorId,
           action: updatedStatus === 'active' ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
@@ -362,7 +362,7 @@ async function updateUserDetails(req, res) {
         console.error('Failed to log user status change:', logError);
       }
     }
-    
+
     res.json({
       success: true,
       message: 'User updated successfully',
@@ -377,10 +377,10 @@ async function updateUserDetails(req, res) {
     });
   } catch (error) {
     console.error('Error updating user details:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Server error',
-      error: error.message 
+      error: error.message
     });
   }
 }
@@ -426,11 +426,72 @@ async function getUserById(req, res) {
   }
 }
 
+/**
+ * Verify if the current logged-in user is an admin
+ * This is used for sensitive operations like refunds and adding discounts
+ */
+async function verifyAdminRole(req, res) {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Find the user by ID
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user has admin role
+    const isAdmin = user.role === 'admin';
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin privileges required for this action',
+        isAdmin: false
+      });
+    }
+
+    // User is admin
+    res.json({
+      success: true,
+      message: 'Admin verification successful',
+      isAdmin: true,
+      user: {
+        userId: user.userId,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Error verifying admin role:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying admin role',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   registerUserDetails,
   findUserByEmail,
   getAllUsers,
   updateUserStatus,
   updateUserDetails,
-  getUserById
+  getUserById,
+  verifyAdminRole
 };

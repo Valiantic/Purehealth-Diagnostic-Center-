@@ -5,6 +5,7 @@ import { Download } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
 import useProtectedAction from '../hooks/auth/useProtectedAction';
 import WebAuthModal from '../components/auth/WebAuthModal';
+import AdminVerificationModal from '../components/AdminVerificationModal';
 import Loading from '../components/transaction/Loading';
 import { useQueryClient } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify';
@@ -22,11 +23,13 @@ import { useQuery } from '@tanstack/react-query';
 const NewTransaction = () => {
   const { user, isAuthenticating } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [expenseDate, setExpenseDate] = useState(new Date()); 
+  const [expenseDate, setExpenseDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [pendingRefundAmount, setPendingRefundAmount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [showAdminVerifyModal, setShowAdminVerifyModal] = useState(false);
+  const [pendingRefundModeToggle, setPendingRefundModeToggle] = useState(false);
 
   // WebAuthn protected actions hook
   const {
@@ -39,7 +42,7 @@ const NewTransaction = () => {
     cancelAuthentication,
     clearError
   } = useProtectedAction();
-  
+
   // Fetch discount categories
   const {
     data: discountCategoriesData
@@ -56,13 +59,13 @@ const NewTransaction = () => {
 
   // Get active discount categories
   const discountCategories = discountCategoriesData?.data?.categories?.filter(cat => cat.status === 'active') || [];
-  
+
   // Build idTypeOptions dynamically
   const idTypeOptions = [
     { value: 'Regular', label: 'Regular' },
     ...(discountCategories.map(cat => ({ value: cat.categoryName, label: cat.categoryName })))
   ];
-  
+
   const incomeDateInputRef = useRef(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -108,7 +111,7 @@ const NewTransaction = () => {
     toggleIncomeMenu,
     handleDropdownClick,
     handleCancelClick,
-    closeConfirmModal, 
+    closeConfirmModal,
     confirmCancellation,
     handleEditChange,
     handleCancelInlineEdit,
@@ -128,18 +131,81 @@ const NewTransaction = () => {
     refundAmounts
   } = useTransactionManagement(user, selectedDate, departments, referrers, discountCategories);
 
-  // Protected refund mode handler
-  const protectedToggleRefundMode = useCallback(async () => {
-    const protectedAction = () => {
+  // Admin-verified save edit handler - admin already verified when entering refund mode
+  const handleAdminVerifiedSaveEdit = useCallback(() => {
+    // Admin verification happens when entering refund mode, so just save directly
+    handleSaveEdit();
+  }, [handleSaveEdit]);
+
+  const handleAdminVerified = useCallback((verified, adminUser) => {
+    if (verified && pendingRefundModeToggle) {
+      // Admin verified - toggle refund mode
       toggleRefundMode();
-    };
-    
-    const executeAction = executeProtectedAction(protectedAction, {
-      message: 'Please authenticate to access refund mode'
-    });
-    
-    await executeAction();
-  }, [toggleRefundMode, executeProtectedAction]);
+      setPendingRefundModeToggle(false);
+    }
+    setShowAdminVerifyModal(false);
+  }, [pendingRefundModeToggle, toggleRefundMode]);
+
+  // Protected toggle refund mode - requires admin verification for everyone
+  const protectedToggleRefundMode = useCallback(async () => {
+    // If admin is logged in, trigger WebAuthn directly
+    if (user?.role === 'admin') {
+      try {
+        // Step 1: Get authentication options for the admin
+        const apiClient = (await import('../services/api')).default;
+        const optionsResponse = await apiClient.post('/webauthn/authentication/options', {
+          email: user.email
+        });
+
+        if (!optionsResponse.data.success) {
+          toast.error('Failed to generate authentication options');
+          return;
+        }
+
+        const { options, userId } = optionsResponse.data;
+
+        // Step 2: Trigger WebAuthn authentication
+        const { startAuthentication } = await import('@simplewebauthn/browser');
+        const authResponse = await startAuthentication(options);
+
+        // Step 3: Verify the WebAuthn response
+        const verifyResponse = await apiClient.post('/webauthn/authentication/verify', {
+          userId: userId,
+          response: authResponse
+        });
+
+        if (!verifyResponse.data.success) {
+          toast.error('Authentication failed');
+          return;
+        }
+
+        // Step 4: Verify admin role
+        const roleVerifyResponse = await apiClient.post('/users/verify-admin', {
+          userId: userId
+        });
+
+        if (roleVerifyResponse.data.success && roleVerifyResponse.data.isAdmin) {
+          // Admin verified - toggle refund mode
+          toggleRefundMode();
+        } else {
+          toast.error('Admin privileges required');
+        }
+      } catch (error) {
+        console.error('Admin verification error:', error);
+
+        // Handle cancellation or timeout specifically
+        if (error.name === 'NotAllowedError' || error.message.includes('timed out') || error.message.includes('not allowed')) {
+          toast.error('Verification cancelled');
+        } else {
+          toast.error(error.message || 'Failed to verify admin credentials');
+        }
+      }
+    } else {
+      // Receptionist - show modal for admin verification
+      setPendingRefundModeToggle(true);
+      setShowAdminVerifyModal(true);
+    }
+  }, [user, toggleRefundMode]);
 
   // Process and filter transactions
   const processedTransactions = processTransactions(transactions, departments, referrers);
@@ -287,7 +353,7 @@ const NewTransaction = () => {
     handleSummaryInputChange,
     handleMcNoChange,
     handleTestDetailChange,
-    handleSaveEdit,
+    handleSaveEdit: handleAdminVerifiedSaveEdit,
     handleCancelEdit,
     handleEnterEditMode,
     toggleRefundMode: protectedToggleRefundMode,
@@ -318,11 +384,10 @@ const NewTransaction = () => {
           <button
             key={i}
             onClick={() => handlePageChange(i)}
-            className={`px-3 py-1 rounded text-sm md:text-base ${
-              currentPage === i
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-3 py-1 rounded text-sm md:text-base ${currentPage === i
+              ? 'bg-green-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             {i}
           </button>
@@ -334,11 +399,10 @@ const NewTransaction = () => {
         <button
           key={1}
           onClick={() => handlePageChange(1)}
-          className={`px-3 py-1 rounded text-sm md:text-base ${
-            currentPage === 1
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+          className={`px-3 py-1 rounded text-sm md:text-base ${currentPage === 1
+            ? 'bg-green-600 text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
         >
           1
         </button>
@@ -360,11 +424,10 @@ const NewTransaction = () => {
           <button
             key={i}
             onClick={() => handlePageChange(i)}
-            className={`px-3 py-1 rounded text-sm md:text-base ${
-              currentPage === i
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-3 py-1 rounded text-sm md:text-base ${currentPage === i
+              ? 'bg-green-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             {i}
           </button>
@@ -383,11 +446,10 @@ const NewTransaction = () => {
         <button
           key={totalPages}
           onClick={() => handlePageChange(totalPages)}
-          className={`px-3 py-1 rounded text-sm md:text-base ${
-            currentPage === totalPages
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+          className={`px-3 py-1 rounded text-sm md:text-base ${currentPage === totalPages
+            ? 'bg-green-600 text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
         >
           {totalPages}
         </button>
@@ -402,7 +464,7 @@ const NewTransaction = () => {
       <div className="md:block md:w-64 flex-shrink-0">
         <Sidebar />
       </div>
-      
+
       {/* Main content */}
       <div className="flex-grow p-2 md:p-4">
         {/* Header with title and date */}
@@ -411,7 +473,7 @@ const NewTransaction = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3 md:mb-0">Transactions</h1>
             <div className="flex items-center space-x-2">
               <span className="text-gray-600 text-sm md:text-base">Showing data for:</span>
-              <DateSelector 
+              <DateSelector
                 date={selectedDate}
                 onDateChange={handleDateChange}
                 inputRef={incomeDateInputRef}
@@ -494,15 +556,15 @@ const NewTransaction = () => {
                 </svg>
               </div>
             </div>
-            
-            <button 
-              onClick={handleNewIncome} 
+
+            <button
+              onClick={handleNewIncome}
               className="px-6 md:px-8 py-2 bg-green-600 text-white rounded-md text-sm md:text-base hover:bg-green-700 transition-colors w-full md:w-auto"
             >
               Add New
             </button>
           </div>
-          
+
           {/* Income Table */}
           <IncomeTable
             filteredTransactions={currentTransactions}
@@ -515,7 +577,7 @@ const NewTransaction = () => {
             referrers={referrers}
             handlers={rowHandlers}
           />
-          
+
           {/* Generate Report Button */}
           <div className="mt-4 flex justify-between items-center">
             <div className="text-sm text-gray-600">
@@ -526,7 +588,7 @@ const NewTransaction = () => {
               )}
             </div>
             {filteredTransactions.length > 0 && (
-              <button 
+              <button
                 onClick={handleGenerateReport}
                 className="bg-green-600 text-white px-4 md:px-6 py-2 rounded-md flex items-center text-sm md:text-base hover:bg-green-700 transition-colors"
               >
@@ -539,28 +601,26 @@ const NewTransaction = () => {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center space-x-2 mt-4">
-              <button 
+              <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`px-3 py-1 rounded text-sm md:text-base ${
-                  currentPage === 1
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
+                className={`px-3 py-1 rounded text-sm md:text-base ${currentPage === 1
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
               >
                 Prev
               </button>
-              
+
               {renderPageNumbers()}
-              
-              <button 
+
+              <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded text-sm md:text-base ${
-                  currentPage === totalPages
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
+                className={`px-3 py-1 rounded text-sm md:text-base ${currentPage === totalPages
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
               >
                 Next
               </button>
@@ -568,7 +628,7 @@ const NewTransaction = () => {
           )}
         </div>
       </div>
-      
+
       {/* Transaction Summary Modal */}
       {isTransactionSummaryOpen && selectedSummaryTransaction && (
         <TransactionSummaryModal
@@ -593,7 +653,7 @@ const NewTransaction = () => {
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
-        onClose={closeConfirmModal} 
+        onClose={closeConfirmModal}
         onConfirm={confirmCancellation}
         isPending={mutations?.cancelTransaction?.isPending}
       />
@@ -607,6 +667,18 @@ const NewTransaction = () => {
         onAuthenticate={executeAuthentication}
         onCancel={cancelAuthentication}
         onClearError={clearError}
+      />
+
+      {/* Admin Verification Modal for Refunds */}
+      <AdminVerificationModal
+        isOpen={showAdminVerifyModal}
+        onClose={() => {
+          setShowAdminVerifyModal(false);
+          setPendingRefundSave(null);
+        }}
+        onVerify={handleAdminVerified}
+        currentUser={user}
+        actionDescription="process refunds"
       />
 
       {/* ToastContainer for notifications */}
