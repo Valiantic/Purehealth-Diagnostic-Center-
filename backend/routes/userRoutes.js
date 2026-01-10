@@ -20,4 +20,7 @@ router.patch('/:userId/status', userController.updateUserStatus);
 // Update user details
 router.put('/:userId', userController.updateUserDetails);
 
+// Verify admin role (for sensitive operations)
+router.post('/verify-admin', userController.verifyAdminRole);
+
 module.exports = router;
