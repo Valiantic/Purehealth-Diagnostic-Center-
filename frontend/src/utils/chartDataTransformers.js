@@ -1,3 +1,5 @@
+import { forecastNextDay } from './smaForecasting';
+
 // Chart color palette
 export const chartColors = {
   primary: '#02542D',
@@ -5,7 +7,7 @@ export const chartColors = {
   accent1: '#4CAF50',
   accent2: '#8BC34A',
   gradient: 'rgba(2, 84, 45, 0.1)',
-  
+
   // Color arrays for multiple data series
   greenShades: ['#02542D', '#1C7847', '#4CAF50', '#8BC34A', '#C8E6C9', '#66BB6A', '#81C784', '#A5D6A7'],
   pieChartColors: [
@@ -48,59 +50,135 @@ export const transformDailyIncomeData = (dailyData) => {
     item.dayName?.substring(0, 3) || `Day ${item.day}`
   );
 
-  // Use date properties on the datasets as referced in the context
+  // Use date properties on the datasets as referenced in the context
   const collected = sortedData.map(item => parseFloat(item.amount) || 0);
   const collectible = sortedData.map(item => parseFloat(item.collectibleAmount) || 0);
   const total = sortedData.map((_, idx) => collected[idx] + collectible[idx]);
 
+  // Calculate SMA forecasts (7-day moving average by default)
+  const collectedForecast = forecastNextDay(collected, 7);
+  const collectibleForecast = forecastNextDay(collectible, 7);
+
+  // Prepare datasets with forecasts
+  const datasets = [
+    {
+      label: 'Total Income',
+      data: total,
+      borderColor: chartColors.primary,
+      backgroundColor: chartColors.gradient,
+      tension: 0.4,
+      fill: false,
+      pointBackgroundColor: chartColors.primary,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 2,
+      pointRadius: 4
+    },
+    {
+      label: 'Collected Income',
+      data: collected,
+      borderColor: chartColors.accent1,
+      backgroundColor: chartColors.accent1,
+      tension: 0.4,
+      fill: false,
+      borderDash: [4, 4],
+      pointBackgroundColor: chartColors.accent1,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 2,
+      pointRadius: 4
+    },
+    {
+      label: 'Collectible Income',
+      data: collectible,
+      borderColor: chartColors.accent2,
+      backgroundColor: chartColors.accent2,
+      tension: 0.4,
+      fill: false,
+      borderDash: [2, 2],
+      pointBackgroundColor: chartColors.accent2,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 2,
+      pointRadius: 4
+    }
+  ];
+
+  // Add forecast datasets if forecasts are available
+  if (collectedForecast !== null && collectedForecast !== undefined && !isNaN(collectedForecast)) {
+    // Add label for forecast
+    labels.push('Forecast');
+
+    // Extend existing datasets with null for forecast position
+    datasets[0].data.push(null); // Total Income
+    datasets[1].data.push(null); // Collected Income - will be replaced
+    datasets[2].data.push(null); // Collectible Income - will be replaced
+
+    // Add collected income forecast dataset
+    const collectedForecastData = Array(collected.length).fill(null);
+    collectedForecastData.push(collectedForecast);
+
+    datasets.push({
+      label: 'Collected Forecast',
+      data: collectedForecastData,
+      borderColor: chartColors.accent1,
+      backgroundColor: 'transparent',
+      tension: 0,
+      fill: false,
+      borderDash: [8, 4],
+      pointBackgroundColor: chartColors.accent1,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 3,
+      pointRadius: 6,
+      borderWidth: 3,
+      pointStyle: 'triangle'
+    });
+  }
+
+  if (collectibleForecast !== null && collectibleForecast !== undefined && !isNaN(collectibleForecast)) {
+    // Only add label if not already added
+    if (!labels.includes('Forecast')) {
+      labels.push('Forecast');
+      datasets[0].data.push(null);
+      datasets[1].data.push(null);
+      datasets[2].data.push(null);
+    }
+
+    // Add collectible income forecast dataset
+    const collectibleForecastData = Array(collectible.length).fill(null);
+    collectibleForecastData.push(collectibleForecast);
+
+    datasets.push({
+      label: 'Collectible Forecast',
+      data: collectibleForecastData,
+      borderColor: chartColors.accent2,
+      backgroundColor: 'transparent',
+      tension: 0,
+      fill: false,
+      borderDash: [8, 4],
+      pointBackgroundColor: chartColors.accent2,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 3,
+      pointRadius: 6,
+      borderWidth: 3,
+      pointStyle: 'triangle'
+    });
+  }
+
+  // Update total income forecast if both forecasts exist
+  if (collectedForecast !== null && collectibleForecast !== null &&
+    !isNaN(collectedForecast) && !isNaN(collectibleForecast)) {
+    const totalForecast = collectedForecast + collectibleForecast;
+    datasets[0].data[datasets[0].data.length - 1] = totalForecast;
+  }
+
   return {
     labels,
-    datasets: [
-      {
-        label: 'Total Income',
-        data: total,
-        borderColor: chartColors.primary,
-        backgroundColor: chartColors.gradient,
-        tension: 0.4,
-        fill: false,
-        pointBackgroundColor: chartColors.primary,
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 4
-      },
-      {
-        label: 'Collected Income',
-        data: collected,
-        borderColor: chartColors.accent1,
-        backgroundColor: chartColors.accent1,
-        tension: 0.4,
-        fill: false,
-        borderDash: [4, 4],
-        pointBackgroundColor: chartColors.accent1,
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 4
-      },
-      {
-        label: 'Collectible Income',
-        data: collectible,
-        borderColor: chartColors.accent2,
-        backgroundColor: chartColors.accent2,
-        tension: 0.4,
-        fill: false,
-        borderDash: [2, 2],
-        pointBackgroundColor: chartColors.accent2,
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 4
-      }
-    ]
+    datasets
   };
 };
 
+
 // Transform expenses by department data for Chart.js pie chart
 export const transformExpensesByDepartment = (expensesData) => {
-  
+
   if (!Array.isArray(expensesData) || expensesData.length === 0) {
 
     return {
@@ -123,10 +201,10 @@ export const transformExpensesByDepartment = (expensesData) => {
   const labels = expensesData.map(item => item.department || 'Unknown');
   const amounts = expensesData.map(item => parseFloat(item.amount) || 0);
   const percentages = expensesData.map(item => parseFloat(item.percentage) || 0);
-  
-  
+
+
   // Generate distinct colors for each department
-  const colors = labels.map((_, index) => 
+  const colors = labels.map((_, index) =>
     chartColors.pieChartColors[index % chartColors.pieChartColors.length]
   );
 
@@ -279,7 +357,7 @@ export const formatCurrency = (amount, currency = '₱') => {
   if (typeof amount !== 'number') {
     amount = parseFloat(amount) || 0;
   }
-  
+
   return `${currency} ${amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
@@ -312,7 +390,7 @@ export const getLineChartOptions = () => ({
     tooltip: {
       ...getCommonChartOptions().plugins.tooltip,
       callbacks: {
-        label: function(context) {
+        label: function (context) {
           return `Income: ${formatCurrency(context.parsed.y)}`;
         }
       }
@@ -324,7 +402,7 @@ export const getLineChartOptions = () => ({
       ticks: {
         stepSize: 1000,
         font: { size: 10 },
-        callback: function(value) {
+        callback: function (value) {
           return formatCurrency(value);
         }
       },
@@ -348,7 +426,7 @@ export const getPieChartOptions = () => ({
     tooltip: {
       ...getCommonChartOptions().plugins.tooltip,
       callbacks: {
-        label: function(context) {
+        label: function (context) {
           const label = context.label || '';
           const value = context.parsed || 0;
           const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -368,7 +446,7 @@ export const getBarChartOptions = () => ({
     tooltip: {
       ...getCommonChartOptions().plugins.tooltip,
       callbacks: {
-        label: function(context) {
+        label: function (context) {
           const label = context.dataset.label || '';
           return `${label}: ${formatCurrency(context.parsed.y)}`;
         }
@@ -382,10 +460,10 @@ export const getBarChartOptions = () => ({
         color: 'rgba(0, 0, 0, 0.1)'
       },
       ticks: {
-        callback: function(value) {
+        callback: function (value) {
           // Show as 'k' for thousands
           if (value >= 1000) {
-            return `${value/1000}k`;
+            return `${value / 1000}k`;
           }
           return value === 0 ? '0' : value;
         },

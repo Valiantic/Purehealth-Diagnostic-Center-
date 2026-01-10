@@ -153,7 +153,7 @@ const dashboardController = {
   getDailyIncomeData: async (req, res) => {
     try {
       const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
-      
+
       // Get daily income from non-refunded test details in non-cancelled transactions, excluding balance amounts
       const dailyData = await TestDetails.findAll({
         attributes: [
@@ -208,43 +208,62 @@ const dashboardController = {
         raw: true
       });
 
-      // Merge daily data and collectible data
-      const chartData = [];
+      // Create maps for quick lookup
+      const transactionMap = new Map();
       const collectibleMap = new Map();
-      
-      // Create a map of collectible income by day
-      dailyCollectibleData.forEach(item => {
-        collectibleMap.set(item.day, parseFloat(item.totalCollectible) || 0);
-      });
 
-      // Combine transaction income with collectible income
       dailyData.forEach(item => {
-        const collectibleAmount = collectibleMap.get(item.day) || 0;
-        chartData.push({
-          day: item.day,
-          dayName: item.dayName,
+        transactionMap.set(item.day, {
           amount: parseFloat(item.totalAmount) || 0,
-          collectibleAmount: collectibleAmount,
-          totalAmount: (parseFloat(item.totalAmount) || 0) + collectibleAmount
+          dayName: item.dayName
         });
       });
 
-      // Add days that only have collectible income (no transaction income)
-      collectibleMap.forEach((collectibleAmount, day) => {
-        const existingDay = chartData.find(item => item.day === day);
-        if (!existingDay) {
-          chartData.push({
-            day: day,
-            dayName: new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'long' }),
-            amount: 0,
-            collectibleAmount: collectibleAmount,
-            totalAmount: collectibleAmount
-          });
-        }
+      dailyCollectibleData.forEach(item => {
+        collectibleMap.set(item.day, {
+          amount: parseFloat(item.totalCollectible) || 0,
+          dayName: item.dayName
+        });
       });
 
-      // Sort by day
-      chartData.sort((a, b) => a.day - b.day);
+      // Determine the last day to include in the chart
+      const currentDate = new Date();
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      // If viewing current month, only show up to today
+      // If viewing past month, show entire month
+      const isCurrentMonth = currentDate.getFullYear() === parseInt(year) &&
+        (currentDate.getMonth() + 1) === parseInt(month);
+      const lastDay = isCurrentMonth ? currentDate.getDate() : daysInMonth;
+
+      // Build complete chart data with all days (including zeros)
+      const chartData = [];
+      for (let day = 1; day <= lastDay; day++) {
+        const transactionData = transactionMap.get(day);
+        const collectibleData = collectibleMap.get(day);
+
+        const transactionAmount = transactionData?.amount || 0;
+        const collectibleAmount = collectibleData?.amount || 0;
+
+        // Get day name from either data source, or calculate it
+        let dayName;
+        if (transactionData?.dayName) {
+          dayName = transactionData.dayName;
+        } else if (collectibleData?.dayName) {
+          dayName = collectibleData.dayName;
+        } else {
+          // Calculate day name for days with no data
+          dayName = new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'long' });
+        }
+
+        chartData.push({
+          day: day,
+          dayName: dayName,
+          amount: transactionAmount,
+          collectibleAmount: collectibleAmount,
+          totalAmount: transactionAmount + collectibleAmount
+        });
+      }
 
       res.json({
         success: true,
@@ -264,7 +283,7 @@ const dashboardController = {
   getExpensesByDepartment: async (req, res) => {
     try {
       const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
-            
+
       // First, let's check if we have any active expense items (exclude paid and refunded)
       const totalExpenses = await ExpenseItem.count({
         include: [
@@ -290,7 +309,7 @@ const dashboardController = {
           }
         }
       });
-            
+
       const expensesByDept = await ExpenseItem.findAll({
         attributes: [
           [sequelize.fn('SUM', sequelize.col('ExpenseItem.amount')), 'totalAmount']
@@ -330,8 +349,8 @@ const dashboardController = {
           }
         },
         group: [
-          'Expense.departmentId', 
-          'Expense->Department.departmentId', 
+          'Expense.departmentId',
+          'Expense->Department.departmentId',
           'Expense->Department.departmentName',
           'Category.categoryId',
           'Category.name'
@@ -344,10 +363,10 @@ const dashboardController = {
       const total = expensesByDept.reduce((sum, item) => sum + parseFloat(item.totalAmount || 0), 0);
 
       const chartData = expensesByDept.map(item => {
-        
+
         // Check if this expense item has a category (like rebates)
         const categoryName = item['Category.name'] || item['Category->name'];
-        
+
         // Special handling for rebates - if category is "Rebates", use that as the display name
         let displayName;
         if (categoryName === 'Rebates') {
@@ -355,13 +374,13 @@ const dashboardController = {
         } else if (categoryName) {
           displayName = categoryName;
         } else {
-          displayName = item['Expense.Department.departmentName'] || 
-                       item['Expense->Department.departmentName'] || 
-                       item['Department.departmentName'] ||
-                       item.departmentName ||
-                       'Other';
+          displayName = item['Expense.Department.departmentName'] ||
+            item['Expense->Department.departmentName'] ||
+            item['Department.departmentName'] ||
+            item.departmentName ||
+            'Other';
         }
-        
+
         return {
           department: displayName,
           amount: parseFloat(item.totalAmount || 0),
@@ -388,9 +407,9 @@ const dashboardController = {
   getMonthlyProfitData: async (req, res) => {
     try {
       const { year = new Date().getFullYear() } = req.query;
-      
+
       const monthlyData = [];
-      
+
       for (let month = 1; month <= 12; month++) {
         // Get revenue for this month from non-refunded test details in non-cancelled transactions, excluding balance amounts
         const revenueResult = await TestDetails.findAll({
@@ -467,7 +486,7 @@ const dashboardController = {
         const totalRevenue = transactionRevenue + collectibleAmount;
         const totalExpenses = expenses || 0; // Only actual recorded expenses
         const profit = totalRevenue - totalExpenses;
-        
+
         monthlyData.push({
           month: month,
           monthName: new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' }),
