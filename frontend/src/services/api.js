@@ -12,7 +12,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 10000 // 10 second timeout
+  timeout: 120000 // 120 second timeout for Render cold starts
 });
 
 // Add request interceptor for duplicate request prevention
@@ -334,6 +334,17 @@ export const transactionAPI = {
         message: error.response?.data?.message || error.message || 'Failed to check MC#',
         exists: false
       };
+    }
+  },
+
+  // Get the next available MC number from database
+  getNextMcNo: async () => {
+    try {
+      const response = await apiClient.get('/transactions/next-mcno');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting next MC number:', error);
+      throw error;
     }
   },
 };
