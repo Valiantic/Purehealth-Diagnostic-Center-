@@ -6,7 +6,8 @@
   "scripts": {
     "prekill": "npx kill-port 5000",
     "start": "npm run prekill && node server.js",
-    "dev": "npm run prekill && nodemon server.js"
+    "dev": "npm run prekill && nodemon server.js",
+    "setup-db": "node setup-db.js"
   },
   "dependencies": {
     "@simplewebauthn/server": "^7.4.0",
