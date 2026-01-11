@@ -43,7 +43,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.CORS_ORIGIN === origin) {
       callback(null, true);
     } else {
@@ -62,6 +62,9 @@ app.use(express.json());
 // Security headers
 app.use(helmet());
 
+// Trust proxy (required for rate limiting behind load balancers like Render)
+app.set('trust proxy', 1);
+
 // Rate limiting - General API limiter
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -70,8 +73,8 @@ const generalLimiter = rateLimit({
     success: false,
     message: 'Too many requests, please try again later.'
   },
-  standardHeaders: true, 
-  legacyHeaders: false, 
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Stricter rate limiting for auth routes (login, register, webauthn)
