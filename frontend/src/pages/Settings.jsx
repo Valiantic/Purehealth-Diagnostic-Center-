@@ -5,13 +5,14 @@ import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
 import usePasskeyManager from '../hooks/auth/usePasskeyManager'
 import PasskeyModal from '../components/auth/PasskeyModal'
-import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download } from 'lucide-react'
+import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download, FileText } from 'lucide-react'
 import tabsConfig from '../config/tabsConfig'
 import { userAPI, settingsAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { exportFullBackup } from '../utils/backupExporter'
 import AdminVerificationModal from '../components/AdminVerificationModal'
+import ORConfigModal from '../components/settings/ORConfigModal'
 import apiClient from '../services/api'
 
 const Settings = () => {
@@ -45,6 +46,11 @@ const Settings = () => {
 
   // Backup download state
   const [isDownloadingBackup, setIsDownloadingBackup] = useState(false)
+
+  // OR# Configuration state
+  const [isORConfigModalOpen, setIsORConfigModalOpen] = useState(false)
+  const [currentORNumber, setCurrentORNumber] = useState(1)
+  const [highestTransactionOR, setHighestTransactionOR] = useState(0)
 
   // Initialize passkey manager
   const passkeyManager = usePasskeyManager(user?.userId);
@@ -94,6 +100,7 @@ const Settings = () => {
     // Fetch discount categories and referral fee
     fetchDiscountCategories();
     fetchReferralFee();
+    fetchORNumber();
   }, [refreshUser]);
 
   // Handle admin verified callback
@@ -138,6 +145,43 @@ const Settings = () => {
     } catch (error) {
       // If setting doesn't exist, it will use default value
       console.error('Referral fee setting not found, using default');
+    }
+  }
+
+  // Fetch current OR# configuration
+  const fetchORNumber = async () => {
+    try {
+      const response = await settingsAPI.getNextORNumber();
+      if (response.data && response.data.success) {
+        const orNum = parseInt(response.data.nextORNumber);
+        const highestOR = parseInt(response.data.highestTransactionOR || 0);
+        setCurrentORNumber(orNum);
+        setHighestTransactionOR(highestOR);
+      }
+    } catch (error) {
+      console.error('Error fetching OR#:', error);
+      toast.error('Failed to fetch current OR#');
+    }
+  }
+
+  // Handle save OR# configuration
+  const handleSaveORNumber = async (newORNumber) => {
+    try {
+      const response = await settingsAPI.updateSetting(
+        'next_or_number',
+        newORNumber.toString(),
+        user?.userId || user?.id
+      );
+
+      if (response.data && response.data.success) {
+        setCurrentORNumber(newORNumber);
+        toast.success(`OR#/MC No updated successfully to ${newORNumber}`);
+      } else {
+        toast.error('Failed to update OR#/MC No');
+      }
+    } catch (error) {
+      console.error('Error updating OR#:', error);
+      toast.error('Error updating OR#/MC No');
     }
   }
 
@@ -708,6 +752,24 @@ const Settings = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* OR# Configuration Card - Admin Only */}
+                    {user.role === 'admin' && (
+                      <div
+                        onClick={!isEditing ? () => setIsORConfigModalOpen(true) : undefined}
+                        className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-blue-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 font-medium">OR# Configuration</p>
+                            <p className="text-base font-semibold text-gray-800">Configure Receipt Number</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {error && (
@@ -992,6 +1054,15 @@ const Settings = () => {
         onAddPasskey={passkeyManager.addPasskey}
         onDeletePasskey={passkeyManager.deletePasskey}
         onSetPrimaryPasskey={passkeyManager.setPrimaryPasskey}
+      />
+
+      {/* OR# Configuration Modal */}
+      <ORConfigModal
+        isOpen={isORConfigModalOpen}
+        onClose={() => setIsORConfigModalOpen(false)}
+        onSave={handleSaveORNumber}
+        currentORNumber={currentORNumber}
+        highestTransactionOR={highestTransactionOR}
       />
     </div>
   )
