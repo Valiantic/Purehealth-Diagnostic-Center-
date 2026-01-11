@@ -6,14 +6,14 @@ const RebateService = require('../services/rebateService');
 // Create a new transaction with items and track department revenue
 exports.createTransaction = async (req, res) => {
   let t; // Define transaction object for rollback
-  
+
   try {
     const {
       mcNo,
       firstName,
       lastName,
       idType,
-      idNumber,  
+      idNumber,
       referrerId,
       birthDate,
       sex,
@@ -61,20 +61,20 @@ exports.createTransaction = async (req, res) => {
       const cashAmount = parseFloat(item.cashAmount) || 0;
       const gCashAmount = parseFloat(item.gCashAmount) || 0;
       const balanceAmount = parseFloat(item.balanceAmount) || 0;
-    
+
       // Sum up individual test prices (after individual test discounts)
-      subtotalAmount += discountedPrice; 
+      subtotalAmount += discountedPrice;
       calculatedTotalDiscountAmount += (originalPrice - discountedPrice);
       totalCashAmount += cashAmount;
       totalGCashAmount += gCashAmount;
-      totalBalanceAmount += balanceAmount;  
+      totalBalanceAmount += balanceAmount;
     });
 
-   
-    const finalTotalAmount = totalAmount !== undefined && totalAmount !== null 
-      ? parseFloat(totalAmount) 
+
+    const finalTotalAmount = totalAmount !== undefined && totalAmount !== null
+      ? parseFloat(totalAmount)
       : totalCashAmount + totalGCashAmount;
-    
+
     const finalTotalDiscountAmount = totalDiscountAmount !== undefined && totalDiscountAmount !== null
       ? parseFloat(totalDiscountAmount)
       : finalTotalAmount; // If no discount provided, use total amount as-is
@@ -86,42 +86,65 @@ exports.createTransaction = async (req, res) => {
         where: { mcNo },
         transaction: t
       });
-      
+
       if (existingTransaction) {
         throw new Error(`MC# ${mcNo} already exists`);
       }
-      
+
       generatedMcNo = mcNo;
     } else {
-      // Use FOR UPDATE lock to prevent race conditions when multiple devices create transactions simultaneously
-      // This ensures only one transaction can read and increment the counter at a time
-      const highestMcTransaction = await Transaction.findOne({
-        attributes: ['mcNo'],
-        order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
-        lock: t.LOCK.UPDATE, // Row-level lock
+      // First, check if there's a configured next OR# in settings
+      const { Settings } = require('../models');
+      const orSetting = await Settings.findOne({
+        where: { settingKey: 'next_or_number' },
         transaction: t
       });
-      
-      // Generate the next MC number atomically
-      if (highestMcTransaction && highestMcTransaction.mcNo) {
-        // Convert string to number, increment, then format back to string with leading zeros
-        const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
-        const nextNumber = currentNumber + 1;
-        
-        generatedMcNo = String(nextNumber).padStart(5, '0');
+
+      if (orSetting) {
+        // Use the configured OR# from settings
+        const configuredORNumber = parseInt(orSetting.settingValue);
+        generatedMcNo = String(configuredORNumber).padStart(5, '0');
+
+        // Update the setting to the next number for next transaction
+        await orSetting.update({
+          settingValue: String(configuredORNumber + 1)
+        }, { transaction: t });
+
+        console.log(`Using configured OR# from settings: ${generatedMcNo}`);
       } else {
-        // If no existing transactions, start from 10000
-        generatedMcNo = '10000';
+        // Fallback to auto-increment logic if no setting exists
+        // Use FOR UPDATE lock to prevent race conditions when multiple devices create transactions simultaneously
+        // This ensures only one transaction can read and increment the counter at a time
+        const highestMcTransaction = await Transaction.findOne({
+          attributes: ['mcNo'],
+          order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+          lock: t.LOCK.UPDATE, // Row-level lock
+          transaction: t
+        });
+
+        // Generate the next MC number atomically
+        if (highestMcTransaction && highestMcTransaction.mcNo) {
+          // Convert string to number, increment, then format back to string with leading zeros
+          const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
+          const nextNumber = currentNumber + 1;
+
+          generatedMcNo = String(nextNumber).padStart(5, '0');
+        } else {
+          // If no existing transactions, start from 10000
+          generatedMcNo = '10000';
+        }
+
+        console.log(`Using auto-incremented OR#: ${generatedMcNo}`);
       }
     }
-    
+
     console.log(`Using mcNo: ${generatedMcNo}`);
 
     // Create the transaction record with retry logic for duplicate mcNo
     let transaction;
     let retryCount = 0;
     const maxRetries = 3;
-    
+
     while (retryCount < maxRetries) {
       try {
         transaction = await Transaction.create({
@@ -129,7 +152,7 @@ exports.createTransaction = async (req, res) => {
           firstName,
           lastName,
           idType,
-          idNumber,  
+          idNumber,
           referrerId: referrerId || null,
           birthDate: birthDate || null,
           sex,
@@ -142,22 +165,22 @@ exports.createTransaction = async (req, res) => {
           status: 'active',
           userId
         }, { transaction: t });
-        
+
         console.log(`Created transaction with ID: ${transaction.transactionId}`);
         break; // Success, exit retry loop
-        
+
       } catch (createError) {
         // Check if error is due to duplicate mcNo
-        if (createError.name === 'SequelizeUniqueConstraintError' || 
-            (createError.parent && createError.parent.code === 'ER_DUP_ENTRY')) {
-          
+        if (createError.name === 'SequelizeUniqueConstraintError' ||
+          (createError.parent && createError.parent.code === 'ER_DUP_ENTRY')) {
+
           retryCount++;
           console.log(`Duplicate mcNo detected (${generatedMcNo}), retrying... (attempt ${retryCount}/${maxRetries})`);
-          
+
           if (retryCount >= maxRetries) {
             throw new Error('Failed to generate unique MC number after multiple attempts');
           }
-          
+
           // Generate a new MC number by querying again with lock
           const retryHighest = await Transaction.findOne({
             attributes: ['mcNo'],
@@ -165,11 +188,11 @@ exports.createTransaction = async (req, res) => {
             lock: t.LOCK.UPDATE,
             transaction: t
           });
-          
+
           const retryCurrentNumber = parseInt(retryHighest?.mcNo || '10000', 10);
           generatedMcNo = String(retryCurrentNumber + 1).padStart(5, '0');
           console.log(`Generated new mcNo: ${generatedMcNo}`);
-          
+
         } else {
           // Different error, rethrow
           throw createError;
@@ -196,10 +219,10 @@ exports.createTransaction = async (req, res) => {
           balanceAmount: parseFloat(item.balanceAmount) || 0,
           status: 'active'
         }, { transaction: t });
-        
+
         console.log(`Created test detail with ID: ${testDetail.testDetailId}`);
         testDetails.push(testDetail);
-        
+
         // Try to create department revenue record if possible
         try {
           await DepartmentRevenue.create({
@@ -256,9 +279,9 @@ exports.createTransaction = async (req, res) => {
   } catch (error) {
     // Rollback transaction if it exists
     if (t) await t.rollback();
-    
+
     console.error('Transaction creation error:', error);
-    
+
     // Send detailed error response
     res.status(500).json({
       success: false,
@@ -274,12 +297,12 @@ exports.getAllTransactions = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, date, referrerId, includeDetails } = req.query;
     const offset = (page - 1) * limit;
-    
+
     const whereClause = {};
     if (status) {
       whereClause.status = status;
     }
-    
+
     if (date) {
       // Parse date as UTC to avoid timezone issues
       // The frontend sends the date in Philippines local time (UTC+8)
@@ -288,24 +311,24 @@ exports.getAllTransactions = async (req, res) => {
       // Example: For Philippines Jan 15, we want UTC Jan 14 16:00:00 to Jan 15 15:59:59
       const startDate = new Date(date + 'T00:00:00.000+08:00'); // Midnight Philippines time
       const endDate = new Date(date + 'T23:59:59.999+08:00');   // End of day Philippines time
-      
+
       whereClause.transactionDate = {
         [Op.between]: [startDate, endDate]
       };
     }
-    
+
     if (referrerId) {
       whereClause.referrerId = referrerId;
     }
 
     const includes = [];
-    
+
     includes.push({
       model: TestDetails,
-      attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 'discountPercentage', 
-                  'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount', 'status']
+      attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 'discountPercentage',
+        'discountedPrice', 'cashAmount', 'gCashAmount', 'balanceAmount', 'status']
     });
-    
+
     if (includeDetails === 'true') {
       includes.push({
         model: DepartmentRevenue,
@@ -346,7 +369,7 @@ exports.getAllTransactions = async (req, res) => {
 exports.getTransactionById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const transaction = await Transaction.findByPk(id, {
       include: [
         {
@@ -385,11 +408,11 @@ exports.getTransactionById = async (req, res) => {
 // Update transaction status
 exports.updateTransactionStatus = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
     const { status, currentUserId } = req.body;
-    
+
     if (!status || !['active', 'inactive', 'cancelled'].includes(status)) {
       return res.status(400).json({
         success: false,
@@ -398,7 +421,7 @@ exports.updateTransactionStatus = async (req, res) => {
     }
 
     const transaction = await Transaction.findByPk(id);
-    
+
     if (!transaction) {
       return res.status(404).json({
         success: false,
@@ -411,7 +434,7 @@ exports.updateTransactionStatus = async (req, res) => {
     // Update transaction items status
     await TestDetails.update(
       { status },
-      { 
+      {
         where: { transactionId: id },
         transaction: t
       }
@@ -431,7 +454,7 @@ exports.updateTransactionStatus = async (req, res) => {
         let metadata = {};
         try {
           if (revenue.metadata) {
-            metadata = typeof revenue.metadata === 'string' ? 
+            metadata = typeof revenue.metadata === 'string' ?
               JSON.parse(revenue.metadata) : revenue.metadata;
           }
         } catch (e) {
@@ -499,13 +522,13 @@ exports.updateTransactionStatus = async (req, res) => {
 // Update transaction details
 exports.updateTransaction = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
-    const { 
+    const {
       mcNo,
-      firstName, 
-      lastName, 
+      firstName,
+      lastName,
       referrerId,
       birthDate,
       sex,
@@ -518,9 +541,9 @@ exports.updateTransaction = async (req, res) => {
       totalAmount,
       totalDiscountAmount
     } = req.body;
-    
+
     const transaction = await Transaction.findByPk(id);
-    
+
     if (!transaction) {
       return res.status(404).json({
         success: false,
@@ -560,14 +583,14 @@ exports.updateTransaction = async (req, res) => {
 
     // Update test details if provided
     if (testDetails && Array.isArray(testDetails)) {
-      
+
       // Process each test detail and update department revenue
       for (const detail of testDetails) {
         if (detail.testDetailId) {
           // Get the original test detail before updating
           const originalTestDetail = await TestDetails.findByPk(detail.testDetailId);
           if (!originalTestDetail) continue;
-          
+
           // Parse values safely and ensure they're numbers
           const originalPrice = parseFloat(originalTestDetail.originalPrice) || 0;
           const discountPercentage = parseInt(detail.discountPercentage) || 0;
@@ -575,15 +598,15 @@ exports.updateTransaction = async (req, res) => {
           const cashAmount = parseFloat(detail.cashAmount) || 0;
           const gCashAmount = parseFloat(detail.gCashAmount) || 0;
           const totalPayment = cashAmount + gCashAmount;
-          
+
           // Calculate discount amount explicitly
           const discountAmount = originalPrice - discountedPrice;
           calculatedTotalDiscountAmount += discountAmount;
-          
+
           // Calculate refund if payment exceeds discounted price or if item was explicitly marked for refund
           let refundAmount = 0;
           let isRefunded = !!detail.isRefunded;
-          
+
           if (isRefunded) {
             // Track refunded test details for rebate adjustment
             refundedTestDetails.push({
@@ -592,10 +615,10 @@ exports.updateTransaction = async (req, res) => {
               discountedPrice: parseFloat(originalTestDetail.discountedPrice) || 0,
               testName: originalTestDetail.testName
             });
-        
+
             refundAmount = parseFloat(originalTestDetail.originalPrice) || 0;
             totalRefundAmount += refundAmount;
-            
+
             await ActivityLog.create({
               action: 'REFUND',
               details: `Manual refund of test: ${originalTestDetail.testName} - ₱${refundAmount.toFixed(2)}`,
@@ -609,12 +632,12 @@ exports.updateTransaction = async (req, res) => {
                 testName: originalTestDetail.testName
               })
             }, { transaction: t });
-          } 
+          }
           else if (totalPayment > discountedPrice) {
             // Handle automatic refunds from overpayment
             refundAmount = totalPayment - discountedPrice;
             totalRefundAmount += refundAmount;
-            
+
             // Log the automatic refund with the amount clearly shown
             await ActivityLog.create({
               action: 'REFUND',
@@ -630,10 +653,10 @@ exports.updateTransaction = async (req, res) => {
               })
             }, { transaction: t });
           }
-          
+
           // Calculate balance (cannot be negative)
           const balanceAmount = Math.max(0, discountedPrice - totalPayment);
-          
+
           // Update the test detail with all values including refund status
           await TestDetails.update(
             {
@@ -649,7 +672,7 @@ exports.updateTransaction = async (req, res) => {
               transaction: t
             }
           );
-          
+
           // Update department revenue to reflect the discounted price or mark as refunded
           await DepartmentRevenue.update(
             {
@@ -664,14 +687,14 @@ exports.updateTransaction = async (req, res) => {
               })
             },
             {
-              where: { 
+              where: {
                 testDetailId: detail.testDetailId,
                 transactionId: id
               },
               transaction: t
             }
           );
-          
+
           // Only add active tests to running totals
           if (!isRefunded) {
             totalCashAmount += cashAmount;
@@ -680,24 +703,24 @@ exports.updateTransaction = async (req, res) => {
           }
         }
       }
-      
+
       // Calculate total excess refunds from overpayment adjustments
       if (excessRefunds && typeof excessRefunds === 'object') {
         totalExcessRefundAmount = Object.values(excessRefunds).reduce((sum, amount) => {
           return sum + (parseFloat(amount) || 0);
         }, 0);
       }
-      
+
       // Recalculate totalAmount and totalDiscountAmount based on discount type
       // Use values from frontend if provided, otherwise calculate
       const finalTotalAmount = totalAmount !== undefined && totalAmount !== null
         ? parseFloat(totalAmount)
         : totalCashAmount + totalGCashAmount;
-      
+
       const finalTotalDiscountAmount = totalDiscountAmount !== undefined && totalDiscountAmount !== null
         ? parseFloat(totalDiscountAmount)
         : finalTotalAmount; // If no discount provided, use total amount as-is
-      
+
       // Handle rebate adjustments for refunded test details
       if (refundedTestDetails.length > 0) {
         try {
@@ -707,7 +730,7 @@ exports.updateTransaction = async (req, res) => {
           // Don't fail the transaction update if rebate adjustment fails
         }
       }
-      
+
       // Handle referrer changes and update rebate expenses
       if (referrerChanged) {
         try {
@@ -717,7 +740,7 @@ exports.updateTransaction = async (req, res) => {
           // Don't fail the transaction update if rebate adjustment fails
         }
       }
-      
+
       // Update transaction totals
       await transaction.update({
         totalAmount: finalTotalAmount,
@@ -739,23 +762,23 @@ exports.updateTransaction = async (req, res) => {
 
     // Log activity
     let activityDetails = `Updated transaction details for ${transaction.firstName} ${transaction.lastName}`;
-    
+
     // Add referrer change information to activity log if present
     if (referrerChanged) {
-      const oldReferrerName = oldReferrerId ? 
-        (await Referrer.findByPk(oldReferrerId))?.lastName ? `Dr. ${(await Referrer.findByPk(oldReferrerId)).lastName}` : 'Unknown' 
+      const oldReferrerName = oldReferrerId ?
+        (await Referrer.findByPk(oldReferrerId))?.lastName ? `Dr. ${(await Referrer.findByPk(oldReferrerId)).lastName}` : 'Unknown'
         : 'Out Patient';
-      const newReferrerName = newReferrerId ? 
+      const newReferrerName = newReferrerId ?
         (await Referrer.findByPk(newReferrerId))?.lastName ? `Dr. ${(await Referrer.findByPk(newReferrerId)).lastName}` : 'Unknown'
         : 'Out Patient';
       activityDetails += `. Referrer changed from ${oldReferrerName} to ${newReferrerName}`;
     }
-    
+
     // Add excess refund information to activity log if present
     if (totalExcessRefundAmount > 0) {
       activityDetails += `. Excess refund amount: ₱${totalExcessRefundAmount.toFixed(2)} due to payment adjustments`;
     }
-    
+
     await ActivityLog.create({
       action: 'UPDATE',
       details: activityDetails,
@@ -806,18 +829,18 @@ exports.updateTransaction = async (req, res) => {
 exports.checkMcNoExists = async (req, res) => {
   try {
     const { mcNo } = req.query;
-    
+
     if (!mcNo) {
       return res.status(400).json({
         success: false,
         message: 'MC number is required'
       });
     }
-    
+
     const transaction = await Transaction.findOne({
       where: { mcNo }
     });
-    
+
     res.json({
       success: true,
       exists: !!transaction,
@@ -838,16 +861,16 @@ exports.searchTransactions = async (req, res) => {
   try {
     const { name, startDate, endDate, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
-    
+
     const whereClause = {};
-    
+
     if (name) {
       whereClause[Op.or] = [
         { firstName: { [Op.like]: `%${name}%` } },
         { lastName: { [Op.like]: `%${name}%` } }
       ];
     }
-    
+
     if (startDate && endDate) {
       whereClause.transactionDate = {
         [Op.between]: [new Date(startDate), new Date(endDate)]
@@ -862,9 +885,9 @@ exports.searchTransactions = async (req, res) => {
       include: [
         {
           model: TestDetails,
-          attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 
-                      'discountPercentage', 'discountedPrice', 'cashAmount', 
-                      'gCashAmount', 'balanceAmount']
+          attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice',
+            'discountPercentage', 'discountedPrice', 'cashAmount',
+            'gCashAmount', 'balanceAmount']
         }
       ]
     });
@@ -892,30 +915,30 @@ exports.searchTransactions = async (req, res) => {
 exports.getTransactionsByReferrerId = async (req, res) => {
   try {
     const { referrerId, date } = req.query;
-    
+
     if (!referrerId) {
       return res.status(400).json({
         success: false,
         message: 'Referrer ID is required'
       });
     }
-    
+
     const whereClause = {
       referrerId: referrerId,
       status: 'active' // Only include active transactions
     };
-    
+
     // Add date filter if provided
     if (date) {
       // Parse date with Philippines timezone offset (UTC+8)
       const startDate = new Date(date + 'T00:00:00.000+08:00');
       const endDate = new Date(date + 'T23:59:59.999+08:00');
-      
+
       whereClause.transactionDate = {
         [Op.between]: [startDate, endDate]
       };
     }
-    
+
     const transactions = await Transaction.findAll({
       where: whereClause,
       include: [
@@ -927,15 +950,15 @@ exports.getTransactionsByReferrerId = async (req, res) => {
         },
         {
           model: TestDetails,
-          attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice', 
-                       'discountPercentage', 'discountedPrice'],
+          attributes: ['testDetailId', 'testName', 'departmentId', 'originalPrice',
+            'discountPercentage', 'discountedPrice'],
           where: { status: { [Op.ne]: 'deleted' } }, // Exclude deleted tests
           required: false
         }
       ],
       order: [['transactionDate', 'DESC']]
     });
-    
+
     res.json({
       success: true,
       data: transactions
