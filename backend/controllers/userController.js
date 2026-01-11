@@ -118,6 +118,9 @@ async function getAllUsers(req, res) {
       users: users.map(user => ({
         userId: user.userId,
         name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
         username: user.email.split('@')[0],
         email: user.email,
         role: user.role,

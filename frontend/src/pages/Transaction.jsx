@@ -14,10 +14,11 @@ import DateSelector from '../components/transaction/DateSelector';
 import IncomeTable from '../components/transaction/IncomeTable';
 import ConfirmationModal from '../components/transaction/ConfirmationModal';
 import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal';
+import DailyIncomeBreakdownModal from '../components/transaction/DailyIncomeBreakdownModal';
 import { useTransactionManagement } from '../hooks/transaction/useTransactionManagement';
 import { useTransactionData } from '../hooks/transaction/useTransactionData';
 import { exportIncomeToExcel } from '../utils/incomeExcelExporter';
-import { settingsAPI } from '../services/api';
+import { settingsAPI, transactionAPI, userAPI } from '../services/api';
 import { useQuery } from '@tanstack/react-query';
 
 const NewTransaction = () => {
@@ -30,6 +31,8 @@ const NewTransaction = () => {
   const [itemsPerPage] = useState(10);
   const [showAdminVerifyModal, setShowAdminVerifyModal] = useState(false);
   const [pendingRefundModeToggle, setPendingRefundModeToggle] = useState(false);
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
+  const [breakdownData, setBreakdownData] = useState(null);
 
   // WebAuthn protected actions hook
   const {
@@ -71,6 +74,23 @@ const NewTransaction = () => {
   const queryClient = useQueryClient();
 
   // Use our custom hook to handle data fetching and processing
+  // Fetch admin user for report
+  const { data: adminUser } = useQuery({
+    queryKey: ['adminUser'],
+    queryFn: async () => {
+      try {
+        const response = await userAPI.getAllUsers();
+        // Handle different response structures: {users: []} or {data: []} or []. 
+        const users = response.data?.users || response.data?.data || (Array.isArray(response.data) ? response.data : []);
+        return users.find(u => u.role === 'admin');
+      } catch (err) {
+        console.error('Error fetching admin user:', err);
+        return null;
+      }
+    },
+    staleTime: Infinity
+  });
+
   const {
     transactions,
     departments,
@@ -244,22 +264,89 @@ const NewTransaction = () => {
 
   const handleNewIncome = () => navigate('/add-transaction');
 
-  // Handle Excel export
+  // Handle Generate Report (Open Breakdown Modal)
   const handleGenerateReport = async () => {
     try {
-      await exportIncomeToExcel(
-        filteredTransactions,
-        departmentsWithValues,
-        calculatedTotals.departmentTotals,
-        totalGross,
-        totalGCash,
-        totalRefundsToDisplay,
-        selectedDate
-      );
-      toast.success('Income report exported successfully!');
+      // Calculate yesterday
+      const yesterday = new Date(selectedDate);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const year = yesterday.getFullYear();
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+      const day = String(yesterday.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
+      // Fetch yesterday's data
+      const response = await transactionAPI.getAllTransactions({
+        page: 1,
+        limit: 5000,
+        date: dateString
+      });
+
+      const yesterdayTransactions = response.data?.data?.transactions || [];
+
+      // Calculate yesterday's department totals
+      const yesterdayDepartmentTotals = {};
+      let yesterdayGCashTotal = 0;
+
+      yesterdayTransactions.forEach(txn => {
+        if (txn.status !== 'cancelled' && txn.TestDetails) {
+          txn.TestDetails.forEach(test => {
+            if (test.status !== 'refunded') {
+              const deptId = test.departmentId;
+              // Amount logic: discountedPrice - balanceAmount
+              const testPrice = parseFloat(test.discountedPrice) || 0;
+              const balanceAmount = parseFloat(test.balanceAmount) || 0;
+              const amount = testPrice - balanceAmount;
+
+              yesterdayDepartmentTotals[deptId] = (yesterdayDepartmentTotals[deptId] || 0) + amount;
+
+              yesterdayGCashTotal += parseFloat(test.gCashAmount || 0);
+            }
+          });
+        }
+      });
+
+      // Prepare data for modal
+      const departmentRevenues = departments
+        .filter(dept => dept.status === 'active' || departmentTotals[dept.departmentId] > 0)
+        .map(dept => ({
+          departmentName: dept.departmentName,
+          yesterday: yesterdayDepartmentTotals[dept.departmentId] || 0,
+          today: departmentTotals[dept.departmentId] || 0
+        }));
+
+      // Transactions list
+      const transactionsList = filteredTransactions.map(txn => {
+        const deptAmounts = {};
+        Object.values(txn.departmentRevenues).forEach(deptRev => {
+          if (deptRev.amount > 0) {
+            deptAmounts[deptRev.name] = deptRev.amount;
+          }
+        });
+
+        return {
+          mcNo: txn.id,
+          firstName: txn.originalTransaction.firstName,
+          lastName: txn.originalTransaction.lastName,
+          departmentAmounts: deptAmounts,
+          totalAmount: txn.grossDeposit,
+          referrerName: txn.referrer
+        };
+      });
+
+      setBreakdownData({
+        departmentRevenues,
+        transactions: transactionsList,
+        additionalIncome: { yesterday: 0, today: 0 },
+        gcashIncome: { yesterday: yesterdayGCashTotal, today: totalGCash }
+      });
+
+      setIsBreakdownModalOpen(true);
+
     } catch (error) {
-      console.error('Export failed:', error);
-      toast.error('Failed to export income report. Please try again.');
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report data');
     }
   };
 
@@ -592,8 +679,7 @@ const NewTransaction = () => {
                 onClick={handleGenerateReport}
                 className="bg-green-600 text-white px-4 md:px-6 py-2 rounded-md flex items-center text-sm md:text-base hover:bg-green-700 transition-colors"
               >
-                <Download className="mr-2 h-4 w-4" />
-                Generate Report
+                Show Breakdown
               </button>
             )}
           </div>
@@ -692,6 +778,14 @@ const NewTransaction = () => {
         pauseOnFocusLoss
         draggable
         pauseOnHover
+      />
+      <DailyIncomeBreakdownModal
+        isOpen={isBreakdownModalOpen}
+        onClose={() => setIsBreakdownModalOpen(false)}
+        breakdownData={breakdownData}
+        selectedDate={selectedDate}
+        user={user}
+        adminUser={adminUser}
       />
     </div>
   );
