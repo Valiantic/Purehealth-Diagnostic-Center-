@@ -143,21 +143,21 @@ const NewAddTransaction = () => {
     const originalTest = selectedTests[index];
     const originalPrice = parseFloat(originalTest?.price || 0);
     const gCash = parseFloat(test.gCash) || 0;
-    
+
     // Restrict cash amount to not exceed remaining balance after e-payment
     const numericValue = value === '' ? 0 : parseFloat(value) || 0;
     const maxAllowed = originalPrice - gCash;
     if (numericValue > maxAllowed) {
       return; // Silently prevent exceeding the remaining balance
     }
-    
+
     // Keep the value as is to allow editing
     test.cash = value;
-    
+
     const newCash = value === '' ? 0 : parseFloat(value) || 0;
     const totalPaid = newCash + gCash;
     const balance = Math.max(0, originalPrice - totalPaid);
-    
+
     test.bal = balance.toFixed(2);
     setTestsTable(updatedTestsTable);
   };
@@ -169,21 +169,21 @@ const NewAddTransaction = () => {
     const originalTest = selectedTests[index];
     const originalPrice = parseFloat(originalTest?.price || 0);
     const cash = parseFloat(test.cash) || 0;
-    
+
     // Restrict e-payment amount to not exceed remaining balance
     const numericValue = value === '' ? 0 : parseFloat(value) || 0;
     const maxAllowed = originalPrice - cash;
     if (numericValue > maxAllowed) {
       return; // Silently prevent exceeding the remaining balance
     }
-    
+
     // Keep the value as is to allow editing
     test.gCash = value;
-    
+
     const newGCash = value === '' ? 0 : parseFloat(value) || 0;
     const totalPaid = cash + newGCash;
     const balance = Math.max(0, originalPrice - totalPaid);
-    
+
     test.bal = balance.toFixed(2);
     setTestsTable(updatedTestsTable);
   };
@@ -289,19 +289,15 @@ const NewAddTransaction = () => {
         idNumber: ''
       });
 
-      // Fetch the next mcNo from the database
+      // Fetch next OR# from backend
       try {
-        const response = await transactionAPI.getNextMcNo();
-
-        if (response.success && response.mcNo) {
-          setGeneratedMcNo(response.mcNo);
-        } else {
-          console.error('Invalid response from getNextMcNo after transaction:', response);
-          toast.warning('Transaction saved but failed to fetch next OR#. Please refresh.');
+        const response = await settingsAPI.getNextORNumber();
+        if (response.data && response.data.success) {
+          const orNum = parseInt(response.data.nextORNumber);
+          setGeneratedMcNo(String(orNum).padStart(5, '0'));
         }
       } catch (error) {
-        console.error('Error fetching next MC number after transaction:', error);
-        toast.warning('Transaction saved but failed to fetch next OR#. Please refresh.');
+        console.error('Error fetching next OR# after transaction:', error);
       }
     },
     onError: (error) => {
@@ -315,12 +311,12 @@ const NewAddTransaction = () => {
     const today = new Date();
     const birthDate = new Date(birthdate);
     if (isNaN(birthDate.getTime())) return "Invalid Date";
-    
+
     const birthYear = birthDate.getFullYear();
     const currentYear = today.getFullYear();
     if (birthYear < 1900 || birthYear > currentYear) return "Invalid Year";
     if (birthDate > today) return "Future Date";
-    
+
     let age = currentYear - birthYear;
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -342,7 +338,7 @@ const NewAddTransaction = () => {
     if (!formData.id) missingFields.push("Discount Type");
     if (!formData.birthDate) missingFields.push("Birth Date");
     if (!formData.sex) missingFields.push("Sex");
-    
+
     // Require ID number for any discount category (not Regular)
     if (formData.id !== "Regular" && !formData.idNumber.trim()) {
       missingFields.push("ID Number");
@@ -381,10 +377,10 @@ const NewAddTransaction = () => {
         const discStr = test.disc.replace('%', '');
         const individualDiscountPercentage = parseInt(discStr) || 0;
         const originalPrice = parseFloat(originalTest.price);
-        
+
         // Apply individual test discount first (if any)
         let priceAfterIndividualDiscount = originalPrice * (1 - individualDiscountPercentage / 100);
-        
+
         // Then apply transaction-level discount from settings
         // Formula: discountedPrice = price × (1 - discount% / 100)
         // Example: If discount is 20%, customer saves 20%, pays 80% → price × 0.80
@@ -419,12 +415,12 @@ const NewAddTransaction = () => {
         : totalAmount;
 
       const transactionData = {
-        mcNo: generatedMcNo, 
+        mcNo: generatedMcNo,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         idType: formData.id,
-        idNumber: formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || '',  
-        referrerId: referrerId,  
+        idNumber: formData.id === "Regular" ? "XXXX-XXXX" : formData.idNumber || '',
+        referrerId: referrerId,
         birthDate: formData.birthDate || null,
         sex: formData.sex,
         items: items,
@@ -439,27 +435,26 @@ const NewAddTransaction = () => {
     }
   };
 
-  // Fetch the next MC number from database on component mount
+  // Fetch next OR# from backend
   useEffect(() => {
-    const fetchNextMcNo = async () => {
+    const fetchNextORNumber = async () => {
       try {
-        const response = await transactionAPI.getNextMcNo();
-
-        if (response.success && response.mcNo) {
-          setGeneratedMcNo(response.mcNo);
-        } else {
-          console.error('Invalid response from getNextMcNo:', response);
-          toast.error('Failed to fetch OR# from database. Please refresh the page.');
-          setGeneratedMcNo('-----');
+        const response = await settingsAPI.getNextORNumber();
+        if (response.data && response.data.success) {
+          const orNum = parseInt(response.data.nextORNumber);
+          setGeneratedMcNo(String(orNum).padStart(5, '0'));
         }
       } catch (error) {
-        console.error('Error fetching next MC number:', error);
-        toast.error('Failed to fetch OR# from database. Please refresh the page.');
-        setGeneratedMcNo('-----');
+        console.error('Error fetching next OR#:', error);
+        // Fallback to localStorage if API fails
+        const currentCounter = parseInt(localStorage.getItem('mcNumberCounter') || '0');
+        const nextCounter = currentCounter + 1;
+        const fallbackMcNo = nextCounter >= 10 ? `041${nextCounter}` : `0410${nextCounter}`;
+        setGeneratedMcNo(fallbackMcNo);
       }
     };
 
-    fetchNextMcNo();
+    fetchNextORNumber();
   }, []);
 
   if (isAuthenticating || !user) return null;
@@ -485,7 +480,7 @@ const NewAddTransaction = () => {
           {/* Client Information */}
           <div className="p-6">
             <h3 className="text-green-800 font-semibold text-lg mb-4">Patient Information</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="block text-gray-700 text-sm font-medium mb-2">First Name</label>
@@ -665,16 +660,15 @@ const NewAddTransaction = () => {
                 {filteredTests.map(test => (
                   <div
                     key={test.testId}
-                    className={`flex items-center justify-between p-3 rounded cursor-pointer ${
-                      selectedTests.some(t => t.testId === test.testId) ? 'bg-green-600 text-white' : 'bg-gray-50 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center justify-between p-3 rounded cursor-pointer ${selectedTests.some(t => t.testId === test.testId) ? 'bg-green-600 text-white' : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
                     onClick={() => handleTestToggle(test)}
                   >
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
                         checked={selectedTests.some(t => t.testId === test.testId)}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         className="w-4 h-4"
                       />
                       <span className="font-medium">{test.testName}</span>
@@ -735,11 +729,10 @@ const NewAddTransaction = () => {
                               <button
                                 onClick={() => setShowEpayInput(prev => ({ ...prev, [index]: true }))}
                                 disabled={parseFloat(test.cash) >= parseFloat(originalTest?.price || 0)}
-                                className={`w-full rounded px-2 py-1 text-xs flex items-center justify-center gap-1 ${
-                                  parseFloat(test.cash) >= parseFloat(originalTest?.price || 0)
-                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                                }`}
+                                className={`w-full rounded px-2 py-1 text-xs flex items-center justify-center gap-1 ${parseFloat(test.cash) >= parseFloat(originalTest?.price || 0)
+                                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                  : 'bg-blue-500 text-white hover:bg-blue-600'
+                                  }`}
                               >
                                 <Plus size={14} /> Add E-Payment
                               </button>
@@ -844,21 +837,21 @@ const NewAddTransaction = () => {
                 const discStr = test.disc.replace('%', '');
                 const individualDiscountPercentage = parseInt(discStr) || 0;
                 const originalPrice = parseFloat(originalTest?.price || 0);
-                
+
                 // Get transaction-level discount percentage
                 const selectedDiscountCategory = discountCategories.find(cat => cat.categoryName === formData.id);
                 const transactionDiscountPercentage = selectedDiscountCategory ? parseFloat(selectedDiscountCategory.percentage) : 0;
-                
+
                 // Apply individual test discount first (if any)
                 let priceAfterIndividualDiscount = originalPrice * (1 - individualDiscountPercentage / 100);
-                
+
                 // Then apply transaction-level discount from settings
                 // Formula: discountedPrice = price × (1 - discount% / 100)
                 // Example: If discount is 20%, customer saves 20%, pays 80% → price × 0.80
                 const discountedPrice = transactionDiscountPercentage > 0
                   ? priceAfterIndividualDiscount * (1 - transactionDiscountPercentage / 100)
                   : priceAfterIndividualDiscount;
-                
+
                 return {
                   testName: test.name,
                   originalPrice: originalPrice,

@@ -6,7 +6,7 @@ import Chart from 'chart.js/auto';
 import Sidebar from '../components/dashboard/Sidebar';
 import DashboardErrorBoundary from '../components/dashboard/DashboardErrorBoundary';
 import DateSelector from '../components/transaction/DateSelector';
-import useAuth  from '../hooks/auth/useAuth';
+import useAuth from '../hooks/auth/useAuth';
 import { DashboardProvider, useDashboardContext } from '../contexts/DashboardContext';
 import useDashboardData from '../hooks/dashboard/useDashboardData';
 import {
@@ -22,14 +22,14 @@ import {
 const DashboardContent = () => {
   // Use the custom auth hook - with isAuthenticating check
   const { user, isAuthenticating } = useAuth();
-  
+
   // Dashboard context for setting period
   const { setPeriod, currentMonth, currentYear } = useDashboardContext();
-  
+
   const initialDate = useMemo(() => {
     return new Date(currentYear, currentMonth - 1, 1);
   }, [currentYear, currentMonth]);
-  
+
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const dateInputRef = useRef(null);
 
@@ -57,14 +57,14 @@ const DashboardContent = () => {
     today.setHours(0, 0, 0, 0);
     newDate.setHours(0, 0, 0, 0);
 
-    if (newDate > today){
-      return; 
+    if (newDate > today) {
+      return;
     }
 
     if (!isNaN(newDate.getTime())) {
       const month = newDate.getMonth() + 1;
       const year = newDate.getFullYear();
-      
+
       if (month !== currentMonth || year !== currentYear) {
         setSelectedDate(newDate);
         setPeriod(month, year);
@@ -76,15 +76,15 @@ const DashboardContent = () => {
   const [showDailyIncomeTooltip, setShowDailyIncomeTooltip] = useState(false);
   const [showExpensesTooltip, setShowExpensesTooltip] = useState(false);
   const [showNetProfitTooltip, setShowNetProfitTooltip] = useState(false);
-  
+
   // Chart legend data for Expenses by Category (horizontal bar)
   const [expenseLegendData, setExpenseLegendData] = useState([]);
-  
+
   // Chart references
   const dailyIncomeChartRef = useRef(null);
   const expensesCategoryBarRef = useRef(null);
   const monthlyNetProfitChartRef = useRef(null);
-  
+
   // Chart instances
   const chartInstancesRef = useRef({
     dailyIncome: null,
@@ -97,11 +97,11 @@ const DashboardContent = () => {
   // Initialize and render charts with memoized dependencies
   useEffect(() => {
     if (!user || isLoading) return;
-    
-      Object.values(chartInstancesRef.current).forEach(chart => {
+
+    Object.values(chartInstancesRef.current).forEach(chart => {
       if (chart) chart.destroy();
     });
-    
+
     const renderTimeout = setTimeout(() => {
       // Income Trend Line Chart
       if (dailyIncomeChartRef.current && dailyIncomeData && !loading.dailyIncome) {
@@ -114,7 +114,7 @@ const DashboardContent = () => {
             tooltip: {
               ...getLineChartOptions().plugins.tooltip,
               callbacks: {
-                label: function(context) {
+                label: function (context) {
                   const label = context.dataset.label || '';
                   return `${label}: ${formatCurrency(context.parsed.y)}`;
                 }
@@ -123,11 +123,13 @@ const DashboardContent = () => {
           }
         };
         setDailyIncomeLegend(
-          chartData.datasets.map(ds => ({
-            label: ds.label,
-            color: ds.borderColor,
-            borderDash: ds.borderDash || [],
-          }))
+          chartData.datasets
+            .filter(ds => !ds.label.includes('Forecast')) // Exclude forecast datasets from legend
+            .map(ds => ({
+              label: ds.label,
+              color: ds.borderColor,
+              borderDash: ds.borderDash || [],
+            }))
         );
         chartInstancesRef.current.dailyIncome = new Chart(dailyIncomeCtx, {
           type: 'line',
@@ -167,7 +169,7 @@ const DashboardContent = () => {
             legend: { display: false },
             tooltip: {
               callbacks: {
-                label: function(context) {
+                label: function (context) {
                   return `${context.label}: ${formatCurrency(context.parsed.x)} (${percentages[context.dataIndex]}%)`;
                 }
               }
@@ -177,9 +179,9 @@ const DashboardContent = () => {
             x: {
               beginAtZero: true,
               ticks: {
-                callback: function(value) {
+                callback: function (value) {
                   // Show as 'k' for thousands
-                  return value >= 1000 ? `${value/1000}k` : value;
+                  return value >= 1000 ? `${value / 1000}k` : value;
                 },
                 color: '#374151',
                 font: { size: 12 }
@@ -211,7 +213,7 @@ const DashboardContent = () => {
         });
       }
     }, 100);
-    
+
     // Cleanup function to destroy charts when component unmounts
     return () => {
       clearTimeout(renderTimeout);
@@ -244,7 +246,7 @@ const DashboardContent = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
-      
+
       <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
 
         <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 relative">
@@ -252,7 +254,7 @@ const DashboardContent = () => {
           <div className="flex items-center space-x-2 w-full sm:w-auto">
             <span className="text-gray-500 text-base font-medium whitespace-nowrap">Showing data for:</span>
             <div className="relative w-full max-w-xs sm:max-w-[180px]">
-              <DateSelector 
+              <DateSelector
                 date={selectedDate}
                 onDateChange={handleDateChange}
                 inputRef={dateInputRef}
@@ -379,7 +381,7 @@ const DashboardContent = () => {
             </div>
           </div>
         </div>
-              
+
         {/* Dashboard Middle Row: Monthly Progress & Expenses by Category (Left), Income Trend (Right) */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Left Column: Monthly Progress and Expenses by Category stacked */}
@@ -482,7 +484,7 @@ const DashboardContent = () => {
             )}
           </div>
         </div>
-        
+
         {/* Monthly Profit and Loss Chart (Full Width) */}
         <div className="bg-white  border border-3 border-gray-300 p-4 rounded-lg shadow-md mt-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">

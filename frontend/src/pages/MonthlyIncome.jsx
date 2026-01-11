@@ -4,16 +4,18 @@ import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-reac
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
-import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI } from '../services/api';
+import DailyIncomeBreakdownModal from '../components/transaction/DailyIncomeBreakdownModal';
+import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI, userAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import { exportMonthlyIncomeToExcel } from '../utils/monthlyIncomeExporter';
+import { useQuery } from '@tanstack/react-query';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('add'); 
+  const [modalMode, setModalMode] = useState('add');
   const [selectedCollectible, setSelectedCollectible] = useState(null);
   const [collectibles, setCollectibles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,7 +23,7 @@ const Monthly = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 5;
-  
+
   // Monthly income state
   const [monthlyData, setMonthlyData] = useState({
     departments: [],
@@ -35,7 +37,7 @@ const Monthly = () => {
     departments: []
   });
   const [dataLoading, setDataLoading] = useState(false);
-  
+
   // Current month/year state
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
@@ -44,15 +46,38 @@ const Monthly = () => {
       year: now.getFullYear()
     };
   });
-  
+
+  // Modal State for Breakdown
+  const [breakdownData, setBreakdownData] = useState(null);
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
+  const [cachedReportData, setCachedReportData] = useState(null);
+  const [breakdownLabels, setBreakdownLabels] = useState({ col1: '', col2: '', title: '' });
+
+  // Admin user query
+  const { data: adminUser } = useQuery({
+    queryKey: ['adminUser'],
+    queryFn: async () => {
+      try {
+        const response = await userAPI.getAllUsers();
+        const users = response.data?.users || response.data?.data || (Array.isArray(response.data) ? response.data : []);
+        return users.find(u => u.role === 'admin');
+      } catch (err) {
+        console.error('Error fetching admin user:', err);
+        return null;
+      }
+    },
+    staleTime: Infinity,
+    retry: false
+  });
+
   // Format current month for display
   const [currentMonth, setCurrentMonth] = useState('');
-  
+
   useEffect(() => {
     // Format the current month for display
     const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     setCurrentMonth(`${monthNames[currentDate.month - 1]}-${currentDate.year}`);
-    
+
     // Load data when month/year changes
     fetchMonthlyIncomeData();
     fetchCollectibles();
@@ -60,17 +85,18 @@ const Monthly = () => {
 
   const fetchCollectibles = async () => {
     setLoading(true);
-    try {``
+    try {
+      ``
       const response = await collectibleIncomeAPI.getAllCollectibleIncome();
-      
+
       if (response && response.data && response.data.success) {
         const allCollectibles = response.data.data || [];
         setTotalPages(Math.ceil(allCollectibles.length / itemsPerPage));
-        
+
         const filteredCollectibles = allCollectibles.filter(item => {
           const itemDate = new Date(item.dateConducted);
-          return itemDate.getMonth() + 1 === currentDate.month && 
-                  itemDate.getFullYear() === currentDate.year;
+          return itemDate.getMonth() + 1 === currentDate.month &&
+            itemDate.getFullYear() === currentDate.year;
         })
 
         setTotalPages(Math.ceil(filteredCollectibles.length / itemsPerPage));
@@ -90,7 +116,7 @@ const Monthly = () => {
       setLoading(false);
     }
   };
-  
+
   const fetchMonthlyIncomeData = async () => {
     setDataLoading(true);
     try {
@@ -99,27 +125,27 @@ const Monthly = () => {
         currentDate.month,
         currentDate.year
       );
-      
+
       if (incomeResponse && incomeResponse.data && incomeResponse.data.success) {
         setMonthlyData(incomeResponse.data.data);
       } else {
         toast.error('Failed to fetch monthly income data');
         setMonthlyData({ departments: [], dailyIncome: [] });
       }
-      
+
       // Get summary data
       const summaryResponse = await monthlyIncomeAPI.getMonthlyIncomeSummary(
         currentDate.month,
         currentDate.year
       );
-      
+
       if (summaryResponse && summaryResponse.data && summaryResponse.data.success) {
         setMonthlySummary(summaryResponse.data.data);
       } else {
         toast.error('Failed to fetch monthly summary data');
         setMonthlySummary({
           totalGross: 0,
-          totalGCash: 0, 
+          totalGCash: 0,
           totalCash: 0,
           departmentTotals: {},
           departments: []
@@ -159,7 +185,7 @@ const Monthly = () => {
     setModalMode('edit');
     setSelectedCollectible(collectible);
     setIsCollectibleModalOpen(true);
-    setActiveMenu(null); 
+    setActiveMenu(null);
   }
 
   const handleCollectibleSubmit = async (data) => {
@@ -167,11 +193,11 @@ const Monthly = () => {
     try {
       const collectibleData = {
         ...data,
-        currentUserId: user?.userId || user?.id 
+        currentUserId: user?.userId || user?.id
       };
 
       const response = await collectibleIncomeAPI.createCollectibleIncome(collectibleData);
-       
+
       if (response?.data?.success) {
         toast.success('Collectible income added successfully');
         await fetchCollectibles();
@@ -192,11 +218,11 @@ const Monthly = () => {
     try {
       const updateData = {
         ...data,
-        currentUserId: user?.userId || user?.id 
+        currentUserId: user?.userId || user?.id
       };
 
       const response = await collectibleIncomeAPI.updateCollectibleIncome(selectedCollectible.companyId, updateData);
-       
+
       if (response?.data?.success) {
         toast.success('Collectible income updated successfully');
         await fetchCollectibles();
@@ -242,24 +268,86 @@ const Monthly = () => {
       // Get all collectibles for the current month (not paginated)
       const response = await collectibleIncomeAPI.getAllCollectibleIncome();
       let allCollectibles = [];
-      
+
       if (response && response.data && response.data.success) {
         const allData = response.data.data || [];
         allCollectibles = allData.filter(item => {
           const itemDate = new Date(item.dateConducted);
-          return itemDate.getMonth() + 1 === currentDate.month && 
-                 itemDate.getFullYear() === currentDate.year;
+          return itemDate.getMonth() + 1 === currentDate.month &&
+            itemDate.getFullYear() === currentDate.year;
         });
       }
 
       // Fetch profit & loss data for current and previous month
       const profitLossData = await fetchProfitLossData();
 
-      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, allCollectibles, currentMonth, profitLossData);
+      if (!profitLossData) {
+        toast.error('Failed to fetch report data');
+        return;
+      }
+
+      setCachedReportData({ allCollectibles, profitLossData });
+
+      // Prepare Labels
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const prevMonthIdx = currentDate.month === 1 ? 11 : currentDate.month - 2;
+      const currMonthIdx = currentDate.month - 1;
+
+      const prevMonthName = monthNames[prevMonthIdx];
+      const currMonthName = monthNames[currMonthIdx];
+      const prevLabel = `${prevMonthName} (Previous)`;
+      const currLabel = `${currMonthName} (Current)`;
+
+      setBreakdownLabels({
+        col1: prevLabel,
+        col2: currLabel,
+        title: 'Monthly Income Report'
+      });
+
+      // Prepare Breakdown Data
+      const breakdown = {
+        departmentRevenues: profitLossData.revenue.departments.map(d => ({
+          departmentName: d.name,
+          yesterday: d.previousMonth,
+          today: d.currentMonth
+        })),
+        departmentExpenses: profitLossData.expenses.categories.map(e => ({
+          departmentName: e.name,
+          yesterday: e.previousMonth,
+          today: e.currentMonth
+        })),
+        additionalIncome: {
+          yesterday: profitLossData.revenue.additionalIncome.previousMonth,
+          today: profitLossData.revenue.additionalIncome.currentMonth
+        },
+        gcashIncome: {
+          yesterday: profitLossData.revenue.gCashIncome.previousMonth,
+          today: profitLossData.revenue.gCashIncome.currentMonth
+        },
+        transactions: [], // No individual transactions for monthly view
+        totals: {
+          revenue: { yesterday: profitLossData.revenue.total.previousMonth, today: profitLossData.revenue.total.currentMonth },
+          expenses: { yesterday: profitLossData.expenses.total.previousMonth, today: profitLossData.expenses.total.currentMonth },
+        }
+      };
+
+      setBreakdownData(breakdown);
+      setIsBreakdownModalOpen(true);
+
+    } catch (error) {
+      console.error('Error preparing report:', error);
+      toast.error('Failed to prepare report data.');
+    }
+  };
+
+  const handleModalExport = async () => {
+    try {
+      if (!cachedReportData) return;
+      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, cachedReportData.allCollectibles, currentMonth, cachedReportData.profitLossData);
       toast.success('Monthly Income Report exported successfully!');
     } catch (error) {
-      console.error('Error exporting report:', error);
-      toast.error('Failed to export report. Please try again.');
+      console.error('Error exporting:', error);
+      toast.error('Failed to export report.');
     }
   };
 
@@ -267,7 +355,7 @@ const Monthly = () => {
     try {
       const currentMonth = currentDate.month;
       const currentYear = currentDate.year;
-      
+
       // Calculate previous month
       let previousMonth = currentMonth - 1;
       let previousYear = currentYear;
@@ -278,12 +366,12 @@ const Monthly = () => {
 
       // Month names for display
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      
-      
+
+
       // Fetch current month data
       const currentIncomeResponse = await monthlyIncomeAPI.getMonthlyIncomeSummary(currentMonth, currentYear);
       const currentExpenseResponse = await monthlyExpenseAPI.getMonthlyExpenses(currentMonth, currentYear);
-      
+
       // Fetch previous month data
       const previousIncomeResponse = await monthlyIncomeAPI.getMonthlyIncomeSummary(previousMonth, previousYear);
       const previousExpenseResponse = await monthlyExpenseAPI.getMonthlyExpenses(previousMonth, previousYear);
@@ -295,14 +383,14 @@ const Monthly = () => {
 
       if (collectiblesResponse && collectiblesResponse.data && collectiblesResponse.data.success) {
         const allCollectibles = collectiblesResponse.data.data || [];
-        
+
         // Current month collectibles
         const currentMonthCollectibles = allCollectibles.filter(item => {
           const itemDate = new Date(item.dateConducted);
           return itemDate.getMonth() + 1 === currentMonth && itemDate.getFullYear() === currentYear;
         });
         currentCollectibleTotal = currentMonthCollectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome || 0), 0);
-        
+
         // Previous month collectibles
         const previousMonthCollectibles = allCollectibles.filter(item => {
           const itemDate = new Date(item.dateConducted);
@@ -330,7 +418,7 @@ const Monthly = () => {
       allDepartmentIds.forEach(deptId => {
         const dept = departments.find(d => d.departmentId === parseInt(deptId));
         const deptName = dept?.departmentName || 'Unknown';
-        
+
         departmentRevenueData.push({
           name: deptName,
           previousMonth: parseFloat(previousDepartmentTotals[deptId] || 0),
@@ -345,7 +433,7 @@ const Monthly = () => {
       // Process current month expenses - extract from API response
       const currentExpenses = currentExpenseResponse.data?.data?.dailyExpenses || [];
       const currentExpenseCategories = {};
-      
+
       currentExpenses.forEach(dailyExpense => {
         Object.values(dailyExpense.departments || {}).forEach(dept => {
           (dept.items || []).forEach(item => {
@@ -358,7 +446,7 @@ const Monthly = () => {
       // Process previous month expenses
       const previousExpenses = previousExpenseResponse.data?.data?.dailyExpenses || [];
       const previousExpenseCategories = {};
-      
+
       previousExpenses.forEach(dailyExpense => {
         Object.values(dailyExpense.departments || {}).forEach(dept => {
           (dept.items || []).forEach(item => {
@@ -400,7 +488,7 @@ const Monthly = () => {
       // Calculate net profit
       const currentNetProfit = currentIncomeBeforeTax - currentIncomeTax;
       const previousNetProfit = previousIncomeBeforeTax - previousIncomeTax;
-      
+
       // Format date for display
       const today = new Date();
       const formattedDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -480,11 +568,11 @@ const Monthly = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-cream-50">
-      
+
       {/* Toast Container */}
-      <ToastContainer 
-        position="top-right" 
-        autoClose={3000} 
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
@@ -493,39 +581,39 @@ const Monthly = () => {
         draggable
         pauseOnHover
       />
-      
+
       {/* Sidebar */}
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
-      
+
       {/* Main content area with improved spacing */}
       <div className="flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64">
-        
+
         <div className="bg-cream-50 border-green-800 rounded">
-          
+
           <div className='flex justify-end mb-2'>
-            <button onClick={GoToMonthlyExpenses} 
+            <button onClick={GoToMonthlyExpenses}
               className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
               Monthly Expenses <ChevronRight size={16} className="ml-1" />
             </button>
           </div>
-          
+
           {/* Month navigation - improved to match design */}
           <div className="flex justify-center items-center py-2">
             <div className="flex border border-green-800 rounded overflow-hidden">
-              <button 
+              <button
                 onClick={handlePrevMonth}
                 className="bg-green-800 font-bold text-white px-2 py-2 flex items-center justify-center text-sm"
               >
-               <ChevronLeft size={20} color="white" />
+                <ChevronLeft size={20} color="white" />
               </button>
               <div className="px-4 py-1 font-medium border-l border-r border-green-800 text-green-800">{currentMonth}</div>
-              <button 
+              <button
                 onClick={handleNextMonth}
                 className="bg-green-800 font-bold text-white px-2 py-2 flex items-center justify-center text-sm"
               >
-               <ChevronRight size={20} color="white" />
+                <ChevronRight size={20} color="white" />
               </button>
             </div>
           </div>
@@ -535,7 +623,7 @@ const Monthly = () => {
             <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
               Monthly Income
               <button onClick={handleAddIncome} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                <CirclePlus/>
+                <CirclePlus />
               </button>
             </div>
             <div className="border border-green-800 rounded-b">
@@ -563,15 +651,15 @@ const Monthly = () => {
                     ) : monthlyData.dailyIncome.length > 0 ? (
                       monthlyData.dailyIncome.map((day) => (
                         <tr key={day.date} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(day.date)}</td>
-                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(day.grossAmount)}</td>
+                          <td className="p-2 border-r border-green-200 text-center bg-white">{formatDate(day.date)}</td>
+                          <td className="p-2 border-r border-green-200 text-center bg-white">{formatCurrency(day.grossAmount)}</td>
                           {monthlyData.departments.map(dept => (
-                            <td key={`${day.date}-${dept.id}`} className="p-1 border-r border-green-200 text-center bg-white">
+                            <td key={`${day.date}-${dept.id}`} className="p-2 border-r border-green-200 text-center bg-white">
                               {formatCurrency(day.departments[dept.id])}
                             </td>
                           ))}
-                          <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(day.gCashAmount)}</td>
-                          
+                          <td className="p-2 border-r border-green-200 text-center bg-white">{formatCurrency(day.gCashAmount)}</td>
+
                         </tr>
                       ))
                     ) : (
@@ -581,17 +669,17 @@ const Monthly = () => {
                         </td>
                       </tr>
                     )}
-                    
+
                     {/* Empty rows to fill space if needed */}
-                    {!dataLoading && monthlyData.dailyIncome.length < 10 && 
+                    {!dataLoading && monthlyData.dailyIncome.length < 10 &&
                       [...Array(10 - monthlyData.dailyIncome.length)].map((_, index) => (
                         <tr key={`empty-row-${index}`} className="border-b border-green-100">
-                          <td className="p-1 border-r border-green-200 bg-white"></td>
-                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-2 border-r border-green-200 bg-white"></td>
+                          <td className="p-2 border-r border-green-200 bg-white"></td>
                           {monthlyData.departments.map(dept => (
-                            <td key={`empty-${index}-${dept.id}`} className="p-1 border-r border-green-200 bg-white"></td>
+                            <td key={`empty-${index}-${dept.id}`} className="p-2 border-r border-green-200 bg-white"></td>
                           ))}
-                          <td className="p-1 border-r border-green-200 bg-white"></td>
+                          <td className="p-2 border-r border-green-200 bg-white"></td>
                         </tr>
                       ))
                     }
@@ -620,7 +708,7 @@ const Monthly = () => {
               <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
                 <span>Collectible Income</span>
                 <button onClick={handleAddCollectibles} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                  <CirclePlus/>
+                  <CirclePlus />
                 </button>
               </div>
               <div className="border border-green-800 rounded-b">
@@ -643,25 +731,25 @@ const Monthly = () => {
                       ) : collectibles.length > 0 ? (
                         collectibles.map((item) => (
                           <tr key={`collectible-row-${item.companyId}`} className="border-b border-green-200">
-                            <td className="p-1 border-r border-green-200 text-center bg-white">{item.companyName}</td>
-                            <td className="p-1 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
-                            <td className="p-1 border-r border-green-200 text-center bg-white">{new Date(item.dateConducted).toLocaleDateString()}</td>
-                            <td className="p-1 border-r border-green-200 text-center bg-white">
+                            <td className="p-3 border-r border-green-200 text-center bg-white">{item.companyName}</td>
+                            <td className="p-3 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
+                            <td className="p-3 border-r border-green-200 text-center bg-white">{new Date(item.dateConducted).toLocaleDateString()}</td>
+                            <td className="p-3 border-r border-green-200 text-center bg-white">
                               {formatCurrency(item.totalIncome)}
                             </td>
-                            <td className="p-1 text-center relative bg-white">
-                              <button 
-                                className="text-green-800 hover:text-green-600" 
+                            <td className="p-3 text-center relative bg-white">
+                              <button
+                                className="text-green-800 hover:text-green-600 p-1"
                                 onClick={() => toggleMenu(item.companyId)}
                               >
-                                <MoreVertical size={16} />
+                                <MoreVertical size={20} />
                               </button>
-                              
+
                               {activeMenu === item.companyId && (
                                 <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
                                   <ul className="py-1">
                                     <li>
-                                      <button 
+                                      <button
                                         onClick={() => handleEditCollectible(item)}
                                         className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-100"
                                       >
@@ -679,35 +767,34 @@ const Monthly = () => {
                           <td colSpan="5" className="p-2 text-center text-gray-500 bg-white">No collectible income records found</td>
                         </tr>
                       )}
-                      
-                      {!loading && collectibles.length < 5 && 
+
+                      {!loading && collectibles.length < 5 &&
                         [...Array(5 - collectibles.length)].map((_, index) => (
                           <tr key={`empty-collectible-row-${index}`} className={collectibles.length === 0 ? "" : "border-b border-green-200"}>
-                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
-                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
-                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
-                            <td className={collectibles.length === 0 ? "p-1 bg-white" : "p-1 border-r border-green-200 bg-white"}></td>
-                            <td className="p-1 bg-white"></td>
+                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
+                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
+                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
+                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
+                            <td className="p-3 bg-white"></td>
                           </tr>
                         ))
                       }
                     </tbody>
                   </table>
                 </div>
-                
+
                 {/* Pagination Controls */}
                 <div className="flex justify-between items-center p-2 border-t border-green-800 bg-green-100">
                   <div className="p-1 font-bold text-green-800">
                     TOTAL: {formatCurrency(collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome || 0), 0))}
                   </div>
-                  
+
                   <div className="flex items-center">
-                    <button 
-                      onClick={goToPreviousPage} 
+                    <button
+                      onClick={goToPreviousPage}
                       disabled={currentPage === 1}
-                      className={`h-8 w-8 flex items-center justify-center rounded-l border border-green-800 ${
-                        currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
-                      }`}
+                      className={`h-8 w-8 flex items-center justify-center rounded-l border border-green-800 ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
+                        }`}
                       aria-label="Previous page"
                     >
                       <ChevronLeft size={18} />
@@ -715,12 +802,11 @@ const Monthly = () => {
                     <span className="h-8 min-w-[3rem] px-2 flex items-center justify-center bg-white border-t border-b border-green-800 text-green-800 font-medium">
                       {currentPage} / {totalPages || 1}
                     </span>
-                    <button 
-                      onClick={goToNextPage} 
+                    <button
+                      onClick={goToNextPage}
                       disabled={currentPage === totalPages || totalPages === 0}
-                      className={`h-8 w-8 flex items-center justify-center rounded-r border border-green-800 ${
-                        currentPage === totalPages || totalPages === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
-                      }`}
+                      className={`h-8 w-8 flex items-center justify-center rounded-r border border-green-800 ${currentPage === totalPages || totalPages === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
+                        }`}
                       aria-label="Next page"
                     >
                       <ChevronRight size={18} />
@@ -734,14 +820,11 @@ const Monthly = () => {
           {/* Generate Report Button - Only show if there's data */}
           {(monthlyData.dailyIncome.length > 0 || collectibles.length > 0) && (
             <div className="flex justify-end p-2">
-              <button 
+              <button
                 onClick={handleGenerateReport}
                 className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
               >
-                Generate Report
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                Show Breakdown
               </button>
             </div>
           )}
@@ -761,10 +844,21 @@ const Monthly = () => {
         mode={modalMode}
         initialData={selectedCollectible}
       />
-      
+
+      <DailyIncomeBreakdownModal
+        isOpen={isBreakdownModalOpen}
+        onClose={() => setIsBreakdownModalOpen(false)}
+        breakdownData={breakdownData}
+        selectedDate={new Date(currentDate.year, currentDate.month - 1, 1)} // 1st of current month
+        user={user}
+        adminUser={adminUser}
+        labels={breakdownLabels}
+        onGenerateExternal={handleModalExport}
+      />
+
       {/* Close dropdown menus when clicking outside */}
       {activeMenu && (
-        <div 
+        <div
           className="fixed inset-0 h-full w-full z-0"
           onClick={() => setActiveMenu(null)}
         />

@@ -115,6 +115,52 @@ async function updateSetting(req, res) {
   }
 }
 
+// Get next OR# based on latest transaction or setting
+async function getNextORNumber(req, res) {
+  try {
+    const { Transaction } = require('../models');
+
+    // Get the latest mcNo from transactions to determine the minimum allowed value
+    const latestTransaction = await Transaction.findOne({
+      order: [['createdAt', 'DESC']],
+      attributes: ['mcNo']
+    });
+
+    let highestTransactionOR = 0;
+    if (latestTransaction && latestTransaction.mcNo) {
+      highestTransactionOR = parseInt(latestTransaction.mcNo);
+    }
+
+    // Check if there's a configured next OR# in settings
+    const setting = await Settings.findOne({
+      where: { settingKey: 'next_or_number' }
+    });
+
+    let nextORNumber;
+    if (setting) {
+      // If setting exists, use it (but ensure it's at least higher than latest transaction)
+      const configuredOR = parseInt(setting.settingValue);
+      nextORNumber = Math.max(configuredOR, highestTransactionOR + 1);
+    } else {
+      // If no setting, use latest transaction + 1
+      nextORNumber = highestTransactionOR + 1;
+    }
+
+    res.json({
+      success: true,
+      nextORNumber: nextORNumber,
+      highestTransactionOR: highestTransactionOR  // Return this for validation in frontend
+    });
+  } catch (error) {
+    console.error('Error getting next OR number:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting next OR number',
+      error: error.message
+    });
+  }
+}
+
 // Discount Category Controllers
 async function getAllDiscountCategories(req, res) {
   try {
@@ -288,6 +334,7 @@ module.exports = {
   getAllSettings,
   getSettingByKey,
   updateSetting,
+  getNextORNumber,
   getAllDiscountCategories,
   createDiscountCategory,
   updateDiscountCategory,
