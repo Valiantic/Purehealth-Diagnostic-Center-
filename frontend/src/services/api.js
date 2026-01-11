@@ -19,13 +19,13 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const requestKey = `${config.method}:${config.url}:${JSON.stringify(config.params)}`;
-    
+
     if (requestQueue.has(requestKey)) {
       return requestQueue.get(requestKey);
     }
-    
+
     requestQueue.set(requestKey, config);
-    
+
     return config;
   },
   (error) => {
@@ -39,7 +39,7 @@ apiClient.interceptors.response.use(
     const requestKey = `${response.config.method}:${response.config.url}:${JSON.stringify(response.config.params)}`;
 
     requestQueue.delete(requestKey);
-    
+
     return response;
   },
   (error) => {
@@ -81,13 +81,13 @@ export const webauthnAPI = {
     return apiClient.post('/webauthn/registration/temp/options', userData);
   },
   verifyTempRegistration: (tempRegistrationId, response, userData) => {
-    return apiClient.post('/webauthn/registration/temp/verify', { 
-      tempRegistrationId, 
-      response, 
-      userData 
+    return apiClient.post('/webauthn/registration/temp/verify', {
+      tempRegistrationId,
+      response,
+      userData
     });
   },
-  
+
   // Registration
   getRegistrationOptions: (userId, isPrimary = true) => {
     return apiClient.post('/webauthn/registration/options', { userId, isPrimary });
@@ -95,7 +95,7 @@ export const webauthnAPI = {
   verifyRegistration: (userId, response, isPrimary = true) => {
     return apiClient.post('/webauthn/registration/verify', { userId, response, isPrimary });
   },
-  
+
   // Authentication
   getAuthenticationOptions: (email) => {
     return apiClient.post('/webauthn/authentication/options', { email });
@@ -103,7 +103,7 @@ export const webauthnAPI = {
   verifyAuthentication: (userId, response) => {
     return apiClient.post('/webauthn/authentication/verify', { userId, response });
   },
-  
+
   // Passkey Management
   getUserPasskeys: (userId) => {
     return apiClient.get(`/webauthn/passkeys/${userId}`);
@@ -123,15 +123,15 @@ export const departmentAPI = {
     return apiClient.get(`/departments${timestamp}`);
   },
   createDepartment: (name, currentUserId) => {
-    return apiClient.post('/departments', { 
+    return apiClient.post('/departments', {
       departmentName: name,
-      currentUserId 
+      currentUserId
     });
   },
   updateDepartmentStatus: (id, status, currentUserId) => {
-    return apiClient.patch(`/departments/${id}`, { 
+    return apiClient.patch(`/departments/${id}`, {
       status,
-      currentUserId 
+      currentUserId
     });
   },
   updateDepartment: async (departmentId, departmentName, dateCreated, status, currentUserId) => {
@@ -159,13 +159,13 @@ export const testAPI = {
   createTest: (testData, currentUserId) => {
     return apiClient.post('/tests', {
       ...testData,
-      currentUserId: currentUserId 
+      currentUserId: currentUserId
     });
   },
   updateTest: (id, testData, currentUserId) => {
     return apiClient.put(`/tests/${id}`, {
       ...testData,
-      currentUserId: currentUserId 
+      currentUserId: currentUserId
     });
   },
   updateTestStatus: (id, status, currentUserId) => {
@@ -193,18 +193,18 @@ export const referrerAPI = {
   createReferrer: (referrerData, currentUserId) => {
     return apiClient.post('/referrers', {
       ...referrerData,
-      currentUserId: currentUserId 
+      currentUserId: currentUserId
     });
   },
   updateReferrer: (id, referrerData, currentUserId) => {
     return apiClient.put(`/referrers/${id}`, {
       ...referrerData,
-      currentUserId: currentUserId 
+      currentUserId: currentUserId
     });
   },
   updateReferrerStatus: async (id, status, userId, actionType) => {
     try {
-      const response = await apiClient.put(`/referrers/${id}`, { 
+      const response = await apiClient.put(`/referrers/${id}`, {
         status,
         currentUserId: userId,
         actionType
@@ -221,10 +221,10 @@ export const transactionAPI = {
   getTransactionsByReferrerId: async (referrerId, date = null) => {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (referrerId) queryParams.append('referrerId', referrerId);
       if (date) queryParams.append('date', date);
-      
+
       const response = await apiClient.get(`/transactions/by-referrer?${queryParams}`);
       return response.data;
     } catch (error) {
@@ -232,14 +232,14 @@ export const transactionAPI = {
       throw error;
     }
   },
-  
+
   getAllTransactions: (params = {}) => {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page);
     if (params.limit) queryParams.append('limit', params.limit);
     if (params.status) queryParams.append('status', params.status); // Only include if explicitly set
     if (params.date) queryParams.append('date', params.date);
-    
+
     return apiClient.get(`/transactions?${queryParams}`);
   },
   getTransactionById: async (id) => {
@@ -275,27 +275,27 @@ export const transactionAPI = {
     if (!transactionId) {
       return Promise.reject(new Error('Transaction ID is required'));
     }
-    
+
     if (!status) {
-      return Promise.reject(new Error('Status is required'));  
+      return Promise.reject(new Error('Status is required'));
     }
-    
+
     if (!userId) {
       return Promise.reject(new Error('User ID is required'));
     }
-    
+
     return apiClient.patch(`/transactions/${transactionId}/status`, {
       status,
       currentUserId: userId
     }).catch(error => {
       console.error('Error updating transaction status:', error.response?.data || error.message);
-      
+
       // Create more user-friendly error message
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Server error occurred';
-                          
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Server error occurred';
+
       const enhancedError = new Error(errorMessage);
       enhancedError.response = error.response;
       throw enhancedError;
@@ -314,7 +314,7 @@ export const transactionAPI = {
       throw error;
     }
   },
-  
+
   // Fix the checkMcNoExists function to properly handle parameters
   checkMcNoExists: async (mcNo, currentTransactionId = null) => {
     try {
@@ -353,26 +353,26 @@ export const transactionAPI = {
 export const revenueAPI = {
   getRevenueByDepartment: (params = {}) => {
     // Add a default flag to exclude cancelled transactions
-    const updatedParams = { 
-      ...params, 
+    const updatedParams = {
+      ...params,
       excludeCancelled: params.excludeCancelled !== false, // Default to true if not specified
     };
-    
+
     const queryString = new URLSearchParams(updatedParams).toString();
     return apiClient.get(`/department-revenue/by-department?${queryString}`);
   },
-  
+
   getRevenueTrend: (params = {}) => {
     // Add a default flag to exclude cancelled transactions
-    const updatedParams = { 
-      ...params, 
+    const updatedParams = {
+      ...params,
       excludeCancelled: params.excludeCancelled !== false, // Default to true if not specified
     };
-    
+
     const queryString = new URLSearchParams(updatedParams).toString();
     return apiClient.get(`/department-revenue/trend?${queryString}`);
   },
-  
+
   getRefundsByDepartment: (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     return apiClient.get(`/department-revenue/refunds?${queryString}`);
@@ -402,7 +402,7 @@ export const expenseAPI = {
     return apiClient.post('/expenses/categories', data);
   },
   updateCategory: (id, data) => {
-    return apiClient.put(`/expenses/categories/${id}`, data); 
+    return apiClient.put(`/expenses/categories/${id}`, data);
   }
 };
 
@@ -410,14 +410,14 @@ export const rebateAPI = {
   getRebatesByDate: (date) => {
     return apiClient.get(`/rebates/by-date?date=${date}`);
   },
-  
+
   getMonthlyRebates: (month, year) => {
     const params = new URLSearchParams();
     if (month) params.append('month', month);
     if (year) params.append('year', year);
     return apiClient.get(`/rebates/monthly?${params}`);
   },
-  
+
   getRebatesByReferrer: (referrerId, startDate, endDate) => {
     const params = new URLSearchParams();
     params.append('referrerId', referrerId);
@@ -442,21 +442,21 @@ export const collectibleIncomeAPI = {
 export const monthlyIncomeAPI = {
   getMonthlyIncome: (month, year) => {
     const timestamp = new Date().getTime();
-    return apiClient.get(`/monthly-income`, { 
-      params: { 
-        month, 
-        year, 
-        _t: timestamp 
+    return apiClient.get(`/monthly-income`, {
+      params: {
+        month,
+        year,
+        _t: timestamp
       }
     });
   },
   getMonthlyIncomeSummary: (month, year) => {
     const timestamp = new Date().getTime();
-    return apiClient.get(`/monthly-income/summary`, { 
-      params: { 
-        month, 
-        year, 
-        _t: timestamp 
+    return apiClient.get(`/monthly-income/summary`, {
+      params: {
+        month,
+        year,
+        _t: timestamp
       }
     });
   }
@@ -468,10 +468,10 @@ export const monthlyExpenseAPI = {
     if (departmentId) {
       params.departmentId = departmentId;
     }
-    
+
     const timestamp = new Date().getTime();
-    params._t = timestamp; 
-    
+    params._t = timestamp;
+
     return apiClient.get(`/monthly-expenses`, { params });
   },
   getMonthlyExpensesSummary: (month, year, departmentId = null) => {
@@ -481,8 +481,8 @@ export const monthlyExpenseAPI = {
     }
 
     const timestamp = new Date().getTime();
-    params._t = timestamp; 
-    
+    params._t = timestamp;
+
     return apiClient.get(`/monthly-expenses/summary`, { params });
   }
 };
@@ -494,19 +494,19 @@ export const dashboardAPI = {
       params: { month, year }
     });
   },
-  
+
   getDailyIncome: (month, year) => {
     return apiClient.get('/dashboard/daily-income', {
       params: { month, year }
     });
   },
-  
+
   getExpensesByDepartment: (month, year) => {
     return apiClient.get('/dashboard/expenses-by-department', {
       params: { month, year }
     });
   },
-  
+
   getMonthlyProfit: (year) => {
     return apiClient.get('/dashboard/monthly-profit', {
       params: { year }
@@ -529,21 +529,24 @@ export const settingsAPI = {
     return apiClient.get('/settings/discount-categories');
   },
   createDiscountCategory: (categoryData, currentUserId) => {
-    return apiClient.post('/settings/discount-categories', { 
-      ...categoryData, 
-      currentUserId 
+    return apiClient.post('/settings/discount-categories', {
+      ...categoryData,
+      currentUserId
     });
   },
   updateDiscountCategory: (id, categoryData, currentUserId) => {
-    return apiClient.put(`/settings/discount-categories/${id}`, { 
-      ...categoryData, 
-      currentUserId 
+    return apiClient.put(`/settings/discount-categories/${id}`, {
+      ...categoryData,
+      currentUserId
     });
   },
   deleteDiscountCategory: (id, currentUserId) => {
     return apiClient.delete(`/settings/discount-categories/${id}`, {
       data: { currentUserId }
     });
+  },
+  getNextORNumber: () => {
+    return apiClient.get('/settings/next-or-number');
   }
 };
 

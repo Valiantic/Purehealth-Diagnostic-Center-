@@ -2,7 +2,7 @@ const { Transaction, TestDetails, ReferrerRebate, Referrer, Expense, ExpenseItem
 const { Op } = require('sequelize');
 
 class RebateService {
-  
+
   /**
    * Get the referral fee percentage from settings
    * @returns {Promise<number>} The referral fee percentage (as decimal, e.g., 0.20 for 20%)
@@ -12,17 +12,17 @@ class RebateService {
       const setting = await Settings.findOne({
         where: { settingKey: 'referral_fee_percentage' }
       });
-      
+
       if (setting && setting.settingValue) {
         const percentage = parseFloat(setting.settingValue);
         return percentage / 100; // Convert percentage to decimal (e.g., 20 -> 0.20)
       }
-      
-      // Default to 12% if not found
-      return 0.12;
+
+      // Default to 20% if not found
+      return 0.20;
     } catch (error) {
       console.error('Error fetching referral fee percentage:', error);
-      return 0.12; // Default fallback
+      return 0.20; // Default fallback
     }
   }
 
@@ -34,7 +34,7 @@ class RebateService {
     const rate = await this.getReferralFeePercentage();
     return (rate * 100).toFixed(0); // Convert decimal to percentage (e.g., 0.20 -> "20")
   }
-  
+
   /**
    * Calculate and record rebates for a transaction
    * @param {Object} transaction - The transaction object
@@ -46,7 +46,7 @@ class RebateService {
     }
 
     const t = await sequelize.transaction();
-    
+
     try {
       // Get referrer information
       const referrer = await Referrer.findByPk(transaction.referrerId);
@@ -60,7 +60,7 @@ class RebateService {
 
       // Group tests by department and calculate department totals
       const departmentTotals = {};
-      
+
       testDetails.forEach(test => {
         // Only include active tests (exclude canceled/refunded)
         if (test.status === 'active') {
@@ -68,7 +68,7 @@ class RebateService {
           if (!departmentTotals[deptId]) {
             departmentTotals[deptId] = 0;
           }
-          
+
           // Use discounted price (what was actually charged)
           departmentTotals[deptId] += parseFloat(test.discountedPrice) || 0;
         }
@@ -77,7 +77,7 @@ class RebateService {
       // Calculate department rebates using dynamic percentage from settings
       let totalRebates = 0;
       const departmentRebates = {};
-      
+
       Object.keys(departmentTotals).forEach(deptId => {
         const deptTotal = departmentTotals[deptId];
         const deptRebate = deptTotal * referralFeeRate; // Apply referral fee percentage
@@ -87,7 +87,7 @@ class RebateService {
 
       if (totalRebates > 0) {
         const rebateDate = new Date(transaction.transactionDate).toISOString().split('T')[0];
-        
+
         // Find or create rebate record for this referrer and date
         const [rebateRecord, created] = await ReferrerRebate.findOrCreate({
           where: {
@@ -134,7 +134,7 @@ class RebateService {
     try {
       // Get the referral fee percentage for display
       const feePercentage = await this.getReferralFeePercentageDisplay();
-      
+
       // Find or create "Rebates" category
       const { Category } = require('../models');
       const [rebateCategory] = await Category.findOrCreate({
@@ -264,7 +264,7 @@ class RebateService {
   static async handleTransactionCancellation(transactionId, userId, dbTransaction = null) {
     const t = dbTransaction || await sequelize.transaction();
     const shouldCommit = !dbTransaction; // Only commit if we created the transaction
-    
+
     try {
       // Get the transaction with referrer info
       const transaction = await Transaction.findByPk(transactionId, {
@@ -295,7 +295,7 @@ class RebateService {
 
       // Calculate the total rebate amount that was previously calculated for this transaction
       const departmentTotals = {};
-      
+
       transaction.TestDetails.forEach(test => {
         const deptId = String(test.departmentId);
         if (!departmentTotals[deptId]) {
@@ -314,7 +314,7 @@ class RebateService {
 
       if (totalRebateToDeduct > 0) {
         const rebateDate = new Date(transaction.transactionDate).toISOString().split('T')[0];
-        
+
         // Find the rebate record for this referrer and date
         const rebateRecord = await ReferrerRebate.findOne({
           where: {
@@ -329,7 +329,7 @@ class RebateService {
           // Update the rebate record - deduct the cancelled transaction amount
           const newRebateAmount = Math.max(0, parseFloat(rebateRecord.totalRebateAmount) - totalRebateToDeduct);
           const newTransactionCount = Math.max(0, rebateRecord.transactionCount - 1);
-          
+
           await rebateRecord.update({
             totalRebateAmount: newRebateAmount,
             transactionCount: newTransactionCount,
@@ -361,11 +361,11 @@ class RebateService {
   static async handleTestDetailRefund(transactionId, refundedTestDetails, userId, dbTransaction = null) {
     const t = dbTransaction || await sequelize.transaction();
     const shouldCommit = !dbTransaction; // Only commit if we created the transaction
-    
+
     try {
       // Get the transaction with referrer info
       const transaction = await Transaction.findByPk(transactionId, { transaction: t });
-      
+
       if (!transaction || !transaction.referrerId) {
         if (shouldCommit) await t.rollback();
         return; // No referrer, no rebate to adjust
@@ -383,7 +383,7 @@ class RebateService {
 
       // Calculate the rebate amount to deduct based on refunded test details
       const departmentTotals = {};
-      
+
       refundedTestDetails.forEach(test => {
         const deptId = String(test.departmentId);
         if (!departmentTotals[deptId]) {
@@ -402,7 +402,7 @@ class RebateService {
 
       if (totalRebateToDeduct > 0) {
         const rebateDate = new Date(transaction.transactionDate).toISOString().split('T')[0];
-        
+
         // Find the rebate record for this referrer and date
         const rebateRecord = await ReferrerRebate.findOne({
           where: {
@@ -416,7 +416,7 @@ class RebateService {
         if (rebateRecord) {
           // Update the rebate record - deduct the refunded amount
           const newRebateAmount = Math.max(0, parseFloat(rebateRecord.totalRebateAmount) - totalRebateToDeduct);
-          
+
           await rebateRecord.update({
             totalRebateAmount: newRebateAmount,
             status: newRebateAmount === 0 ? 'cancelled' : 'active'
@@ -469,7 +469,7 @@ class RebateService {
         if (expenseItem) {
           // Calculate new expense item amount
           const newItemAmount = Math.max(0, parseFloat(expenseItem.amount) - rebateAmount);
-          
+
           // If amount becomes zero or we're removing the referrer completely, delete the expense item
           if (newItemAmount === 0 || rebateAmount === 0) {
             await expenseItem.destroy({ transaction });
@@ -486,13 +486,13 @@ class RebateService {
           await expense.update({
             totalAmount: newExpenseTotal
           }, { transaction });
-          
+
           // If the expense has no more items, we could also delete the entire expense record
           const remainingItems = await ExpenseItem.count({
             where: { expenseId: expense.expenseId },
             transaction
           });
-          
+
           if (remainingItems === 0) {
             await expense.destroy({ transaction });
             console.log(`Deleted entire expense record for Pure Health as no items remain`);
@@ -516,7 +516,7 @@ class RebateService {
   static async handleReferrerChange(transactionId, oldReferrerId, newReferrerId, userId, dbTransaction = null) {
     const t = dbTransaction || await sequelize.transaction();
     const shouldCommit = !dbTransaction;
-    
+
     try {
       // Get the transaction with test details
       const transaction = await Transaction.findByPk(transactionId, {
@@ -561,7 +561,7 @@ class RebateService {
 
         // Get old referrer info
         const oldReferrer = await Referrer.findByPk(oldReferrerId, { transaction: t });
-        
+
         if (expense && oldReferrer) {
           // Check if there's an existing expense item for the old referrer (use LIKE to match any percentage)
           const existingExpenseItem = await ExpenseItem.findOne({
@@ -578,7 +578,7 @@ class RebateService {
           if (existingExpenseItem) {
             // Update the existing expense item's paidTo field instead of removing and creating new
             await this.updateExpenseItemPaidTo(transactionId, oldReferrerId, newReferrerId, transactionDate, t);
-            
+
             // Update the rebate records
             await this.updateRebateRecordsForReferrerChange(transactionId, oldReferrerId, newReferrerId, transactionDate, t);
           } else {
@@ -615,7 +615,7 @@ class RebateService {
 
       // Calculate the rebate amount to remove
       const departmentTotals = {};
-      
+
       transaction.TestDetails.forEach(test => {
         if (test.status === 'active') {
           const deptId = String(test.departmentId);
@@ -647,7 +647,7 @@ class RebateService {
         if (rebateRecord) {
           const newRebateAmount = Math.max(0, parseFloat(rebateRecord.totalRebateAmount) - totalRebateToRemove);
           const newTransactionCount = Math.max(0, rebateRecord.transactionCount - 1);
-          
+
           await rebateRecord.update({
             totalRebateAmount: newRebateAmount,
             transactionCount: newTransactionCount,
@@ -715,7 +715,7 @@ class RebateService {
         if (expenseItem) {
           // Get current referral fee percentage for display
           const feePercentage = await this.getReferralFeePercentageDisplay();
-          
+
           // Update the paidTo field to the new referrer and ensure purpose reflects current percentage
           await expenseItem.update({
             paidTo: `Dr. ${newReferrer.lastName}`,
@@ -799,7 +799,7 @@ class RebateService {
         if (oldRebateRecord) {
           const newOldAmount = Math.max(0, parseFloat(oldRebateRecord.totalRebateAmount) - totalRebateAmount);
           const newOldCount = Math.max(0, oldRebateRecord.transactionCount - 1);
-          
+
           await oldRebateRecord.update({
             totalRebateAmount: newOldAmount,
             transactionCount: newOldCount,
@@ -852,7 +852,7 @@ class RebateService {
 
       // Calculate the rebate amount to add
       const departmentTotals = {};
-      
+
       transaction.TestDetails.forEach(test => {
         if (test.status === 'active') {
           const deptId = String(test.departmentId);

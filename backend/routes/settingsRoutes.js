@@ -6,6 +6,7 @@ const settingsController = require('../controllers/settingsController');
 router.get('/general', settingsController.getAllSettings);
 router.get('/general/:key', settingsController.getSettingByKey);
 router.put('/general/:key', settingsController.updateSetting);
+router.get('/next-or-number', settingsController.getNextORNumber);
 
 // Discount category routes
 router.get('/discount-categories', settingsController.getAllDiscountCategories);

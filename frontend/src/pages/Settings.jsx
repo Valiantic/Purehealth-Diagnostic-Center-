@@ -5,11 +5,15 @@ import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
 import usePasskeyManager from '../hooks/auth/usePasskeyManager'
 import PasskeyModal from '../components/auth/PasskeyModal'
-import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download, FileText } from 'lucide-react'
 import tabsConfig from '../config/tabsConfig'
 import { userAPI, settingsAPI } from '../services/api'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { exportFullBackup } from '../utils/backupExporter'
+import AdminVerificationModal from '../components/AdminVerificationModal'
+import ORConfigModal from '../components/settings/ORConfigModal'
+import apiClient from '../services/api'
 
 const Settings = () => {
   const { user, isAuthenticating, refreshUser } = useAuth()
@@ -33,8 +37,20 @@ const Settings = () => {
 
   // Referral fee state
   const [referralFee, setReferralFee] = useState(12)
-  const [isEditingReferralFee, setIsEditingReferralFee] = useState(false)
-  const [tempReferralFee, setTempReferralFee] = useState(12)
+  const [isEditingReferralFee, setIsEditingReferralFee] = useState(false);
+  const [tempReferralFee, setTempReferralFee] = useState(referralFee);
+  const [showAdminVerifyModal, setShowAdminVerifyModal] = useState(false);
+  const [pendingDiscountAdd, setPendingDiscountAdd] = useState(null);
+  const [discountToDelete, setDiscountToDelete] = useState(null);
+  const [pendingDiscountDelete, setPendingDiscountDelete] = useState(null);
+
+  // Backup download state
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false)
+
+  // OR# Configuration state
+  const [isORConfigModalOpen, setIsORConfigModalOpen] = useState(false)
+  const [currentORNumber, setCurrentORNumber] = useState(1)
+  const [highestTransactionOR, setHighestTransactionOR] = useState(0)
 
   // Initialize passkey manager
   const passkeyManager = usePasskeyManager(user?.userId);
@@ -44,13 +60,13 @@ const Settings = () => {
     if (currentUser) {
       setUserData({
         firstName: currentUser.firstName || '',
-        middleName: currentUser.middleName !== undefined && currentUser.middleName !== null 
-          ? currentUser.middleName 
+        middleName: currentUser.middleName !== undefined && currentUser.middleName !== null
+          ? currentUser.middleName
           : '',
         lastName: currentUser.lastName || '',
         email: currentUser.email || ''
       });
-      
+
       if (currentUser.userId) {
         const fetchLatestUserData = async () => {
           try {
@@ -58,15 +74,15 @@ const Settings = () => {
             if (response.data && response.data.success) {
               const freshUserData = response.data.user;
 
-              const updatedUser = {...currentUser, ...freshUserData};
+              const updatedUser = { ...currentUser, ...freshUserData };
               localStorage.setItem('user', JSON.stringify(updatedUser));
-              
+
               refreshUser();
-            
+
               setUserData({
                 firstName: freshUserData.firstName || '',
-                middleName: freshUserData.middleName !== undefined && freshUserData.middleName !== null 
-                  ? freshUserData.middleName 
+                middleName: freshUserData.middleName !== undefined && freshUserData.middleName !== null
+                  ? freshUserData.middleName
                   : '',
                 lastName: freshUserData.lastName || '',
                 email: freshUserData.email || ''
@@ -76,15 +92,30 @@ const Settings = () => {
             console.error('Error fetching latest user data:', error);
           }
         };
-        
+
         fetchLatestUserData();
       }
     }
-    
+
     // Fetch discount categories and referral fee
     fetchDiscountCategories();
     fetchReferralFee();
+    fetchORNumber();
   }, [refreshUser]);
+
+  // Handle admin verified callback
+  const handleAdminVerified = (verified, adminUser) => {
+    if (verified) {
+      if (pendingDiscountAdd) {
+        pendingDiscountAdd();
+        setPendingDiscountAdd(null);
+      } else if (pendingDiscountDelete) {
+        pendingDiscountDelete();
+        setPendingDiscountDelete(null);
+      }
+    }
+    setShowAdminVerifyModal(false);
+  };
 
   const handleViewAccounts = () => {
     navigate('/view-accounts')
@@ -113,12 +144,115 @@ const Settings = () => {
       }
     } catch (error) {
       // If setting doesn't exist, it will use default value
-     console.error('Referral fee setting not found, using default');
+      console.error('Referral fee setting not found, using default');
     }
   }
 
-  // Handle add discount category
+  // Fetch current OR# configuration
+  const fetchORNumber = async () => {
+    try {
+      const response = await settingsAPI.getNextORNumber();
+      if (response.data && response.data.success) {
+        const orNum = parseInt(response.data.nextORNumber);
+        const highestOR = parseInt(response.data.highestTransactionOR || 0);
+        setCurrentORNumber(orNum);
+        setHighestTransactionOR(highestOR);
+      }
+    } catch (error) {
+      console.error('Error fetching OR#:', error);
+      toast.error('Failed to fetch current OR#');
+    }
+  }
+
+  // Handle save OR# configuration
+  const handleSaveORNumber = async (newORNumber) => {
+    try {
+      const response = await settingsAPI.updateSetting(
+        'next_or_number',
+        newORNumber.toString(),
+        user?.userId || user?.id
+      );
+
+      if (response.data && response.data.success) {
+        setCurrentORNumber(newORNumber);
+        toast.success(`OR#/MC No updated successfully to ${newORNumber}`);
+      } else {
+        toast.error('Failed to update OR#/MC No');
+      }
+    } catch (error) {
+      console.error('Error updating OR#:', error);
+      toast.error('Error updating OR#/MC No');
+    }
+  }
+
+  // Handle add discount with admin verification
   const handleAddDiscount = async () => {
+    // If form is empty, just show the form
+    if (!newDiscount.categoryName && !newDiscount.percentage) {
+      setNewDiscount({ categoryName: '', percentage: '20' });
+      return;
+    }
+
+    // If admin is logged in, trigger WebAuthn directly
+    if (user?.role === 'admin') {
+      try {
+        // Step 1: Get authentication options for the admin
+        const optionsResponse = await apiClient.post('/webauthn/authentication/options', {
+          email: user.email
+        });
+
+        if (!optionsResponse.data.success) {
+          toast.error('Failed to generate authentication options');
+          return;
+        }
+
+        const { options, userId } = optionsResponse.data;
+
+        // Step 2: Trigger WebAuthn authentication
+        const { startAuthentication } = await import('@simplewebauthn/browser');
+        const authResponse = await startAuthentication(options);
+
+        // Step 3: Verify the WebAuthn response
+        const verifyResponse = await apiClient.post('/webauthn/authentication/verify', {
+          userId: userId,
+          response: authResponse
+        });
+
+        if (!verifyResponse.data.success) {
+          toast.error('Authentication failed');
+          return;
+        }
+
+        // Step 4: Verify admin role
+        const roleVerifyResponse = await apiClient.post('/users/verify-admin', {
+          userId: userId
+        });
+
+        if (roleVerifyResponse.data.success && roleVerifyResponse.data.isAdmin) {
+          // Admin verified - execute add discount
+          await executeAddDiscount();
+        } else {
+          toast.error('Admin privileges required');
+        }
+      } catch (error) {
+        console.error('Admin verification error:', error);
+
+        // Handle cancellation or timeout specifically
+        if (error.name === 'NotAllowedError' || error.message.includes('timed out') || error.message.includes('not allowed')) {
+          toast.error('Verification cancelled');
+        } else {
+          toast.error(error.message || 'Failed to verify admin credentials');
+        }
+      }
+    } else {
+      // Receptionist - show modal for admin verification
+      setPendingDiscountAdd(() => executeAddDiscount);
+      setShowAdminVerifyModal(true);
+    }
+  }
+
+  // Execute add discount (called after admin verification)
+  const executeAddDiscount = async () => {
     // If form is empty, just show the form
     if (!newDiscount.categoryName && !newDiscount.percentage) {
       setNewDiscount({ categoryName: '', percentage: '20' });
@@ -141,16 +275,16 @@ const Settings = () => {
         { categoryName: newDiscount.categoryName, percentage },
         user?.userId
       );
-      
+
       if (response.data && response.data.success) {
         toast.success('Discount category added successfully', { position: "top-right", autoClose: 3000 });
         setNewDiscount({ categoryName: '', percentage: '' });
         fetchDiscountCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add discount category', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to add discount category', {
+        position: "top-right",
+        autoClose: 3000
       });
     }
   }
@@ -172,7 +306,7 @@ const Settings = () => {
         { categoryName: data.categoryName, percentage },
         user?.userId
       );
-      
+
       if (response.data && response.data.success) {
         toast.success('Discount category updated successfully', { position: "top-right", autoClose: 3000 });
         setEditingDiscountId(null);
@@ -180,32 +314,78 @@ const Settings = () => {
         fetchDiscountCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update discount category', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to update discount category', {
+        position: "top-right",
+        autoClose: 3000
       });
     }
   }
 
   // Handle delete discount category
-  const handleDeleteDiscount = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this discount category?')) {
+  // Handle delete discount category
+  const handleDeleteDiscount = (id, categoryName) => {
+    // If receptionist, require admin verification first
+    if (user?.role !== 'admin') {
+      setPendingDiscountDelete(() => () => showDeleteConfirmation(id, categoryName));
+      setShowAdminVerifyModal(true);
       return;
     }
 
+    // Admin - show confirmation directly
+    showDeleteConfirmation(id, categoryName);
+  }
+
+  const showDeleteConfirmation = (id, categoryName) => {
+    setDiscountToDelete({ id, categoryName });
+
+    // Show custom confirmation toast
+    toast.warning(
+      <div>
+        <p className="font-semibold mb-2">Delete Discount Category?</p>
+        <p className="text-sm mb-3">Are you sure you want to delete "{categoryName}"? This action cannot be undone.</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => confirmDelete(id)}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium"
+          >
+            Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss()}
+            className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>,
+      {
+        position: "top-center",
+        autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+        closeButton: false
+      }
+    );
+  }
+
+  const confirmDelete = async (id) => {
+    toast.dismiss(); // Close the confirmation toast
+
     try {
       const response = await settingsAPI.deleteDiscountCategory(id, user?.userId);
-      
+
       if (response.data && response.data.success) {
         toast.success('Discount category deleted successfully', { position: "top-right", autoClose: 3000 });
         fetchDiscountCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete discount category', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to delete discount category', {
+        position: "top-right",
+        autoClose: 3000
       });
     }
+
+    setDiscountToDelete(null);
   }
 
   // Handle update referral fee
@@ -222,17 +402,43 @@ const Settings = () => {
         fee.toString(),
         user?.userId
       );
-      
+
       if (response.data && response.data.success) {
         toast.success('Referral fee updated successfully', { position: "top-right", autoClose: 3000 });
         setReferralFee(fee);
         setIsEditingReferralFee(false);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update referral fee', { 
-        position: "top-right", 
-        autoClose: 3000 
+      toast.error(error.response?.data?.message || 'Failed to update referral fee', {
+        position: "top-right",
+        autoClose: 3000
       });
+    }
+  }
+
+  // Handle download backup
+  const handleDownloadBackup = async () => {
+    setIsDownloadingBackup(true);
+    try {
+      toast.info('Preparing backup... This may take a moment.', {
+        position: "top-right",
+        autoClose: 3000
+      });
+
+      await exportFullBackup();
+
+      toast.success('Backup downloaded successfully!', {
+        position: "top-right",
+        autoClose: 3000
+      });
+    } catch (error) {
+      console.error('Backup download error:', error);
+      toast.error('Failed to download backup: ' + (error.message || 'Unknown error'), {
+        position: "top-right",
+        autoClose: 5000
+      });
+    } finally {
+      setIsDownloadingBackup(false);
     }
   }
 
@@ -284,16 +490,16 @@ const Settings = () => {
       }
 
       const response = await userAPI.updateUserDetails(currentUser.userId, userData);
-      
+
       if (response.data && response.data.success) {
-        const updatedUser = {...currentUser, ...response.data.user};
+        const updatedUser = { ...currentUser, ...response.data.user };
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        
+
         refreshUser();
-        
+
         setIsEditing(false);
         setIsLoading(false);
-        
+
         toast.success('Profile updated successfully', {
           position: "top-right",
           autoClose: 3000,
@@ -324,29 +530,37 @@ const Settings = () => {
     return null;
   }
 
-  if(!user) {
+  if (!user) {
     return null;
   }
 
   const currentPath = location.pathname;
   const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
-  const activeTab = filteredTabs.find(tab => 
+  const activeTab = filteredTabs.find(tab =>
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Account';
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen h-full bg-gray-100">
       <Sidebar />
-      
+
+      {/* Admin Verification Modal */}
+      <AdminVerificationModal
+        isOpen={showAdminVerifyModal}
+        onClose={() => setShowAdminVerifyModal(false)}
+        onVerify={handleAdminVerified}
+        currentUser={user}
+      />
+
       {/* Toast Container */}
       <ToastContainer />
-      
+
       {/* Main content */}
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
           <TabNavigation tabsConfig={filteredTabs} />
-          
+
           {/* Content */}
           <div className="p-4 md:p-6">
             {activeTab === 'Account' && (
@@ -356,7 +570,7 @@ const Settings = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-semibold text-gray-800">User Account</h2>
                     {!isEditing ? (
-                      <button 
+                      <button
                         onClick={handleEditToggle}
                         className="flex items-center justify-center py-2 px-4 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
                       >
@@ -365,7 +579,7 @@ const Settings = () => {
                       </button>
                     ) : (
                       <div className="flex gap-3">
-                        <button 
+                        <button
                           onClick={handleSaveChanges}
                           disabled={isLoading}
                           className="flex items-center justify-center py-2 px-4 bg-green-800 hover:bg-green-700 text-white rounded-md transition disabled:opacity-50"
@@ -373,7 +587,7 @@ const Settings = () => {
                           <Save className="w-4 h-4 mr-2" />
                           {isLoading ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <button 
+                        <button
                           onClick={handleEditToggle}
                           className="flex items-center justify-center py-2 px-4 bg-gray-500 hover:bg-gray-400 text-white rounded-md transition"
                         >
@@ -395,10 +609,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change First Name</p>
                           {isEditing ? (
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               name="firstName"
-                              value={userData.firstName} 
+                              value={userData.firstName}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
@@ -420,10 +634,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change Middle Name</p>
                           {isEditing ? (
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               name="middleName"
-                              value={userData.middleName || ''} 
+                              value={userData.middleName || ''}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                               placeholder="Enter middle name (optional)"
@@ -446,10 +660,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change Last Name</p>
                           {isEditing ? (
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               name="lastName"
-                              value={userData.lastName} 
+                              value={userData.lastName}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
@@ -471,10 +685,10 @@ const Settings = () => {
                         <div className="flex-1">
                           <p className="text-sm text-gray-500 font-medium">Change Email Address</p>
                           {isEditing ? (
-                            <input 
-                              type="email" 
+                            <input
+                              type="email"
                               name="email"
-                              value={userData.email} 
+                              value={userData.email}
                               onChange={handleInputChange}
                               className="w-full mt-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                             />
@@ -486,7 +700,7 @@ const Settings = () => {
                     </div>
 
                     {/* Change Passkey Card */}
-                    <div 
+                    <div
                       onClick={!isEditing ? passkeyManager.openChangePasskeyModal : undefined}
                       className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                     >
@@ -503,7 +717,7 @@ const Settings = () => {
 
                     {/* Manage Accounts Card */}
                     {user.role !== 'receptionist' && (
-                      <div 
+                      <div
                         onClick={!isEditing ? handleViewAccounts : undefined}
                         className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                       >
@@ -518,6 +732,44 @@ const Settings = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Download Backup Card - Admin Only */}
+                    {user.role === 'admin' && (
+                      <div
+                        onClick={!isEditing && !isDownloadingBackup ? handleDownloadBackup : undefined}
+                        className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing && !isDownloadingBackup ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Download className="w-6 h-6 text-blue-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 font-medium">Download Backup</p>
+                            <p className="text-base font-semibold text-gray-800">
+                              {isDownloadingBackup ? 'Downloading...' : 'Export All Data'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* OR# Configuration Card - Admin Only */}
+                    {user.role === 'admin' && (
+                      <div
+                        onClick={!isEditing ? () => setIsORConfigModalOpen(true) : undefined}
+                        className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-blue-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 font-medium">OR# Configuration</p>
+                            <p className="text-base font-semibold text-gray-800">Configure Receipt Number</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {error && (
@@ -527,164 +779,51 @@ const Settings = () => {
                   )}
                 </div>
 
-                {/* Discount Categories Section */}
-                {user.role !== 'receptionist' && (
-                  <div>
-                    {/* Add Discount Button */}
-                    <button 
-                      onClick={handleAddDiscount}
-                      className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span className="font-medium">Add Discount</span>
-                    </button>
+                {/* Discount Categories Section - Visible to all users */}
+                <div>
+                  {/* Add Discount Button */}
+                  <button
+                    onClick={handleAddDiscount}
+                    className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span className="font-medium">Add Discount</span>
+                  </button>
 
-                    {/* Discount Categories Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-                      {/* Discount Cards - Left 2/3 */}
-                      <div className="lg:col-span-2 space-y-3 min-h-0">
-                        {discountCategories.filter(cat => cat.status === 'active').map((category) => (
-                          <div key={category.discountCategoryId} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                            {editingDiscountId === category.discountCategoryId ? (
-                              <div className="space-y-3">
-                                <input
-                                  type="text"
-                                  value={editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName}
-                                  onChange={(e) => setEditingDiscountData({
-                                    ...editingDiscountData,
-                                    [category.discountCategoryId]: {
-                                      ...editingDiscountData[category.discountCategoryId],
-                                      categoryName: e.target.value,
-                                      percentage: editingDiscountData[category.discountCategoryId]?.percentage || category.percentage
-                                    }
-                                  })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
-                                />
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <input
-                                      type="number"
-                                      value={editingDiscountData[category.discountCategoryId]?.percentage || category.percentage}
-                                      onChange={(e) => setEditingDiscountData({
-                                        ...editingDiscountData,
-                                        [category.discountCategoryId]: {
-                                          ...editingDiscountData[category.discountCategoryId],
-                                          categoryName: editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName,
-                                          percentage: e.target.value
-                                        }
-                                      })}
-                                      className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-center"
-                                      min="0"
-                                      max="100"
-                                      step="0.01"
-                                    />
-                                    <span className="text-gray-600">%</span>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <button
-                                      onClick={() => handleUpdateDiscount(category.discountCategoryId)}
-                                      className="px-3 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
-                                    >
-                                      <Save className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setEditingDiscountId(null);
-                                        setEditingDiscountData({});
-                                      }}
-                                      className="px-3 py-2 bg-gray-500 hover:bg-gray-400 text-white rounded-md transition"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteDiscount(category.discountCategoryId)}
-                                      className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-md transition"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <p className="text-sm text-gray-500 font-medium">{category.categoryName}</p>
-                                  <p className="text-xs text-gray-400">Set discount amount for {category.categoryName}</p>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  <div className="flex items-center space-x-2 border border-gray-300 rounded px-3 py-1.5 min-w-[100px] justify-center">
-                                    <span className="text-xl font-bold text-gray-800">{category.percentage}%</span>
-                                    <div className="flex flex-col">
-                                      <button
-                                        onClick={() => {
-                                          setEditingDiscountId(category.discountCategoryId);
-                                          setEditingDiscountData({
-                                            [category.discountCategoryId]: {
-                                              categoryName: category.categoryName,
-                                              percentage: parseFloat(category.percentage) + 1
-                                            }
-                                          });
-                                          handleUpdateDiscount(category.discountCategoryId);
-                                        }}
-                                        className="text-gray-600 hover:text-green-800"
-                                      >
-                                        <ChevronUp className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingDiscountId(category.discountCategoryId);
-                                          setEditingDiscountData({
-                                            [category.discountCategoryId]: {
-                                              categoryName: category.categoryName,
-                                              percentage: Math.max(0, parseFloat(category.percentage) - 1)
-                                            }
-                                          });
-                                          handleUpdateDiscount(category.discountCategoryId);
-                                        }}
-                                        className="text-gray-600 hover:text-green-800"
-                                      >
-                                        <ChevronDown className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setEditingDiscountId(category.discountCategoryId);
-                                      setEditingDiscountData({
-                                        [category.discountCategoryId]: {
-                                          categoryName: category.categoryName,
-                                          percentage: category.percentage
-                                        }
-                                      });
-                                    }}
-                                    className="text-gray-600 hover:text-green-800"
-                                  >
-                                    <Pencil className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-
-                        {/* Add New Discount Card (shown when adding) */}
-                        {(newDiscount.categoryName || newDiscount.percentage) && (
-                          <div className="bg-green-50 border-2 border-dashed border-green-300 rounded-lg p-4">
+                  {/* Discount Categories Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                    {/* Discount Cards - Left 2/3 */}
+                    <div className="lg:col-span-2 space-y-3 min-h-0">
+                      {discountCategories.filter(cat => cat.status === 'active').map((category) => (
+                        <div key={category.discountCategoryId} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          {editingDiscountId === category.discountCategoryId ? (
                             <div className="space-y-3">
                               <input
                                 type="text"
-                                placeholder="Discount Category Name (e.g., Student, PWD)"
-                                value={newDiscount.categoryName}
-                                onChange={(e) => setNewDiscount({ ...newDiscount, categoryName: e.target.value })}
+                                value={editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName}
+                                onChange={(e) => setEditingDiscountData({
+                                  ...editingDiscountData,
+                                  [category.discountCategoryId]: {
+                                    ...editingDiscountData[category.discountCategoryId],
+                                    categoryName: e.target.value,
+                                    percentage: editingDiscountData[category.discountCategoryId]?.percentage || category.percentage
+                                  }
+                                })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                               />
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="number"
-                                    placeholder="0"
-                                    value={newDiscount.percentage}
-                                    onChange={(e) => setNewDiscount({ ...newDiscount, percentage: e.target.value })}
+                                    value={editingDiscountData[category.discountCategoryId]?.percentage || category.percentage}
+                                    onChange={(e) => setEditingDiscountData({
+                                      ...editingDiscountData,
+                                      [category.discountCategoryId]: {
+                                        ...editingDiscountData[category.discountCategoryId],
+                                        categoryName: editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName,
+                                        percentage: e.target.value
+                                      }
+                                    })}
                                     className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-center"
                                     min="0"
                                     max="100"
@@ -694,25 +833,138 @@ const Settings = () => {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <button
-                                    onClick={handleAddDiscount}
-                                    className="px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
+                                    onClick={() => handleUpdateDiscount(category.discountCategoryId)}
+                                    className="px-3 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
                                   >
-                                    Save
+                                    <Save className="w-4 h-4" />
                                   </button>
                                   <button
-                                    onClick={() => setNewDiscount({ categoryName: '', percentage: '' })}
-                                    className="px-4 py-2 bg-gray-500 hover:bg-gray-400 text-white rounded-md transition"
+                                    onClick={() => {
+                                      setEditingDiscountId(null);
+                                      setEditingDiscountData({});
+                                    }}
+                                    className="px-3 py-2 bg-gray-500 hover:bg-gray-400 text-white rounded-md transition"
                                   >
-                                    Cancel
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDiscount(category.discountCategoryId, category.categoryName)}
+                                    className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-md transition"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-500 font-medium">{category.categoryName}</p>
+                                <p className="text-xs text-gray-400">Set discount amount for {category.categoryName}</p>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-2 border border-gray-300 rounded px-3 py-1.5 min-w-[100px] justify-center">
+                                  <span className="text-xl font-bold text-gray-800">{category.percentage}%</span>
+                                  <div className="flex flex-col">
+                                    <button
+                                      onClick={() => {
+                                        setEditingDiscountId(category.discountCategoryId);
+                                        setEditingDiscountData({
+                                          [category.discountCategoryId]: {
+                                            categoryName: category.categoryName,
+                                            percentage: parseFloat(category.percentage) + 1
+                                          }
+                                        });
+                                        handleUpdateDiscount(category.discountCategoryId);
+                                      }}
+                                      className="text-gray-600 hover:text-green-800"
+                                    >
+                                      <ChevronUp className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingDiscountId(category.discountCategoryId);
+                                        setEditingDiscountData({
+                                          [category.discountCategoryId]: {
+                                            categoryName: category.categoryName,
+                                            percentage: Math.max(0, parseFloat(category.percentage) - 1)
+                                          }
+                                        });
+                                        handleUpdateDiscount(category.discountCategoryId);
+                                      }}
+                                      className="text-gray-600 hover:text-green-800"
+                                    >
+                                      <ChevronDown className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setEditingDiscountId(category.discountCategoryId);
+                                    setEditingDiscountData({
+                                      [category.discountCategoryId]: {
+                                        categoryName: category.categoryName,
+                                        percentage: category.percentage
+                                      }
+                                    });
+                                  }}
+                                  className="text-gray-600 hover:text-green-800"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
 
-                      {/* Referral Fee Card - Right 1/3 */}
+                      {/* Add New Discount Card (shown when adding) */}
+                      {(newDiscount.categoryName || newDiscount.percentage) && (
+                        <div className="bg-green-50 border-2 border-dashed border-green-300 rounded-lg p-4">
+                          <div className="space-y-3">
+                            <input
+                              type="text"
+                              placeholder="Discount Category Name (e.g., Student, PWD)"
+                              value={newDiscount.categoryName}
+                              onChange={(e) => setNewDiscount({ ...newDiscount, categoryName: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
+                            />
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={newDiscount.percentage}
+                                  onChange={(e) => setNewDiscount({ ...newDiscount, percentage: e.target.value })}
+                                  className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-center"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                />
+                                <span className="text-gray-600">%</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={handleAddDiscount}
+                                  className="px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setNewDiscount({ categoryName: '', percentage: '' })}
+                                  className="px-4 py-2 bg-gray-500 hover:bg-gray-400 text-white rounded-md transition"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Referral Fee Card - Right 1/3 - Admin only */}
+                    {user.role !== 'receptionist' && (
                       <div className="lg:col-span-1">
                         <div className="bg-green-800 text-white rounded-lg p-4 shadow-sm sticky top-0">
                           {isEditingReferralFee ? (
@@ -782,15 +1034,15 @@ const Settings = () => {
                           )}
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
-      
+
       {/* Passkey Modal */}
       <PasskeyModal
         isOpen={passkeyManager.isModalOpen}
@@ -802,6 +1054,15 @@ const Settings = () => {
         onAddPasskey={passkeyManager.addPasskey}
         onDeletePasskey={passkeyManager.deletePasskey}
         onSetPrimaryPasskey={passkeyManager.setPrimaryPasskey}
+      />
+
+      {/* OR# Configuration Modal */}
+      <ORConfigModal
+        isOpen={isORConfigModalOpen}
+        onClose={() => setIsORConfigModalOpen(false)}
+        onSave={handleSaveORNumber}
+        currentORNumber={currentORNumber}
+        highestTransactionOR={highestTransactionOR}
       />
     </div>
   )
