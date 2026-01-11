@@ -4,9 +4,11 @@ import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-reac
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
-import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI } from '../services/api';
+import DailyIncomeBreakdownModal from '../components/transaction/DailyIncomeBreakdownModal';
+import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI, userAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import { exportMonthlyIncomeToExcel } from '../utils/monthlyIncomeExporter';
+import { useQuery } from '@tanstack/react-query';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Monthly = () => {
@@ -43,6 +45,29 @@ const Monthly = () => {
       month: now.getMonth() + 1, // 1-12
       year: now.getFullYear()
     };
+  });
+
+  // Modal State for Breakdown
+  const [breakdownData, setBreakdownData] = useState(null);
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
+  const [cachedReportData, setCachedReportData] = useState(null);
+  const [breakdownLabels, setBreakdownLabels] = useState({ col1: '', col2: '', title: '' });
+
+  // Admin user query
+  const { data: adminUser } = useQuery({
+    queryKey: ['adminUser'],
+    queryFn: async () => {
+      try {
+        const response = await userAPI.getAllUsers();
+        const users = response.data?.users || response.data?.data || (Array.isArray(response.data) ? response.data : []);
+        return users.find(u => u.role === 'admin');
+      } catch (err) {
+        console.error('Error fetching admin user:', err);
+        return null;
+      }
+    },
+    staleTime: Infinity,
+    retry: false
   });
 
   // Format current month for display
@@ -256,11 +281,73 @@ const Monthly = () => {
       // Fetch profit & loss data for current and previous month
       const profitLossData = await fetchProfitLossData();
 
-      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, allCollectibles, currentMonth, profitLossData);
+      if (!profitLossData) {
+        toast.error('Failed to fetch report data');
+        return;
+      }
+
+      setCachedReportData({ allCollectibles, profitLossData });
+
+      // Prepare Labels
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const prevMonthIdx = currentDate.month === 1 ? 11 : currentDate.month - 2;
+      const currMonthIdx = currentDate.month - 1;
+
+      const prevMonthName = monthNames[prevMonthIdx];
+      const currMonthName = monthNames[currMonthIdx];
+      const prevLabel = `${prevMonthName} (Previous)`;
+      const currLabel = `${currMonthName} (Current)`;
+
+      setBreakdownLabels({
+        col1: prevLabel,
+        col2: currLabel,
+        title: 'Monthly Income Report'
+      });
+
+      // Prepare Breakdown Data
+      const breakdown = {
+        departmentRevenues: profitLossData.revenue.departments.map(d => ({
+          departmentName: d.name,
+          yesterday: d.previousMonth,
+          today: d.currentMonth
+        })),
+        departmentExpenses: profitLossData.expenses.categories.map(e => ({
+          departmentName: e.name,
+          yesterday: e.previousMonth,
+          today: e.currentMonth
+        })),
+        additionalIncome: {
+          yesterday: profitLossData.revenue.additionalIncome.previousMonth,
+          today: profitLossData.revenue.additionalIncome.currentMonth
+        },
+        gcashIncome: {
+          yesterday: profitLossData.revenue.gCashIncome.previousMonth,
+          today: profitLossData.revenue.gCashIncome.currentMonth
+        },
+        transactions: [], // No individual transactions for monthly view
+        totals: {
+          revenue: { yesterday: profitLossData.revenue.total.previousMonth, today: profitLossData.revenue.total.currentMonth },
+          expenses: { yesterday: profitLossData.expenses.total.previousMonth, today: profitLossData.expenses.total.currentMonth },
+        }
+      };
+
+      setBreakdownData(breakdown);
+      setIsBreakdownModalOpen(true);
+
+    } catch (error) {
+      console.error('Error preparing report:', error);
+      toast.error('Failed to prepare report data.');
+    }
+  };
+
+  const handleModalExport = async () => {
+    try {
+      if (!cachedReportData) return;
+      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, cachedReportData.allCollectibles, currentMonth, cachedReportData.profitLossData);
       toast.success('Monthly Income Report exported successfully!');
     } catch (error) {
-      console.error('Error exporting report:', error);
-      toast.error('Failed to export report. Please try again.');
+      console.error('Error exporting:', error);
+      toast.error('Failed to export report.');
     }
   };
 
@@ -737,10 +824,7 @@ const Monthly = () => {
                 onClick={handleGenerateReport}
                 className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
               >
-                Generate Report
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                Show Breakdown
               </button>
             </div>
           )}
@@ -759,6 +843,17 @@ const Monthly = () => {
         userId={user?.userId || user?.id}
         mode={modalMode}
         initialData={selectedCollectible}
+      />
+
+      <DailyIncomeBreakdownModal
+        isOpen={isBreakdownModalOpen}
+        onClose={() => setIsBreakdownModalOpen(false)}
+        breakdownData={breakdownData}
+        selectedDate={new Date(currentDate.year, currentDate.month - 1, 1)} // 1st of current month
+        user={user}
+        adminUser={adminUser}
+        labels={breakdownLabels}
+        onGenerateExternal={handleModalExport}
       />
 
       {/* Close dropdown menus when clicking outside */}

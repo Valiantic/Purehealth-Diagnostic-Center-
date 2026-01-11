@@ -20,6 +20,12 @@ const ORConfigModal = ({ isOpen, onClose, onSave, currentORNumber, highestTransa
             return;
         }
 
+        // Validation: maximum 10 digits
+        if (orNumber.length > 10) {
+            setError('OR# cannot exceed 10 digits');
+            return;
+        }
+
         // Use highestTransactionOR if provided, otherwise fall back to currentORNumber
         const minAllowed = highestTransactionOR !== undefined ? highestTransactionOR : currentORNumber;
 
@@ -71,8 +77,12 @@ const ORConfigModal = ({ isOpen, onClose, onSave, currentORNumber, highestTransa
                             id="orNumber"
                             value={orNumber}
                             onChange={(e) => {
-                                setOrNumber(e.target.value);
-                                setError('');
+                                const value = e.target.value;
+                                // Only allow up to 10 digits
+                                if (value.length <= 10) {
+                                    setOrNumber(value);
+                                    setError('');
+                                }
                             }}
                             min={highestTransactionOR !== undefined ? highestTransactionOR + 1 : currentORNumber}
                             placeholder={`Enter number (must be > ${highestTransactionOR !== undefined ? highestTransactionOR : currentORNumber})`}
@@ -86,7 +96,7 @@ const ORConfigModal = ({ isOpen, onClose, onSave, currentORNumber, highestTransa
                             <p className="text-red-500 text-sm mt-1">{error}</p>
                         )}
                         <p className="text-xs text-gray-400 mt-2">
-                            Note: OR# must be greater than the highest transaction OR# to prevent duplicates.
+                            Note: OR# must be greater than the highest transaction OR# to prevent duplicates. Maximum 10 digits.
                         </p>
                     </div>
 
