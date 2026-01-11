@@ -3,7 +3,7 @@ const { logActivity } = require('../utils/activityLogger');
 
 const createCollectibleIncome = async (req, res) => {
     try {
-        const { companyName, coordinatorName, totalIncome, date, currentUserId } = req.body;
+        const { companyName, coordinatorName, totalIncome, date, currentUserId, items } = req.body;
 
         if (!companyName || !coordinatorName || totalIncome === undefined) {
             return res.status(400).json({ success: false, message: 'All fields are required' });
@@ -18,6 +18,21 @@ const createCollectibleIncome = async (req, res) => {
             updatedAt: date ? new Date(date) : new Date()
         });
 
+        // Save items if present
+        if (items && Array.isArray(items) && items.length > 0) {
+            const { CollectibleIncomeItems } = require('../models');
+            const itemsToCreate = items.map(item => ({
+                companyId: collectibleIncome.companyId,
+                testName: item.testName,
+                unitPrice: parseFloat(item.unitPrice || 0).toFixed(2),
+                quantity: parseInt(item.quantity || 1),
+                createdAt: date ? new Date(date) : new Date(),
+                updatedAt: date ? new Date(date) : new Date()
+            }));
+
+            await CollectibleIncomeItems.bulkCreate(itemsToCreate);
+        }
+
         res.status(201).json({
             success: true,
             message: 'Collectible income added successfully',
@@ -26,7 +41,7 @@ const createCollectibleIncome = async (req, res) => {
 
         try {
             const userId = currentUserId || req.userId;
-            
+
             await logActivity({
                 userId: userId,
                 action: 'ADD_COLLECTIBLE_INCOME',
@@ -46,23 +61,39 @@ const createCollectibleIncome = async (req, res) => {
         }
     } catch (error) {
         console.error('Error adding collectible income:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error', 
-            error: error.message 
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
         });
     }
 }
 
 const getCollectibleIncome = async (req, res) => {
     try {
+        const { CollectibleIncomeItems } = require('../models');
+
         const collectibleIncomes = await CollectibleIncome.findAll({
+            include: [{
+                model: CollectibleIncomeItems,
+                as: 'CollectibleIncomeItems',
+                required: false
+            }],
             order: [['dateConducted', 'DESC']]
+        });
+
+        // Format the response to include items array
+        const formattedData = collectibleIncomes.map(income => {
+            const incomeData = income.toJSON();
+            return {
+                ...incomeData,
+                items: incomeData.CollectibleIncomeItems || []
+            };
         });
 
         res.status(200).json({
             success: true,
-            data: collectibleIncomes
+            data: formattedData
         });
     } catch (error) {
         console.error('Error fetching collectible incomes:', error);
@@ -71,22 +102,22 @@ const getCollectibleIncome = async (req, res) => {
 }
 
 const updateCollectibleIncome = async (req, res) => {
-    try{
+    try {
         // Extract parameters and body
         const { id } = req.params;
         const { companyName, coordinatorName, totalIncome, date, currentUserId } = req.body;
-        
+
 
         // Validate required fields
-       if (!companyName || !coordinatorName || totalIncome === undefined) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'All fields are required' 
+        if (!companyName || !coordinatorName || totalIncome === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required'
             });
         }
 
         const existingCollectible = await CollectibleIncome.findByPk(id);
-        
+
         if (!existingCollectible) {
             return res.status(404).json({
                 success: false,
@@ -137,7 +168,7 @@ const updateCollectibleIncome = async (req, res) => {
             const changes = [];
             if (originalData.companyName !== companyName) {
                 changes.push(`Company: "${originalData.companyName}" → "${companyName}"`);
-            } 
+            }
             if (originalData.coordinatorName !== coordinatorName) {
                 changes.push(`Coordinator: "${originalData.coordinatorName}" → "${coordinatorName}"`);
             }
@@ -148,7 +179,7 @@ const updateCollectibleIncome = async (req, res) => {
                 changes.push(`Date: "${new Date(originalData.dateConducted).toDateString()}" → "${new Date(date).toDateString()}"`);
             }
 
-            const changeDetails = changes.length > 0 
+            const changeDetails = changes.length > 0
                 ? `Updated collectible income details for ${companyName}: ${changes.join(', ')} with total income ${parseFloat(totalIncome).toFixed(2)}`
                 : `Updated collectible income details for ${companyName}`;
 
@@ -171,16 +202,16 @@ const updateCollectibleIncome = async (req, res) => {
                     changes: changes
                 }
             });
-        }   catch (logError) {
+        } catch (logError) {
             console.error('Error logging update activity:', logError);
         }
 
-    }catch(error) {
+    } catch (error) {
         console.error('Error updating collectible income:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error', 
-            error: error.message 
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
         });
     }
 };
