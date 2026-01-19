@@ -59,7 +59,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded']
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
           }
         }
       });
@@ -305,7 +305,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded']
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
           }
         }
       });
@@ -345,7 +345,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded']
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
           }
         },
         group: [
@@ -462,7 +462,7 @@ const dashboardController = {
           ],
           where: {
             status: {
-              [Op.notIn]: ['paid', 'refunded']
+              [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
             }
           }
         });
