@@ -198,20 +198,39 @@ const PasskeyModal = ({
               </div>
 
               <div className="border-t border-gray-200 pt-4">
-                <button
-                  onClick={() => onAddPasskey(false)}
-                  disabled={isRegistering}
-                  className="w-full bg-green-800 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  {isRegistering ? 'Adding...' : 'Add New Passkey'}
-                </button>
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Add New Passkey:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => onAddPasskey(true)}
+                      disabled={isRegistering}
+                      className="bg-green-800 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                    >
+                      <ShieldCheck className="w-4 h-4 mr-2" />
+                      {isRegistering ? 'Adding...' : 'Add Primary'}
+                    </button>
+                    <button
+                      onClick={() => onAddPasskey(false)}
+                      disabled={isRegistering}
+                      className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      {isRegistering ? 'Adding...' : 'Add Backup'}
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-xs text-yellow-700">
+                    <strong>Tip:</strong> Adding a primary passkey will replace your current primary. Use backup passkeys for additional devices.
+                  </p>
+                </div>
               </div>
 
               {passkeys.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-800 mb-2">Passkey Management Tips:</h4>
                   <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• You can add multiple passkeys on different devices/authenticators</li>
                     <li>• Keep at least one backup passkey for account recovery</li>
                     <li>• Primary passkey is used for main authentication</li>
                     <li>• You cannot delete your only remaining passkey</li>
