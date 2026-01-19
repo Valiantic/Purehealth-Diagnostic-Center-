@@ -339,6 +339,16 @@ async function authenticationVerify(req, res) {
         message: 'Authentication failed'
       });
     }
+    
+    // Log successful login activity
+    await logActivity({
+      userId: user.userId,
+      action: 'LOGIN',
+      resourceType: 'USER',
+      resourceId: user.userId,
+      details: `User logged in successfully: ${user.firstName} ${user.lastName} (${user.email})`,
+      ipAddress: req.ip
+    });
 
     res.json({
       success: true,

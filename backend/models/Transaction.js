@@ -89,10 +89,15 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: null // Disable automatic reference creation
+    },
+    referralFeePercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 20.00
     }
   }, {
     timestamps: true,
-    tableName: 'Transactions', 
+    tableName: 'Transactions',
     freezeTableName: true,
     indexes: [
       {

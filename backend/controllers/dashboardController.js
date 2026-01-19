@@ -9,7 +9,8 @@ const dashboardController = {
       const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
 
       // Get monthly revenue from active transactions only (exclude cancelled)
-      const monthlyRevenueResult = await TestDetails.findAll({
+      // Revenue = sum of totalDiscountAmount (the actual amount due after discounts)
+      const monthlyRevenueResult = await Transaction.findAll({
         attributes: [
           [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalRevenue']
         ],
@@ -31,8 +32,14 @@ const dashboardController = {
           }
         ],
         where: {
+          transactionDate: {
+            [Op.and]: [
+              sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), month),
+              sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), year)
+            ]
+          },
           status: {
-            [Op.ne]: 'refunded'
+            [Op.ne]: 'cancelled'
           }
         },
         raw: true
@@ -154,8 +161,9 @@ const dashboardController = {
     try {
       const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
 
-      // Get daily income from non-refunded test details in non-cancelled transactions, excluding balance amounts
-      const dailyData = await TestDetails.findAll({
+      // Get daily income from transactions
+      // Revenue = sum of totalDiscountAmount (the actual amount due after discounts)
+      const dailyData = await Transaction.findAll({
         attributes: [
           [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "Transaction"."transactionDate"`)), 'day'],
           [sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day'), 'dayName'],
@@ -179,8 +187,14 @@ const dashboardController = {
           }
         ],
         where: {
+          transactionDate: {
+            [Op.and]: [
+              sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), month),
+              sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), year)
+            ]
+          },
           status: {
-            [Op.ne]: 'refunded'
+            [Op.ne]: 'cancelled'
           }
         },
         group: [sequelize.fn('EXTRACT', sequelize.literal(`DAY FROM "Transaction"."transactionDate"`)), sequelize.fn('TO_CHAR', sequelize.col('Transaction.transactionDate'), 'Day')],
@@ -411,8 +425,9 @@ const dashboardController = {
       const monthlyData = [];
 
       for (let month = 1; month <= 12; month++) {
-        // Get revenue for this month from non-refunded test details in non-cancelled transactions, excluding balance amounts
-        const revenueResult = await TestDetails.findAll({
+        // Get revenue for this month from transactions
+        // Revenue = sum of totalDiscountAmount (the actual amount due after discounts)
+        const revenueResult = await Transaction.findAll({
           attributes: [
             [sequelize.fn('SUM', sequelize.literal('"TestDetails"."discountedPrice" - "TestDetails"."balanceAmount"')), 'totalRevenue']
           ],
@@ -434,8 +449,14 @@ const dashboardController = {
             }
           ],
           where: {
+            transactionDate: {
+              [Op.and]: [
+                sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), month),
+                sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), year)
+              ]
+            },
             status: {
-              [Op.ne]: 'refunded'
+              [Op.ne]: 'cancelled'
             }
           },
           raw: true
