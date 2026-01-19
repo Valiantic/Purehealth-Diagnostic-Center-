@@ -149,7 +149,7 @@ const AdminVerificationModal = ({
                                 {currentUser?.role !== 'admin' ? (
                                     <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
                                         <p className="text-sm text-yellow-800 font-semibold">
-                                            ⚠ You are logged in as a <strong>{currentUser?.role}</strong>.
+                                            ⚠ You are logged in as a <strong>{currentUser?.role || 'User'}</strong>.
                                         </p>
                                         <p className="text-sm text-yellow-800 mt-1">
                                             You MUST enter an <strong>admin's email address</strong> (not your own) and use their FIDO2/WebAuthn security key to authenticate.
@@ -165,20 +165,29 @@ const AdminVerificationModal = ({
                             </div>
 
                             {/* Email Input */}
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Admin Email
-                                </label>
-                                <input
-                                    type="email"
-                                    value={adminEmail}
-                                    onChange={(e) => setAdminEmail(e.target.value)}
-                                    placeholder={currentUser?.role === 'admin' ? currentUser.email : 'Enter admin email'}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    required
-                                    disabled={isVerifying}
-                                />
-                            </div>
+                            {currentUser?.role === 'admin' ? (
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-600 mb-2">Authenticating as:</p>
+                                    <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
+                                        {adminEmail}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Admin Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={adminEmail}
+                                        onChange={(e) => setAdminEmail(e.target.value)}
+                                        placeholder="Enter admin email"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        required
+                                        disabled={isVerifying}
+                                    />
+                                </div>
+                            )}
 
                             {/* Error message */}
                             {error && (

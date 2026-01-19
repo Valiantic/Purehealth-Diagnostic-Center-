@@ -138,7 +138,13 @@ exports.createTransaction = async (req, res) => {
       }
     }
 
-    console.log(`Using mcNo: ${generatedMcNo}`);
+    // Fetch referral fee percentage from settings
+    const { Settings } = require('../models');
+    const referralSetting = await Settings.findOne({
+      where: { settingKey: 'referral_fee_percentage' },
+      transaction: t
+    });
+    const referralFeePercentage = referralSetting ? parseFloat(referralSetting.settingValue) : 20.00;
 
     // Create the transaction record with retry logic for duplicate mcNo
     let transaction;
@@ -163,7 +169,8 @@ exports.createTransaction = async (req, res) => {
           totalGCashAmount,
           totalBalanceAmount,
           status: 'active',
-          userId
+          userId,
+          referralFeePercentage: referralFeePercentage
         }, { transaction: t });
 
         console.log(`Created transaction with ID: ${transaction.transactionId}`);
@@ -314,6 +321,14 @@ exports.getAllTransactions = async (req, res) => {
 
       whereClause.transactionDate = {
         [Op.between]: [startDate, endDate]
+      };
+    } else if (req.query.month && req.query.year) {
+      // Filter by specific month and year
+      whereClause.transactionDate = {
+        [Op.and]: [
+          sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), req.query.month),
+          sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), req.query.year)
+        ]
       };
     }
 

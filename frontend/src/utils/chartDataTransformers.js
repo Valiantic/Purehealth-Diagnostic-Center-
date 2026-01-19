@@ -1,4 +1,4 @@
-import { forecastNextDay } from './smaForecasting';
+import { forecastNextDay } from './seasonalForecasting';
 
 // Chart color palette
 export const chartColors = {

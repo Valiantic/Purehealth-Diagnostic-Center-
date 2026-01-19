@@ -80,17 +80,77 @@ const DailyIncomeBreakdownModal = ({
         dateRow.getCell(1).value = `Date: ${new Date(selectedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
         dateRow.getCell(1).font = { bold: true };
 
+        let currentRowIdx = 5;
+
+        // --- Transactions Section (First - if present) ---
+        if (hasTransactions) {
+            // Transaction Title
+            const txnTitleRow = worksheet.getRow(currentRowIdx);
+            txnTitleRow.getCell(1).value = 'TRANSACTION DETAILS';
+            txnTitleRow.getCell(1).fill = headerFill;
+            txnTitleRow.getCell(1).font = headerFont;
+            txnTitleRow.getCell(1).alignment = centerAlign;
+            worksheet.mergeCells(currentRowIdx, 1, currentRowIdx, totalCols);
+            currentRowIdx++;
+
+            const txnHeaderRow = worksheet.getRow(currentRowIdx);
+            const txnHeaders = ['OR#', 'Patient Name', ...breakdownData.departmentRevenues.map(d => d.departmentName), 'Gross', 'Referrer'];
+
+            txnHeaders.forEach((h, i) => {
+                const cell = txnHeaderRow.getCell(i + 1);
+                cell.value = h;
+                cell.fill = headerFill;
+                cell.font = headerFont;
+                cell.border = borderStyle;
+                cell.alignment = centerAlign;
+            });
+            currentRowIdx++;
+
+            breakdownData.transactions.forEach(txn => {
+                const row = worksheet.getRow(currentRowIdx);
+                row.getCell(1).value = txn.mcNo;
+                row.getCell(1).border = borderStyle;
+                row.getCell(2).value = `${txn.firstName} ${txn.lastName}`;
+                row.getCell(2).border = borderStyle;
+
+                let col = 3;
+                breakdownData.departmentRevenues.forEach(dept => {
+                    const amount = txn.departmentAmounts?.[dept.departmentName] || 0;
+                    const cell = row.getCell(col);
+                    cell.value = amount > 0 ? parseFloat(amount) : '';
+                    if (amount > 0) cell.numFmt = '#,##0.00';
+                    cell.border = borderStyle;
+                    col++;
+                });
+
+                const grossCell = row.getCell(col);
+                grossCell.value = parseFloat(txn.totalAmount || 0);
+                grossCell.numFmt = '#,##0.00';
+                grossCell.font = { bold: true };
+                grossCell.border = borderStyle;
+                col++;
+
+                const refCell = row.getCell(col);
+                refCell.value = txn.referrerName || '';
+                refCell.border = borderStyle;
+
+                currentRowIdx++;
+            });
+
+            currentRowIdx += 2; // Spacer before revenue section
+        }
+
         // --- Report Section ---
-        const revStartRow = 5;
-        const revTitleRow = worksheet.getRow(revStartRow);
+        const revTitleRow = worksheet.getRow(currentRowIdx);
         revTitleRow.getCell(1).value = labels.title.toUpperCase();
         revTitleRow.getCell(1).fill = headerFill;
         revTitleRow.getCell(1).font = headerFont;
         revTitleRow.getCell(1).alignment = centerAlign;
-        worksheet.mergeCells(revStartRow, 1, revStartRow, 3); // Spans 3 columns for revenue table
+        worksheet.mergeCells(currentRowIdx, 1, currentRowIdx, 3); // Spans 3 columns for revenue table
+        currentRowIdx++;
 
         // Headers
-        const revHeaderRow = worksheet.getRow(revStartRow + 1);
+        const revHeaderRow = worksheet.getRow(currentRowIdx);
         revHeaderRow.getCell(1).value = 'Description';
         revHeaderRow.getCell(2).value = labels.col1;
         revHeaderRow.getCell(3).value = labels.col2;
@@ -101,8 +161,7 @@ const DailyIncomeBreakdownModal = ({
             cell.border = borderStyle;
             cell.alignment = centerAlign;
         });
-
-        let currentRowIdx = revStartRow + 2;
+        currentRowIdx++;
 
         const addRow = (label, val1, val2, isTotal = false, isHeader = false) => {
             const row = worksheet.getRow(currentRowIdx);
@@ -157,11 +216,7 @@ const DailyIncomeBreakdownModal = ({
         // Expenses Section (if exists)
         if (breakdownData.departmentExpenses && breakdownData.departmentExpenses.length > 0) {
             currentRowIdx++; // Spacer
-            const expStartRow = currentRowIdx;
             // Expense Header
-            /* 
-               We might want to render just an Expenses grouping row similar to Revenue
-            */
             addRow('Expenses', '', '', true, true);
 
             breakdownData.departmentExpenses.forEach(exp => {
@@ -186,55 +241,6 @@ const DailyIncomeBreakdownModal = ({
         }
 
         currentRowIdx += 2; // Spacer
-
-        // --- Transactions Section (Only if present) ---
-        if (hasTransactions) {
-            const txnHeaderRow = worksheet.getRow(currentRowIdx);
-            const txnHeaders = ['OR#', 'Patient Name', ...breakdownData.departmentRevenues.map(d => d.departmentName), 'Gross', 'Referrer'];
-
-            txnHeaders.forEach((h, i) => {
-                const cell = txnHeaderRow.getCell(i + 1);
-                cell.value = h;
-                cell.fill = headerFill;
-                cell.font = headerFont;
-                cell.border = borderStyle;
-                cell.alignment = centerAlign;
-            });
-            currentRowIdx++;
-
-            breakdownData.transactions.forEach(txn => {
-                const row = worksheet.getRow(currentRowIdx);
-                row.getCell(1).value = txn.mcNo;
-                row.getCell(1).border = borderStyle;
-                row.getCell(2).value = `${txn.firstName} ${txn.lastName}`;
-                row.getCell(2).border = borderStyle;
-
-                let col = 3;
-                breakdownData.departmentRevenues.forEach(dept => {
-                    const amount = txn.departmentAmounts?.[dept.departmentName] || 0;
-                    const cell = row.getCell(col);
-                    cell.value = amount > 0 ? parseFloat(amount) : '';
-                    if (amount > 0) cell.numFmt = '#,##0.00';
-                    cell.border = borderStyle;
-                    col++;
-                });
-
-                const grossCell = row.getCell(col);
-                grossCell.value = parseFloat(txn.totalAmount || 0);
-                grossCell.numFmt = '#,##0.00';
-                grossCell.font = { bold: true };
-                grossCell.border = borderStyle;
-                col++;
-
-                const refCell = row.getCell(col);
-                refCell.value = txn.referrerName || '';
-                refCell.border = borderStyle;
-
-                currentRowIdx++;
-            });
-
-            currentRowIdx += 3; // Spacer
-        }
 
         // --- Signatures ---
         const sigRow1 = worksheet.getRow(currentRowIdx);
@@ -299,6 +305,48 @@ const DailyIncomeBreakdownModal = ({
 
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                    {/* Transactions Table (First - if present) */}
+                    {breakdownData.transactions && breakdownData.transactions.length > 0 && (
+                        <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
+                            <div className="bg-green-800 text-white px-4 py-2 font-semibold">
+                                Transaction Details
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                    <thead>
+                                        <tr className="bg-green-700 text-white text-xs uppercase">
+                                            <th className="px-3 py-2 text-left font-semibold">OR#</th>
+                                            <th className="px-3 py-2 text-left font-semibold">Patient Name</th>
+                                            {breakdownData.departmentRevenues.map((dept, index) => (
+                                                <th key={index} className="px-3 py-2 text-right font-semibold">{dept.departmentName}</th>
+                                            ))}
+                                            <th className="px-3 py-2 text-right font-semibold bg-green-900">Gross</th>
+                                            <th className="px-3 py-2 text-left font-semibold">Referrer</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {breakdownData.transactions.map((txn, index) => (
+                                            <tr key={index} className="hover:bg-gray-50">
+                                                <td className="px-3 py-2 font-mono text-gray-600">{txn.mcNo}</td>
+                                                <td className="px-3 py-2 font-medium text-gray-800">{txn.firstName} {txn.lastName}</td>
+                                                {breakdownData.departmentRevenues.map((dept, deptIndex) => {
+                                                    const amount = txn.departmentAmounts?.[dept.departmentName] || 0;
+                                                    return (
+                                                        <td key={deptIndex} className="px-3 py-2 text-right text-gray-600">
+                                                            {amount > 0 ? parseFloat(amount).toFixed(2) : ''}
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td className="px-3 py-2 text-right font-bold text-green-800 bg-green-50">{parseFloat(txn.totalAmount || 0).toFixed(2)}</td>
+                                                <td className="px-3 py-2 text-gray-600">{txn.referrerName || ''}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Report Bar */}
                     <div className="bg-green-800 text-white text-center py-2 mb-0 font-semibold uppercase tracking-wide rounded-t-lg">
                         {labels.title}
@@ -377,48 +425,6 @@ const DailyIncomeBreakdownModal = ({
                             </tbody>
                         </table>
                     </div>
-
-                    {/* Transactions Table (Only if present) */}
-                    {breakdownData.transactions && breakdownData.transactions.length > 0 && (
-                        <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
-                            <div className="bg-green-800 text-white px-4 py-2 font-semibold">
-                                Transaction Details
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-sm">
-                                    <thead>
-                                        <tr className="bg-green-700 text-white text-xs uppercase">
-                                            <th className="px-3 py-2 text-left font-semibold">OR#</th>
-                                            <th className="px-3 py-2 text-left font-semibold">Patient Name</th>
-                                            {breakdownData.departmentRevenues.map((dept, index) => (
-                                                <th key={index} className="px-3 py-2 text-right font-semibold">{dept.departmentName}</th>
-                                            ))}
-                                            <th className="px-3 py-2 text-right font-semibold bg-green-900">Gross</th>
-                                            <th className="px-3 py-2 text-left font-semibold">Referrer</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {breakdownData.transactions.map((txn, index) => (
-                                            <tr key={index} className="hover:bg-gray-50">
-                                                <td className="px-3 py-2 font-mono text-gray-600">{txn.mcNo}</td>
-                                                <td className="px-3 py-2 font-medium text-gray-800">{txn.firstName} {txn.lastName}</td>
-                                                {breakdownData.departmentRevenues.map((dept, deptIndex) => {
-                                                    const amount = txn.departmentAmounts?.[dept.departmentName] || 0;
-                                                    return (
-                                                        <td key={deptIndex} className="px-3 py-2 text-right text-gray-600">
-                                                            {amount > 0 ? parseFloat(amount).toFixed(2) : ''}
-                                                        </td>
-                                                    );
-                                                })}
-                                                <td className="px-3 py-2 text-right font-bold text-green-800 bg-green-50">{parseFloat(txn.totalAmount || 0).toFixed(2)}</td>
-                                                <td className="px-3 py-2 text-gray-600">{txn.referrerName || ''}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Signature Section */}
                     <div className="grid grid-cols-2 gap-8 mt-12 mb-4 px-8">
