@@ -138,7 +138,13 @@ exports.createTransaction = async (req, res) => {
       }
     }
 
-    console.log(`Using mcNo: ${generatedMcNo}`);
+    // Fetch referral fee percentage from settings
+    const { Settings } = require('../models');
+    const referralSetting = await Settings.findOne({
+      where: { settingKey: 'referral_fee_percentage' },
+      transaction: t
+    });
+    const referralFeePercentage = referralSetting ? parseFloat(referralSetting.settingValue) : 20.00;
 
     // Create the transaction record with retry logic for duplicate mcNo
     let transaction;
@@ -163,7 +169,8 @@ exports.createTransaction = async (req, res) => {
           totalGCashAmount,
           totalBalanceAmount,
           status: 'active',
-          userId
+          userId,
+          referralFeePercentage: referralFeePercentage
         }, { transaction: t });
 
         console.log(`Created transaction with ID: ${transaction.transactionId}`);
@@ -184,7 +191,7 @@ exports.createTransaction = async (req, res) => {
           // Generate a new MC number by querying again with lock
           const retryHighest = await Transaction.findOne({
             attributes: ['mcNo'],
-            order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+            order: [[sequelize.literal('CAST(mcNo AS UNSIGNED)'), 'DESC']],
             lock: t.LOCK.UPDATE,
             transaction: t
           });
@@ -314,6 +321,14 @@ exports.getAllTransactions = async (req, res) => {
 
       whereClause.transactionDate = {
         [Op.between]: [startDate, endDate]
+      };
+    } else if (req.query.month && req.query.year) {
+      // Filter by specific month and year
+      whereClause.transactionDate = {
+        [Op.and]: [
+          sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), req.query.month),
+          sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), req.query.year)
+        ]
       };
     }
 
@@ -851,6 +866,48 @@ exports.checkMcNoExists = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to check MC number',
+      error: error.message
+    });
+  }
+};
+
+// Get the next available MC number from database
+exports.getNextMcNo = async (req, res) => {
+  try {
+    // Find the highest mcNo in the database
+    // Use CAST for PostgreSQL compatibility (works for both MySQL and PostgreSQL)
+    const highestMcTransaction = await Transaction.findOne({
+      attributes: ['mcNo'],
+      order: [[sequelize.literal('CAST("mcNo" AS INTEGER)'), 'DESC']],
+      where: {
+        status: 'active' // Only consider active transactions
+      }
+    });
+
+    console.log('Highest MC Transaction:', highestMcTransaction);
+
+    let nextMcNo;
+    if (highestMcTransaction && highestMcTransaction.mcNo) {
+      // Convert string to number, increment, then format back to string with leading zeros
+      const currentNumber = parseInt(highestMcTransaction.mcNo, 10);
+      const nextNumber = currentNumber + 1;
+      nextMcNo = String(nextNumber).padStart(5, '0');
+      console.log(`Current highest: ${currentNumber}, Next mcNo: ${nextMcNo}`);
+    } else {
+      // If no existing transactions, start from 04101
+      nextMcNo = '04101';
+      console.log('No transactions found, starting from 04101');
+    }
+
+    res.json({
+      success: true,
+      mcNo: nextMcNo
+    });
+  } catch (error) {
+    console.error('Error getting next MC number:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get next MC number',
       error: error.message
     });
   }

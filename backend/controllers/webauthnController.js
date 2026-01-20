@@ -130,8 +130,10 @@ async function tempRegistrationVerify(req, res) {
         role: userData.role || 'receptionist' // Use provided role or default to receptionist
       });
       
-      // Instead of updating the existing authenticator object, create a new one with the real user ID
-      const authenticatorData = verification.authenticator.get({ plain: true });
+      // Get the authenticator data (either from Sequelize model or plain object)
+      const authenticatorData = verification.authenticator.get
+        ? verification.authenticator.get({ plain: true })
+        : verification.authenticator.get();
       
       // Create a new authenticator record with the real user ID
       await Authenticator.create({
@@ -337,6 +339,16 @@ async function authenticationVerify(req, res) {
         message: 'Authentication failed'
       });
     }
+    
+    // Log successful login activity
+    await logActivity({
+      userId: user.userId,
+      action: 'LOGIN',
+      resourceType: 'USER',
+      resourceId: user.userId,
+      details: `User logged in successfully: ${user.firstName} ${user.lastName} (${user.email})`,
+      ipAddress: req.ip
+    });
 
     res.json({
       success: true,

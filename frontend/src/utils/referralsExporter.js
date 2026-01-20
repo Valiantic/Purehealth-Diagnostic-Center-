@@ -1,9 +1,9 @@
 import ExcelJS from 'exceljs';
 
 export const exportReferralsToExcel = async (
-  filteredReferrers, 
-  allReferrerTransactions, 
-  renderableDepartments, 
+  filteredReferrers,
+  allReferrerTransactions,
+  renderableDepartments,
   selectedDate,
   calculateReferrerTotals,
   getTestsForDepartment,
@@ -112,7 +112,7 @@ export const exportReferralsToExcel = async (
             const deptId = String(department.departmentId);
             const testsForDepartment = getTestsForDepartment(transaction, deptId);
             const testTotalAmount = testsForDepartment.reduce(
-              (sum, test) => sum + parseFloat(test.discountedPrice || 0), 
+              (sum, test) => sum + parseFloat(test.discountedPrice || 0),
               0
             );
 
@@ -167,7 +167,7 @@ export const exportReferralsToExcel = async (
       }
 
       // Calculate totals and rebates
-      const { testDetailTotals } = referrerTransactions.length 
+      const { testDetailTotals } = referrerTransactions.length
         ? calculateReferrerTotals(referrerTransactions)
         : { testDetailTotals: {} };
 
@@ -214,9 +214,9 @@ export const exportReferralsToExcel = async (
 
       currentRow += 1;
 
-      // REBATES row (dynamic percentage)
+      // REBATES row
       const rebateCell1 = worksheet.getCell(currentRow, 1);
-      rebateCell1.value = `REBATES (${referralFeePercentage}%):`;
+      rebateCell1.value = `REBATES:`;
       rebateCell1.font = { bold: true, color: { argb: 'FF166534' } };
       rebateCell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       rebateCell1.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -237,11 +237,18 @@ export const exportReferralsToExcel = async (
         right: { style: 'thin', color: { argb: 'FF166534' } }
       };
 
-      // Department rebates (dynamic percentage of each department total)
+      // Department rebates (calculated per transaction using their respective rates)
       renderableDepartments.forEach((department, deptIndex) => {
         const deptId = String(department.departmentId);
-        const deptTotal = testDetailTotals[deptId] || 0;
-        const deptRebate = deptTotal * (referralFeePercentage / 100);
+
+        const deptRebate = referrerTransactions.reduce((sum, trans) => {
+          const tests = getTestsForDepartment(trans, deptId);
+          const deptTotal = tests.reduce((s, t) => s + parseFloat(t.discountedPrice || 0), 0);
+          const rate = (trans.referralFeePercentage !== undefined && trans.referralFeePercentage !== null)
+            ? parseFloat(trans.referralFeePercentage)
+            : referralFeePercentage;
+          return sum + (deptTotal * (rate / 100));
+        }, 0);
 
         const rebateCell = worksheet.getCell(currentRow, 3 + deptIndex);
         rebateCell.value = deptRebate > 0 ? deptRebate.toFixed(2) : '';
@@ -259,10 +266,14 @@ export const exportReferralsToExcel = async (
       currentRow += 1;
 
       // TOTAL REBATES row
-      const grandTotal = Object.values(testDetailTotals).reduce(
-        (sum, amount) => sum + parseFloat(amount || 0), 0
-      );
-      const totalRebates = grandTotal * (referralFeePercentage / 100);
+      const totalRebates = referrerTransactions.reduce((sum, trans) => {
+        const tests = trans.TestDetails || [];
+        const transTotal = tests.reduce((s, t) => s + parseFloat(t.discountedPrice || 0), 0);
+        const rate = (trans.referralFeePercentage !== undefined && trans.referralFeePercentage !== null)
+          ? parseFloat(trans.referralFeePercentage)
+          : referralFeePercentage;
+        return sum + (transTotal * (rate / 100));
+      }, 0);
 
       worksheet.mergeCells(currentRow, 1, currentRow, totalColumns);
       const totalRebatesCell = worksheet.getCell(currentRow, 1);

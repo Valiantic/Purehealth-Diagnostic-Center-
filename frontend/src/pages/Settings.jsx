@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/dashboard/Sidebar'
@@ -709,8 +710,8 @@ const Settings = () => {
                           <Key className="w-6 h-6 text-orange-700" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-gray-500 font-medium">Change Passkey</p>
-                          <p className="text-base font-semibold text-gray-800">Update Security</p>
+                          <p className="text-sm text-gray-500 font-medium">Manage Passkeys</p>
+                          <p className="text-base font-semibold text-gray-800">Add or Remove</p>
                         </div>
                       </div>
                     </div>
@@ -800,13 +801,13 @@ const Settings = () => {
                             <div className="space-y-3">
                               <input
                                 type="text"
-                                value={editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName}
+                                value={editingDiscountData[category.discountCategoryId]?.categoryName ?? category.categoryName}
                                 onChange={(e) => setEditingDiscountData({
                                   ...editingDiscountData,
                                   [category.discountCategoryId]: {
                                     ...editingDiscountData[category.discountCategoryId],
                                     categoryName: e.target.value,
-                                    percentage: editingDiscountData[category.discountCategoryId]?.percentage || category.percentage
+                                    percentage: editingDiscountData[category.discountCategoryId]?.percentage ?? category.percentage
                                   }
                                 })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
@@ -815,12 +816,12 @@ const Settings = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="number"
-                                    value={editingDiscountData[category.discountCategoryId]?.percentage || category.percentage}
+                                    value={editingDiscountData[category.discountCategoryId]?.percentage ?? category.percentage}
                                     onChange={(e) => setEditingDiscountData({
                                       ...editingDiscountData,
                                       [category.discountCategoryId]: {
                                         ...editingDiscountData[category.discountCategoryId],
-                                        categoryName: editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName,
+                                        categoryName: editingDiscountData[category.discountCategoryId]?.categoryName ?? category.categoryName,
                                         percentage: e.target.value
                                       }
                                     })}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
@@ -5,7 +6,7 @@ import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import DailyIncomeBreakdownModal from '../components/transaction/DailyIncomeBreakdownModal';
-import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI, userAPI } from '../services/api';
+import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI, userAPI, transactionAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
 import { exportMonthlyIncomeToExcel } from '../utils/monthlyIncomeExporter';
 import { useQuery } from '@tanstack/react-query';
@@ -286,7 +287,16 @@ const Monthly = () => {
         return;
       }
 
-      setCachedReportData({ allCollectibles, profitLossData });
+      // Fetch all transactions for the month for the export detail
+      // Using a high limit to get all transactions for the month
+      const transResponse = await transactionAPI.getAllTransactions({
+        month: currentDate.month,
+        year: currentDate.year,
+        limit: 2000
+      });
+      const allTransactions = transResponse?.data?.data?.transactions || transResponse?.data?.transactions || [];
+
+      setCachedReportData({ allCollectibles, profitLossData, allTransactions });
 
       // Prepare Labels
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -343,7 +353,14 @@ const Monthly = () => {
   const handleModalExport = async () => {
     try {
       if (!cachedReportData) return;
-      await exportMonthlyIncomeToExcel(monthlyData, monthlySummary, cachedReportData.allCollectibles, currentMonth, cachedReportData.profitLossData);
+      await exportMonthlyIncomeToExcel(
+        monthlyData,
+        monthlySummary,
+        cachedReportData.allCollectibles,
+        currentMonth,
+        cachedReportData.profitLossData,
+        cachedReportData.allTransactions
+      );
       toast.success('Monthly Income Report exported successfully!');
     } catch (error) {
       console.error('Error exporting:', error);

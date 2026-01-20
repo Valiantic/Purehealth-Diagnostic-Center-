@@ -239,6 +239,9 @@ export const transactionAPI = {
     if (params.limit) queryParams.append('limit', params.limit);
     if (params.status) queryParams.append('status', params.status); // Only include if explicitly set
     if (params.date) queryParams.append('date', params.date);
+    if (params.month) queryParams.append('month', params.month);
+    if (params.year) queryParams.append('year', params.year);
+    if (params.includeDetails) queryParams.append('includeDetails', params.includeDetails);
 
     return apiClient.get(`/transactions?${queryParams}`);
   },

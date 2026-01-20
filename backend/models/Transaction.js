@@ -38,7 +38,7 @@ module.exports = (sequelize) => {
       defaultValue: 'XXXX-XXXX'
     },
     referrerId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       references: null // Disable automatic reference creation
     },
@@ -86,13 +86,18 @@ module.exports = (sequelize) => {
       defaultValue: 'active'
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: null // Disable automatic reference creation
+    },
+    referralFeePercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 20.00
     }
   }, {
     timestamps: true,
-    tableName: 'Transactions', 
+    tableName: 'Transactions',
     freezeTableName: true,
     indexes: [
       {

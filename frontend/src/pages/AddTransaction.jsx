@@ -766,7 +766,7 @@ const NewAddTransaction = () => {
                     {testsTable.length > 0 && (
                       <tr className="bg-gray-100 font-semibold">
                         <td className="p-2">TOTAL:</td>
-                        <td className="p-2 text-right">₱{totals.totalPrice}</td>
+                        <td className="p-2 text-right"></td>
                         <td className="p-2 text-right">₱{totals.totalCash}</td>
                         <td className="p-2 text-right">₱{totals.totalGCash}</td>
                         <td className="p-2 text-right">₱{totals.totalBalance}</td>

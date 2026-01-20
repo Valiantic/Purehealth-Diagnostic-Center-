@@ -5,11 +5,11 @@ const { Op } = require('sequelize');
 exports.getMonthlyIncome = async (req, res) => {
   try {
     const { month, year } = req.query;
-    
+
     if (!month || !year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Month and year parameters are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year parameters are required'
       });
     }
 
@@ -17,9 +17,9 @@ exports.getMonthlyIncome = async (req, res) => {
     const yearInt = parseInt(year);
 
     if (isNaN(monthInt) || isNaN(yearInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid month or year format' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid month or year format'
       });
     }
 
@@ -36,7 +36,7 @@ exports.getMonthlyIncome = async (req, res) => {
     const startDate = new Date(yearInt, monthInt - 1, 1);
     const endDate = new Date(yearInt, monthInt, 0);
     endDate.setHours(23, 59, 59, 999);
-    
+
     // Find all days in the month that have non-cancelled transactions
     const daysWithTransactions = await Transaction.findAll({
       where: {
@@ -44,7 +44,7 @@ exports.getMonthlyIncome = async (req, res) => {
           [Op.between]: [startDate, endDate]
         },
         status: {
-          [Op.ne]: 'cancelled' 
+          [Op.ne]: 'cancelled'
         }
       },
       attributes: [
@@ -54,21 +54,21 @@ exports.getMonthlyIncome = async (req, res) => {
       order: [[sequelize.fn('DATE', sequelize.col('transactionDate')), 'ASC']],
       raw: true
     });
-    
+
     // Get all unique dates
     const uniqueDates = daysWithTransactions.map(d => d.date);
-    
+
     const result = [];
-    
+
     for (const dateString of uniqueDates) {
       const currentDate = new Date(dateString);
-      
+
       const dayStart = new Date(currentDate);
       dayStart.setHours(0, 0, 0, 0);
-      
+
       const dayEnd = new Date(currentDate);
       dayEnd.setHours(23, 59, 59, 999);
-      
+
       // Get only non-cancelled transactions for this day
       const activeTransactions = await Transaction.findAll({
         where: {
@@ -79,12 +79,12 @@ exports.getMonthlyIncome = async (req, res) => {
             [Op.notIn]: ['cancelled']
           }
         },
-        attributes: ['transactionId', 'totalGCashAmount'],
+        attributes: ['transactionId', 'totalGCashAmount', 'totalDiscountAmount'],
         raw: true
       });
-      
+
       const transactionIds = activeTransactions.map(t => t.transactionId);
-      
+
       // Get only valid test details (not cancelled, not refunded, no balance)
       const validTestDetails = await TestDetails.findAll({
         where: {
@@ -102,18 +102,18 @@ exports.getMonthlyIncome = async (req, res) => {
         ],
         raw: true
       });
-      
+
       // Calculate department-specific revenues
       const departmentRevenues = {};
       departments.forEach(dept => {
-        departmentRevenues[dept.departmentId] = 0; 
+        departmentRevenues[dept.departmentId] = 0;
       });
-      
+
       // Sum up revenues by department (using only valid tests)
       validTestDetails.forEach(detail => {
         const deptId = detail.departmentId;
         const amount = parseFloat(detail.discountedPrice || 0);
-        
+
         // Add to department total
         if (departmentRevenues[deptId] !== undefined) {
           departmentRevenues[deptId] += amount;
@@ -121,32 +121,32 @@ exports.getMonthlyIncome = async (req, res) => {
           departmentRevenues[deptId] = amount;
         }
       });
-      
-      // Calculate gross amount ONLY from valid test details
-      const dailyGrossAmount = validTestDetails.reduce((sum, detail) => {
-        return sum + parseFloat(detail.discountedPrice || 0);
+
+      // Calculate gross amount from totalDiscountAmount (the actual amount due after discounts)
+      const dailyGrossAmount = activeTransactions.reduce((sum, transaction) => {
+        return sum + parseFloat(transaction.totalDiscountAmount || 0);
       }, 0);
-      
+
       let dailyGCashAmount = activeTransactions.reduce((sum, transaction) => {
         return sum + parseFloat(transaction.totalGCashAmount || 0);
       }, 0);
-      
+
       // Format the date to YYYY-MM-DD for consistent sorting
       const formattedDate = currentDate.toISOString().split('T')[0];
-      
+
       // Create the result object for this day
       const dayResult = {
         date: formattedDate,
         day: currentDate.getDate(),
         grossAmount: dailyGrossAmount,
         gCashAmount: dailyGCashAmount,
-        departments: { ...departmentRevenues } 
+        departments: { ...departmentRevenues }
       };
-      
+
       // Add to results array
       result.push(dayResult);
     }
-    
+
     // Sort the result by date
     result.sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -171,11 +171,11 @@ exports.getMonthlyIncome = async (req, res) => {
 exports.getMonthlyIncomeSummary = async (req, res) => {
   try {
     const { month, year } = req.query;
-    
+
     if (!month || !year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Month and year parameters are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year parameters are required'
       });
     }
 
@@ -193,15 +193,15 @@ exports.getMonthlyIncomeSummary = async (req, res) => {
           [Op.between]: [startDate, endDate]
         },
         status: {
-          [Op.notIn]: ['cancelled']  
+          [Op.notIn]: ['cancelled']
         }
       },
       attributes: ['transactionId'],
       raw: true
     }).then(results => results.map(t => t.transactionId));
-    
+
     console.log(`Found ${activeTransactionIds.length} active transaction IDs`);
-    
+
     if (activeTransactionIds.length === 0) {
       return res.status(200).json({
         success: true,
@@ -219,7 +219,7 @@ exports.getMonthlyIncomeSummary = async (req, res) => {
         }
       });
     }
-    
+
     const activeTestDetails = await TestDetails.findAll({
       where: {
         transactionId: {
@@ -237,43 +237,44 @@ exports.getMonthlyIncomeSummary = async (req, res) => {
       raw: true
     });
 
-    const totalGross = activeTestDetails.reduce((sum, detail) => {
-      return sum + parseFloat(detail.discountedPrice || 0);
-    }, 0);
-    
     const activeTransactions = await Transaction.findAll({
       where: {
         transactionId: {
           [Op.in]: activeTransactionIds
         }
       },
-      attributes: ['transactionId', 'totalGCashAmount', 'totalCashAmount'],
+      attributes: ['transactionId', 'totalGCashAmount', 'totalCashAmount', 'totalDiscountAmount'],
       raw: true
     });
-    
+
+    // Calculate totalGross from totalDiscountAmount (the actual amount due after discounts)
+    const totalGross = activeTransactions.reduce((sum, transaction) => {
+      return sum + parseFloat(transaction.totalDiscountAmount || 0);
+    }, 0);
+
     let totalGCash = activeTransactions.reduce((sum, transaction) => {
       return sum + parseFloat(transaction.totalGCashAmount || 0);
     }, 0);
-    
+
     let totalCash = activeTransactions.reduce((sum, transaction) => {
       return sum + parseFloat(transaction.totalCashAmount || 0);
     }, 0);
-    
+
     const departments = await Department.findAll({
       where: { status: 'active' },
       attributes: ['departmentId', 'departmentName'],
       raw: true
     });
-    
+
     const departmentSummary = {};
     departments.forEach(dept => {
       departmentSummary[dept.departmentId] = 0;
     });
-    
+
     activeTestDetails.forEach(detail => {
       const deptId = detail.departmentId;
       const amount = parseFloat(detail.discountedPrice || 0);
-      
+
       if (departmentSummary[deptId] !== undefined) {
         departmentSummary[deptId] += amount;
       } else {
@@ -282,7 +283,7 @@ exports.getMonthlyIncomeSummary = async (req, res) => {
     });
 
     console.log(`Monthly Summary: Total Gross: ${totalGross.toFixed(2)}`);
-    
+
     return res.status(200).json({
       success: true,
       data: {
