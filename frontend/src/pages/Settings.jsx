@@ -35,6 +35,7 @@ const Settings = () => {
   const [newDiscount, setNewDiscount] = useState({ categoryName: '', percentage: '' })
   const [editingDiscountId, setEditingDiscountId] = useState(null)
   const [editingDiscountData, setEditingDiscountData] = useState({})
+  const [isSavingDiscount, setIsSavingDiscount] = useState(false)
 
   // Referral fee state
   const [referralFee, setReferralFee] = useState(12)
@@ -194,6 +195,16 @@ const Settings = () => {
       return;
     }
 
+    // Set loading state and show info toast
+    setIsSavingDiscount(true);
+    toast.info('Please authenticate with your passkey...', {
+      position: "top-center",
+      autoClose: false,
+      closeButton: false,
+      draggable: false,
+      toastId: 'auth-loading'
+    });
+
     // If admin is logged in, trigger WebAuthn directly
     if (user?.role === 'admin') {
       try {
@@ -203,6 +214,8 @@ const Settings = () => {
         });
 
         if (!optionsResponse.data.success) {
+          toast.dismiss('auth-loading');
+          setIsSavingDiscount(false);
           toast.error('Failed to generate authentication options');
           return;
         }
@@ -220,6 +233,8 @@ const Settings = () => {
         });
 
         if (!verifyResponse.data.success) {
+          toast.dismiss('auth-loading');
+          setIsSavingDiscount(false);
           toast.error('Authentication failed');
           return;
         }
@@ -230,13 +245,18 @@ const Settings = () => {
         });
 
         if (roleVerifyResponse.data.success && roleVerifyResponse.data.isAdmin) {
+          toast.dismiss('auth-loading');
           // Admin verified - execute add discount
           await executeAddDiscount();
         } else {
+          toast.dismiss('auth-loading');
+          setIsSavingDiscount(false);
           toast.error('Admin privileges required');
         }
       } catch (error) {
         console.error('Admin verification error:', error);
+        toast.dismiss('auth-loading');
+        setIsSavingDiscount(false);
 
         // Handle cancellation or timeout specifically
         if (error.name === 'NotAllowedError' || error.message.includes('timed out') || error.message.includes('not allowed')) {
@@ -247,6 +267,7 @@ const Settings = () => {
       }
     } else {
       // Receptionist - show modal for admin verification
+      toast.dismiss('auth-loading');
       setPendingDiscountAdd(() => executeAddDiscount);
       setShowAdminVerifyModal(true);
     }
@@ -257,16 +278,19 @@ const Settings = () => {
     // If form is empty, just show the form
     if (!newDiscount.categoryName && !newDiscount.percentage) {
       setNewDiscount({ categoryName: '', percentage: '20' });
+      setIsSavingDiscount(false);
       return;
     }
 
     if (!newDiscount.categoryName || !newDiscount.percentage) {
+      setIsSavingDiscount(false);
       toast.error('Please fill in all fields', { position: "top-right", autoClose: 3000 });
       return;
     }
 
     const percentage = parseFloat(newDiscount.percentage);
     if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+      setIsSavingDiscount(false);
       toast.error('Percentage must be between 0 and 100', { position: "top-right", autoClose: 3000 });
       return;
     }
@@ -278,11 +302,13 @@ const Settings = () => {
       );
 
       if (response.data && response.data.success) {
+        setIsSavingDiscount(false);
         toast.success('Discount category added successfully', { position: "top-right", autoClose: 3000 });
         setNewDiscount({ categoryName: '', percentage: '' });
         fetchDiscountCategories();
       }
     } catch (error) {
+      setIsSavingDiscount(false);
       toast.error(error.response?.data?.message || 'Failed to add discount category', {
         position: "top-right",
         autoClose: 3000
@@ -785,10 +811,23 @@ const Settings = () => {
                   {/* Add Discount Button */}
                   <button
                     onClick={handleAddDiscount}
-                    className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2"
+                    disabled={isSavingDiscount}
+                    className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Plus className="w-5 h-5" />
-                    <span className="font-medium">Add Discount</span>
+                    {isSavingDiscount ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="font-medium">Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5" />
+                        <span className="font-medium">Add Discount</span>
+                      </>
+                    )}
                   </button>
 
                   {/* Discount Categories Grid */}
