@@ -41,24 +41,55 @@ const Sidebar = () => {
 
   // Build menu items with permission-based dropdown filtering
   const menuItems = useMemo(() => {
-    const transactionDropdown = [
-      hasPermission('transactions.create') && { label: 'Add', icon: addIcon, path: '/add-transaction' },
-      { label: 'Manage', icon: manageIcon, path: '/manage-transaction' }
-    ].filter(Boolean);
+    const items = [];
 
-    const expensesDropdown = [
-      hasPermission('expenses.create') && { label: 'Add', icon: addIcon, path: '/add-expenses' },
-      { label: 'Manage', icon: manageIcon, path: '/manage-expenses' }
-    ].filter(Boolean);
+    // Dashboard - only show if user has dashboard.view permission
+    if (hasPermission('dashboard.view')) {
+      items.push({ title: 'Dashboard', path: '/dashboard', icon: newDashbordIcon });
+    }
 
-    return [
-      { title: 'Dashboard', path: '/dashboard', icon: newDashbordIcon },
-      { title: 'Transaction', path: '/transaction', icon: newTransactionIcon, dropdown: transactionDropdown.length > 0 ? transactionDropdown : undefined },
-      { title: 'Expenses', path: '/expenses', icon: expensesIcon, dropdown: expensesDropdown.length > 0 ? expensesDropdown : undefined },
-      { title: 'Monthly', path: '/monthly-income', icon: annualIcon },
-      { title: 'Referrals', path: '/referrals', icon: referralIcon },
-      { title: 'Settings', path: '/settings', icon: <Settings size={20} /> },
-    ];
+    // Transaction - only show if user has transactions.view permission
+    if (hasPermission('transactions.view')) {
+      const transactionDropdown = [
+        hasPermission('transactions.create') && { label: 'Add', icon: addIcon, path: '/add-transaction' },
+        { label: 'Manage', icon: manageIcon, path: '/manage-transaction' }
+      ].filter(Boolean);
+
+      items.push({
+        title: 'Transaction',
+        path: '/transaction',
+        icon: newTransactionIcon,
+        dropdown: transactionDropdown.length > 0 ? transactionDropdown : undefined
+      });
+    }
+
+    // Expenses - only show if user has expenses.view permission
+    if (hasPermission('expenses.view')) {
+      const expensesDropdown = [
+        hasPermission('expenses.create') && { label: 'Add', icon: addIcon, path: '/add-expenses' },
+        { label: 'Manage', icon: manageIcon, path: '/manage-expenses' }
+      ].filter(Boolean);
+
+      items.push({
+        title: 'Expenses',
+        path: '/expenses',
+        icon: expensesIcon,
+        dropdown: expensesDropdown.length > 0 ? expensesDropdown : undefined
+      });
+    }
+
+    // Monthly Reports - always visible (for now, could add reports.view permission)
+    items.push({ title: 'Monthly', path: '/monthly-income', icon: annualIcon });
+
+    // Referrals - only show if user has referrals.view permission
+    if (hasPermission('referrals.view')) {
+      items.push({ title: 'Referrals', path: '/referrals', icon: referralIcon });
+    }
+
+    // Settings - always visible (individual tabs will have their own permissions)
+    items.push({ title: 'Settings', path: '/settings', icon: <Settings size={20} /> });
+
+    return items;
   }, [hasPermission]);
 
   // ADD ROUTES HERE IF NEW PAGE IS CREATED FOR HOVER ACTIVE

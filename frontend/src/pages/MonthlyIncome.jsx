@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import DailyIncomeBreakdownModal from '../components/transaction/DailyIncomeBreakdownModal';
 import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI, userAPI, transactionAPI } from '../services/api';
@@ -14,6 +15,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
+  const { hasPermission } = usePermissions()
   const navigate = useNavigate()
   const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -718,15 +720,18 @@ const Monthly = () => {
             </div>
           </div>
 
-          {/* Collectible Income Section */}
+          {/* Collectible Income Section - Only show if user has collectible.view permission */}
+          {hasPermission('collectible.view') && (
           <div className="md:flex p-2 gap-2">
             {/* Collectible Income */}
             <div className="md:w-1/2">
               <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
                 <span>Collectible Income</span>
-                <button onClick={handleAddCollectibles} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                  <CirclePlus />
-                </button>
+                {hasPermission('collectible.create') && (
+                  <button onClick={handleAddCollectibles} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                    <CirclePlus />
+                  </button>
+                )}
               </div>
               <div className="border border-green-800 rounded-b">
                 <div className="overflow-x-auto">
@@ -737,13 +742,15 @@ const Monthly = () => {
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Coordinator</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
                         <th className="p-1 border-r border-green-800 text-sm font-medium">Income</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                        {hasPermission('collectible.edit') && (
+                          <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan="5" className="p-2 text-center bg-white">Loading...</td>
+                          <td colSpan={hasPermission('collectible.edit') ? 5 : 4} className="p-2 text-center bg-white">Loading...</td>
                         </tr>
                       ) : collectibles.length > 0 ? (
                         collectibles.map((item) => (
@@ -754,34 +761,36 @@ const Monthly = () => {
                             <td className="p-3 border-r border-green-200 text-center bg-white">
                               {formatCurrency(item.totalIncome)}
                             </td>
-                            <td className="p-3 text-center relative bg-white">
-                              <button
-                                className="text-green-800 hover:text-green-600 p-1"
-                                onClick={() => toggleMenu(item.companyId)}
-                              >
-                                <MoreVertical size={20} />
-                              </button>
+                            {hasPermission('collectible.edit') && (
+                              <td className="p-3 text-center relative bg-white">
+                                <button
+                                  className="text-green-800 hover:text-green-600 p-1"
+                                  onClick={() => toggleMenu(item.companyId)}
+                                >
+                                  <MoreVertical size={20} />
+                                </button>
 
-                              {activeMenu === item.companyId && (
-                                <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                  <ul className="py-1">
-                                    <li>
-                                      <button
-                                        onClick={() => handleEditCollectible(item)}
-                                        className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-100"
-                                      >
-                                        Edit
-                                      </button>
-                                    </li>
-                                  </ul>
-                                </div>
-                              )}
-                            </td>
+                                {activeMenu === item.companyId && (
+                                  <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                                    <ul className="py-1">
+                                      <li>
+                                        <button
+                                          onClick={() => handleEditCollectible(item)}
+                                          className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-100"
+                                        >
+                                          Edit
+                                        </button>
+                                      </li>
+                                    </ul>
+                                  </div>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" className="p-2 text-center text-gray-500 bg-white">No collectible income records found</td>
+                          <td colSpan={hasPermission('collectible.edit') ? 5 : 4} className="p-2 text-center text-gray-500 bg-white">No collectible income records found</td>
                         </tr>
                       )}
 
@@ -792,7 +801,9 @@ const Monthly = () => {
                             <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
                             <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
                             <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
-                            <td className="p-3 bg-white"></td>
+                            {hasPermission('collectible.edit') && (
+                              <td className="p-3 bg-white"></td>
+                            )}
                           </tr>
                         ))
                       }
@@ -833,9 +844,10 @@ const Monthly = () => {
               </div>
             </div>
           </div>
+          )}
 
-          {/* Generate Report Button - Only show if there's data */}
-          {(monthlyData.dailyIncome.length > 0 || collectibles.length > 0) && (
+          {/* Generate Report Button - Only show if there's data and user has export permission */}
+          {(monthlyData.dailyIncome.length > 0 || collectibles.length > 0) && hasPermission('transactions.export') && (
             <div className="flex justify-end p-2">
               <button
                 onClick={handleGenerateReport}

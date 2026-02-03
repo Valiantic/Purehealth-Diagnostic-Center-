@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/dashboard/Sidebar'
 import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import usePasskeyManager from '../hooks/auth/usePasskeyManager'
 import PasskeyModal from '../components/auth/PasskeyModal'
 import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download, FileText } from 'lucide-react'
@@ -19,6 +20,7 @@ import apiClient from '../services/api'
 
 const Settings = () => {
   const { user, isAuthenticating, refreshUser } = useAuth()
+  const { hasPermission, loading: permissionsLoading } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
   const [isEditing, setIsEditing] = useState(false)
@@ -549,12 +551,16 @@ const Settings = () => {
     }
   }
 
-  const getAuthorizedTabs = (tabs, userRole) => {
-    if (!userRole) return tabs;
-    return tabs.filter(tab => tab.roles.includes(userRole));
+  const getAuthorizedTabs = (tabs) => {
+    return tabs.filter(tab => {
+      // If no permission is specified, show the tab
+      if (!tab.permission) return true;
+      // Check if user has the required permission
+      return hasPermission(tab.permission);
+    });
   }
 
-  if (isAuthenticating) {
+  if (isAuthenticating || permissionsLoading) {
     return null;
   }
 
@@ -563,7 +569,7 @@ const Settings = () => {
   }
 
   const currentPath = location.pathname;
-  const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
+  const filteredTabs = getAuthorizedTabs(tabsConfig);
   // Sort by route length descending to match more specific routes first (e.g., /settings/roles before /settings)
   const sortedTabs = [...filteredTabs].sort((a, b) => b.route.length - a.route.length);
   const activeTab = sortedTabs.find(tab =>

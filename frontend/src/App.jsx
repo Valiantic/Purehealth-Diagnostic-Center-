@@ -35,25 +35,25 @@ function App() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
 
-          {/* Routes accessible to all authenticated users */}
-          <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
-          <Route path="manage-transaction" element={<ProtectedRoute component={Transaction} />} />
-          <Route path="manage-expenses" element={<ProtectedRoute component={Expenses} />} />
-          <Route path="add-transaction" element={<ProtectedRoute component={AddTransaction} />} />
-          <Route path="referrals" element={<ProtectedRoute component={Referrals} />} />
-          <Route path="settings" element={<ProtectedRoute component={Settings} />} />
-          <Route path="add-expenses" element={<ProtectedRoute component={AddExpenses} />} />
+          {/* Routes with permission-based access control */}
+          <Route path="dashboard" element={<ProtectedRoute component={Dashboard} requiredPermission="dashboard.view" />} />
+          <Route path="manage-transaction" element={<ProtectedRoute component={Transaction} requiredPermission="transactions.view" />} />
+          <Route path="add-transaction" element={<ProtectedRoute component={AddTransaction} requiredPermission="transactions.create" />} />
+          <Route path="manage-expenses" element={<ProtectedRoute component={Expenses} requiredPermission="expenses.view" />} />
+          <Route path="add-expenses" element={<ProtectedRoute component={AddExpenses} requiredPermission="expenses.create" />} />
+          <Route path="referrals" element={<ProtectedRoute component={Referrals} requiredPermission="referrals.view" />} />
           <Route path="monthly-income" element={<ProtectedRoute component={MonthlyIncome} />} />
           <Route path="monthly-expenses" element={<ProtectedRoute component={MonthlyExpenses} />} />
-          <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} restrictFromRole="receptionist" />} />
-          <Route path="add-account" element={<ProtectedRoute component={AddAccount} restrictFromRole="receptionist" />} />
-
-          {/* Routes receptionists shouldn't access */}
-          <Route path="activity-log" element={<ProtectedRoute component={ActivityLog} restrictFromRole="receptionist" />} />
-          <Route path="department-management" element={<ProtectedRoute component={DepartmentManagement} restrictFromRole="receptionist" />} />
-          <Route path="test-management" element={<ProtectedRoute component={TestManagement} restrictFromRole="receptionist" />} />
-          <Route path="referral-management" element={<ProtectedRoute component={ReferralManagement} restrictFromRole="receptionist" />} />
-          <Route path="settings/roles" element={<ProtectedRoute component={Settings} restrictFromRole="receptionist" />} />
+          
+          {/* Settings and Account Management */}
+          <Route path="settings" element={<ProtectedRoute component={Settings} />} />
+          <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} requiredPermission="accounts.view" />} />
+          <Route path="add-account" element={<ProtectedRoute component={AddAccount} requiredPermission="accounts.create" />} />
+          <Route path="activity-log" element={<ProtectedRoute component={ActivityLog} requiredPermission="activitylog.view" />} />
+          <Route path="department-management" element={<ProtectedRoute component={DepartmentManagement} requiredPermission="departments.manage" />} />
+          <Route path="test-management" element={<ProtectedRoute component={TestManagement} requiredPermission="tests.manage" />} />
+          <Route path="referral-management" element={<ProtectedRoute component={ReferralManagement} requiredPermission="referrals.view" />} />
+          <Route path="settings/roles" element={<ProtectedRoute component={Settings} requiredPermission="roles.manage" />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

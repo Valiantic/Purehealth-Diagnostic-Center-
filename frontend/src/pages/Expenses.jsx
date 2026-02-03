@@ -479,6 +479,9 @@ const Expenses = () => {
             }}
             expenseSearchTerm={expenseSearchTerm}
             onEditExpense={handleEditExpense}
+            permissions={{
+              canEdit: hasPermission('expenses.edit')
+            }}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`}
           />
 

@@ -1,10 +1,10 @@
 const tabsConfig = [
-  { name: 'Account', route: '/settings', roles: ['admin', 'receptionist'] },
-  { name: 'Activity', route: '/activity-log', roles: ['admin'] },
-  { name: 'Departments', route: '/department-management', roles: ['admin'] },
-  { name: 'Test', route: '/test-management', roles: ['admin'] },
-  { name: 'Referrer', route: '/referral-management', roles: ['admin'] },
-  { name: 'Roles', route: '/settings/roles', roles: ['admin'] }
+  { name: 'Account', route: '/settings', permission: 'accounts.view' },
+  { name: 'Activity', route: '/activity-log', permission: 'activitylog.view' },
+  { name: 'Departments', route: '/department-management', permission: 'departments.manage' },
+  { name: 'Test', route: '/test-management', permission: 'tests.manage' },
+  { name: 'Referrer', route: '/referral-management', permission: 'referrals.view' },
+  { name: 'Roles', route: '/settings/roles', permission: 'roles.manage' }
 ];
 
 export default tabsConfig;

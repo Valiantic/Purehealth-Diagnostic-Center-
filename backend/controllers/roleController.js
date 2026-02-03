@@ -404,6 +404,17 @@ async function assignRoleToUser(req, res) {
         }
 
         const oldRoleId = user.roleId;
+        const oldRoleName = user.role;
+        
+        // Get old role display name for better logging
+        let oldRoleDisplayName = oldRoleName || 'None';
+        if (oldRoleId) {
+            const oldRole = await Role.findByPk(oldRoleId);
+            if (oldRole) {
+                oldRoleDisplayName = oldRole.displayName;
+            }
+        }
+
         user.roleId = roleId;
 
         // Also update the legacy role field for backward compatibility
@@ -411,13 +422,20 @@ async function assignRoleToUser(req, res) {
 
         await user.save();
 
-        // Log activity
+        // Log activity with old and new role information
         await logActivity({
             userId,
             action: 'USER_ROLE_CHANGED',
-            resourceType: 'User',
+            resourceType: 'USER',
             resourceId: targetUserId,
-            details: `Changed role for ${user.email} to "${role.displayName}"`
+            details: `Changed role for ${user.email} from "${oldRoleDisplayName}" to "${role.displayName}"`,
+            ipAddress: req.ip || '127.0.0.1',
+            metadata: {
+                oldRoleId,
+                oldRoleName: oldRoleDisplayName,
+                newRoleId: roleId,
+                newRoleName: role.displayName
+            }
         });
 
         return res.json({

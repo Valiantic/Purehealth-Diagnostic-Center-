@@ -27,6 +27,10 @@ const ProtectedRoute = ({
     // Check access based on permissions or legacy role restriction
     const hasAccess = React.useMemo(() => {
         if (!user) return false;
+        
+        // While permissions are still loading, assume access is allowed
+        // This prevents false negatives during initial load
+        if (permissionsLoading) return true;
 
         // Permission-based checks (new system)
         if (requiredPermission) {
@@ -44,26 +48,22 @@ const ProtectedRoute = ({
 
         // No specific permission required, allow access
         return true;
-    }, [user, requiredPermission, requiredAnyPermission, restrictFromRole, hasPermission, hasAnyPermission]);
+    }, [user, requiredPermission, requiredAnyPermission, restrictFromRole, hasPermission, hasAnyPermission, permissionsLoading]);
 
     useEffect(() => {
-        if (user && !hasAccess) {
-            const reason = requiredPermission
-                ? `Missing permission: ${requiredPermission}`
-                : restrictFromRole
-                    ? 'Role restriction'
-                    : 'Insufficient permissions';
-
+        // Only show toast if permissions have finished loading and user doesn't have access
+        if (user && !permissionsLoading && !hasAccess) {
             toast.error('You do not have permission to access this page', {
                 position: "top-right",
                 autoClose: 3000,
                 hideProgressBar: false,
                 closeOnClick: true,
                 pauseOnHover: true,
-                draggable: true
+                draggable: true,
+                toastId: 'permission-denied' // Prevent duplicate toasts
             });
         }
-    }, [user, hasAccess, requiredPermission, restrictFromRole]);
+    }, [user, hasAccess, permissionsLoading]);
 
     // Loading states
     if (isAuthenticating || permissionsLoading) {

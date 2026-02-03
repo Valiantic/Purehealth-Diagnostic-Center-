@@ -28,7 +28,7 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('admin', 'receptionist'),
+    type: DataTypes.STRING(50),
     allowNull: true, // Made nullable for migration - will be removed after full migration
     defaultValue: 'receptionist'
   },
@@ -41,7 +41,7 @@ const User = sequelize.define('User', {
     }
   },
   status: {
-    type: DataTypes.ENUM('active', 'inactive'),
+    type: DataTypes.ENUM('active', 'archived'),
     allowNull: false,
     defaultValue: 'active'
   },

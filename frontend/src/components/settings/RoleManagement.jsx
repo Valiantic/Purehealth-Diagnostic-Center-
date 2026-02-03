@@ -44,10 +44,29 @@ const RoleManagement = () => {
         try {
             const response = await roleAPI.getAllPermissions();
             if (response.data?.success) {
-                setPermissions(response.data.permissions);
+                // Filter out permissions that should not be available for custom roles
+                const hiddenPermissions = [
+                    'referrals.manage', // Manage Referrers - not needed as separate permission
+                    'reports.export',   // Export Reports - redundant
+                    'reports.monthly',  // View Monthly Reports - redundant
+                    'settings.edit',    // Edit Settings - not used
+                    'settings.view',    // View Settings - not used
+                    'expenses.archive', // Archive Expenses - not used
+                    'collectible.export' // Export Collectible Income - not used
+                ];
+                
+                const filteredPermissions = {};
+                Object.entries(response.data.permissions).forEach(([category, perms]) => {
+                    const filteredPerms = perms.filter(p => !hiddenPermissions.includes(p.permissionKey));
+                    if (filteredPerms.length > 0) {
+                        filteredPermissions[category] = filteredPerms;
+                    }
+                });
+                
+                setPermissions(filteredPermissions);
                 // Expand all categories by default
                 const expanded = {};
-                Object.keys(response.data.permissions).forEach(cat => {
+                Object.keys(filteredPermissions).forEach(cat => {
                     expanded[cat] = true;
                 });
                 setExpandedCategories(expanded);

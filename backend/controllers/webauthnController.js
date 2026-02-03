@@ -1,4 +1,4 @@
-const { User, Authenticator } = require('../models');
+const { User, Authenticator, Role } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const {
   generateRegOptions,
@@ -121,13 +121,33 @@ async function tempRegistrationVerify(req, res) {
         });
       }
       
+      // Determine the role to assign
+      let roleName = 'receptionist';
+      let roleId = null;
+      
+      // If roleId is provided, look up the role
+      if (userData.roleId) {
+        const role = await Role.findByPk(userData.roleId);
+        if (role) {
+          roleName = role.roleName;
+          roleId = role.roleId;
+        }
+      } else {
+        // Default to receptionist role
+        const defaultRole = await Role.findOne({ where: { roleName: 'receptionist' } });
+        if (defaultRole) {
+          roleId = defaultRole.roleId;
+        }
+      }
+      
       // NOW create the user in the database after verification
       const user = await User.create({
         email: userData.email,
         firstName: userData.firstName,
         middleName: userData.middleName || null,
         lastName: userData.lastName,
-        role: userData.role || 'receptionist' // Use provided role or default to receptionist
+        role: roleName,
+        roleId: roleId
       });
       
       // Get the authenticator data (either from Sequelize model or plain object)
@@ -327,6 +347,14 @@ async function authenticationVerify(req, res) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
+      });
+    }
+
+    // Check if user is archived
+    if (user.status === 'archived') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been archived. Please contact an administrator.'
       });
     }
 

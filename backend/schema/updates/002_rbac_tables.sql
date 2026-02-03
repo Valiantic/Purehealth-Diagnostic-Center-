@@ -77,13 +77,11 @@ INSERT INTO `Permissions` (`permissionKey`, `displayName`, `description`, `categ
 ('collectible.view', 'View Collectible Income', 'View collectible income records', 'Collectible Income', NOW(), NOW()),
 ('collectible.create', 'Add Collectible Income', 'Add new collectible income entries', 'Collectible Income', NOW(), NOW()),
 ('collectible.edit', 'Edit Collectible Income', 'Modify collectible income entries', 'Collectible Income', NOW(), NOW()),
-('collectible.export', 'Export Collectible Income', 'Export collectible income data', 'Collectible Income', NOW(), NOW()),
 
 -- Expenses
 ('expenses.view', 'View Expenses', 'View expense records', 'Expenses', NOW(), NOW()),
 ('expenses.create', 'Add Expenses', 'Add new expense entries', 'Expenses', NOW(), NOW()),
 ('expenses.edit', 'Edit Expenses', 'Modify expense entries', 'Expenses', NOW(), NOW()),
-('expenses.archive', 'Archive Expenses', 'Archive expense entries', 'Expenses', NOW(), NOW()),
 ('expenses.export', 'Export Expenses', 'Export expense data', 'Expenses', NOW(), NOW()),
 
 -- Referrals
