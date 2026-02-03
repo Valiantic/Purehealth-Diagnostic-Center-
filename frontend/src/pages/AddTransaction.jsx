@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import TransactionSummaryModal from '../components/transaction/TransactionSummaryModal';
 import ReferrerModal from '../components/referral-management/ReferrerModal';
 import useAuth from '../hooks/auth/useAuth';
+import usePermissions from '../hooks/auth/usePermissions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { testAPI, departmentAPI, referrerAPI, transactionAPI, settingsAPI } from '../services/api';
 import { ToastContainer, toast } from 'react-toastify';
@@ -12,6 +14,8 @@ import useReferrerForm from '../hooks/referral-management/useReferrerForm';
 
 const NewAddTransaction = () => {
   const { user, isAuthenticating } = useAuth();
+  const { hasPermission, isLoading: permissionsLoading } = usePermissions();
+  const navigate = useNavigate();
   const [showDeptFilter, setShowDeptFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const queryClient = useQueryClient();
@@ -457,7 +461,15 @@ const NewAddTransaction = () => {
     fetchNextORNumber();
   }, []);
 
-  if (isAuthenticating || !user) return null;
+  if (isAuthenticating || permissionsLoading) return null;
+
+  // Check permission early
+  if (!hasPermission('transactions.create')) {
+    navigate('/transactions');
+    return null;
+  }
+
+  if (!user) return null;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">

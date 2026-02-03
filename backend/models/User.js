@@ -29,8 +29,16 @@ const User = sequelize.define('User', {
   },
   role: {
     type: DataTypes.ENUM('admin', 'receptionist'),
-    allowNull: false,
+    allowNull: true, // Made nullable for migration - will be removed after full migration
     defaultValue: 'receptionist'
+  },
+  roleId: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // Will be made NOT NULL after migration
+    references: {
+      model: 'Roles',
+      key: 'roleId'
+    }
   },
   status: {
     type: DataTypes.ENUM('active', 'inactive'),

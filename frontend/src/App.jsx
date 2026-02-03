@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Login from './pages/Login';
-import Register from './pages/Register'; 
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Transaction from './pages/Transaction';
 import AddExpenses from './pages/AddExpenses';
@@ -34,7 +34,7 @@ function App() {
           <Route index element={<Navigate to="/login" replace />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          
+
           {/* Routes accessible to all authenticated users */}
           <Route path="dashboard" element={<ProtectedRoute component={Dashboard} />} />
           <Route path="manage-transaction" element={<ProtectedRoute component={Transaction} />} />
@@ -47,13 +47,14 @@ function App() {
           <Route path="monthly-expenses" element={<ProtectedRoute component={MonthlyExpenses} />} />
           <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} restrictFromRole="receptionist" />} />
           <Route path="add-account" element={<ProtectedRoute component={AddAccount} restrictFromRole="receptionist" />} />
-          
+
           {/* Routes receptionists shouldn't access */}
           <Route path="activity-log" element={<ProtectedRoute component={ActivityLog} restrictFromRole="receptionist" />} />
           <Route path="department-management" element={<ProtectedRoute component={DepartmentManagement} restrictFromRole="receptionist" />} />
           <Route path="test-management" element={<ProtectedRoute component={TestManagement} restrictFromRole="receptionist" />} />
           <Route path="referral-management" element={<ProtectedRoute component={ReferralManagement} restrictFromRole="receptionist" />} />
-          
+          <Route path="settings/roles" element={<ProtectedRoute component={Settings} restrictFromRole="receptionist" />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </QueryClientProvider>

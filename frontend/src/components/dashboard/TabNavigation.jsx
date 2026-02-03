@@ -4,10 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const TabNavigation = ({ tabsConfig }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const currentPath = location.pathname;
-  const activeTabRoute = tabsConfig.find(tab => 
-    currentPath.startsWith(tab.route)
+  // Sort by route length descending to match more specific routes first (e.g., /settings/roles before /settings)
+  const sortedTabs = [...tabsConfig].sort((a, b) => b.route.length - a.route.length);
+  const activeTabRoute = sortedTabs.find(tab =>
+    currentPath === tab.route || currentPath.startsWith(tab.route + '/')
   )?.route || tabsConfig[0].route;
 
   const handleTabClick = (route) => {
@@ -19,11 +21,10 @@ const TabNavigation = ({ tabsConfig }) => {
       {tabsConfig.map((tab) => (
         <button
           key={tab.name}
-          className={`px-4 py-3 text-sm md:text-base font-medium whitespace-nowrap ${
-            activeTabRoute === tab.route
+          className={`px-4 py-3 text-sm md:text-base font-medium whitespace-nowrap ${activeTabRoute === tab.route
               ? 'text-green-800 border-b-2 border-green-800'
               : 'text-gray-600 hover:text-green-700 hover:bg-gray-50'
-          }`}
+            }`}
           onClick={() => handleTabClick(tab.route)}
         >
           {tab.name}

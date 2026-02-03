@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
-import { useNavigate  } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { registerUser, registerBackupPasskey } from '../utils/webauthn'
+import { roleAPI } from '../services/api'
 import { Shield, X } from 'lucide-react'
 import BackupKeyImg from '../assets/images/BackupKeyPic.png'
 import Sidebar from '../components/dashboard/Sidebar'
@@ -24,9 +26,25 @@ const AddAccount = () => {
     firstName: '',
     middleName: '',
     lastName: '',
-    role: 'receptionist' // Default role
+    roleId: null // Will be set after roles are loaded
   });
-  
+
+  // Fetch available roles
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const response = await roleAPI.getAllRoles()
+      return response.data
+    },
+    onSuccess: (data) => {
+      // Set default role to receptionist if available
+      const receptionistRole = data?.roles?.find(r => r.roleName === 'receptionist');
+      if (receptionistRole && !formData.roleId) {
+        setFormData(prev => ({ ...prev, roleId: receptionistRole.roleId }));
+      }
+    }
+  });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
@@ -40,37 +58,37 @@ const AddAccount = () => {
       setError('Email, first name, and last name are required');
       return false;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
       return false;
     }
-    
+
     return true;
   }
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-        
+
     setLoading(true);
     setError('');
-        
+
     try {
       const result = await registerUser(formData);
-      
+
       if (result.success) {
         setUserId(result.userId);
-        
+
         setUserData({
           userId: result.userId,
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          role: formData.role // Include role in userData
+          roleId: formData.roleId // Include roleId in userData
         });
-        
+
         setStep(2);
         setShowModal(true);
       } else {
@@ -78,9 +96,9 @@ const AddAccount = () => {
       }
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       if (
-        error.name === 'AbortError' || 
+        error.name === 'AbortError' ||
         error.message?.includes('The operation either timed out or was not allowed') ||
         error.message?.includes('The user attempted to register') ||
         error.message?.includes('user canceled') ||
@@ -98,21 +116,20 @@ const AddAccount = () => {
   const handleBackupRegistration = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       const result = await registerBackupPasskey(userId);
-      
+
       if (result.success) {
-       
+
         if (userData) {
           localStorage.setItem('user', JSON.stringify(userData));
         }
-        
-        // Redirect based on role: receptionist -> dashboard, admin -> view-accounts
-        const redirectPath = userData?.role === 'receptionist' ? '/dashboard' : '/view-accounts';
-        navigate(redirectPath, { 
-          state: { 
-            success: true, 
+
+        // Redirect to view-accounts after successful registration
+        navigate('/view-accounts', {
+          state: {
+            success: true,
             message: 'Account successfully created!'
           }
         });
@@ -126,11 +143,11 @@ const AddAccount = () => {
       setLoading(false);
     }
   };
-  
+
   const goToLogin = () => {
     navigate('/login');
   };
-  
+
   if (isAuthenticating) {
     return null;
   }
@@ -140,7 +157,7 @@ const AddAccount = () => {
   }
 
   const currentPath = location.pathname;
-  const activeTab = tabsConfig.find(tab => 
+  const activeTab = tabsConfig.find(tab =>
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Account';
 
@@ -149,11 +166,11 @@ const AddAccount = () => {
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
-     
+
       <div className='flex-1 overflow-auto p-2 pt-16 lg:pt-6 lg:ml-64'>
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full overflow-hidden">
           <TabNavigation tabsConfig={tabsConfig} />
-          
+
           {activeTab === 'Account' && (
             <div className="p-2 overflow-auto">
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-3">
@@ -161,24 +178,24 @@ const AddAccount = () => {
                   <div className="bg-green-800 text-white p-1.5 md:p-2">
                     <h2 className="text-sm md:text-base font-medium">Create New Account</h2>
                   </div>
-                  
+
                   <form onSubmit={handleSubmit} className="space-y-2 p-2 md:p-3">
                     <div className="space-y-1">
                       <label className="block font-medium text-green-800 text-xs md:text-sm">Email Address</label>
-                      <input 
+                      <input
                         type="email"
-                        name="email" 
+                        name="email"
                         value={formData.email}
                         onChange={handleChange}
                         className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
                         readOnly={step === 2}
                       />
                     </div>
-    
+
                     <div className="space-y-1">
                       <label className="block font-medium text-green-800 text-xs md:text-sm">First Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
@@ -186,11 +203,11 @@ const AddAccount = () => {
                         readOnly={step === 2}
                       />
                     </div>
-    
+
                     <div className="space-y-1">
                       <label className="block font-medium text-green-800 text-xs md:text-sm">Middle Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="middleName"
                         value={formData.middleName}
                         onChange={handleChange}
@@ -198,11 +215,11 @@ const AddAccount = () => {
                         readOnly={step === 2}
                       />
                     </div>
-                    
+
                     <div className="space-y-1">
                       <label className="block font-medium text-green-800 text-xs md:text-sm">Last Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
@@ -214,25 +231,30 @@ const AddAccount = () => {
                     <div className="space-y-1">
                       <label className="block font-medium text-green-800 text-xs md:text-sm">Role</label>
                       <select
-                        name="role"
-                        value={formData.role}
-                        onChange={handleChange}
+                        name="roleId"
+                        value={formData.roleId || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, roleId: parseInt(e.target.value) || null }))}
                         className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-xs md:text-sm"
-                        disabled={step === 2}
+                        disabled={step === 2 || rolesLoading}
+                        required
                       >
-                        <option value="receptionist">Receptionist</option>
-                        <option value="admin">Admin</option>
+                        <option value="">Select Role</option>
+                        {rolesData?.roles?.map((role) => (
+                          <option key={role.roleId} value={role.roleId}>
+                            {role.displayName}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    
+
                     {error && step === 1 && (
                       <div className="text-red-500 text-xs">{error}</div>
                     )}
 
                     <div className="pt-1">
                       {step === 1 && (
-                        <button 
-                          type="submit" 
+                        <button
+                          type="submit"
                           disabled={loading}
                           className="w-full py-1 px-3 bg-green-800 hover:bg-green-700 text-white font-medium rounded-md transition text-xs md:text-sm"
                         >
@@ -247,15 +269,15 @@ const AddAccount = () => {
                     </div>
                   </form>
                 </div>
-                
+
                 <div className="flex flex-col space-y-2 md:space-y-3 mt-1">
                   <div className="flex justify-center items-center space-x-1 text-center">
                     <div className="flex-shrink-0">
-                        <Shield className="w-4 h-4 md:w-5 md:h-5 text-green-800" />
+                      <Shield className="w-4 h-4 md:w-5 md:h-5 text-green-800" />
                     </div>
                     <span className="font-medium text-green-800 underline text-xs md:text-sm">Create Account using FIDO2 WebAuthn</span>
                   </div>
-                  
+
                   <div className="border border-green-800 rounded-lg p-2 flex justify-center items-center bg-white">
                     <div className="relative w-40 md:w-48 h-32 md:h-36">
                       <div className="absolute right-0 top-10">
@@ -265,9 +287,9 @@ const AddAccount = () => {
                           </svg>
                         </div>
                       </div>
-                      <img 
+                      <img
                         src={FIDO2BG}
-                        alt="FIDO2 WebAuthn illustration" 
+                        alt="FIDO2 WebAuthn illustration"
                         className="object-contain mt-2"
                       />
                     </div>
@@ -282,7 +304,7 @@ const AddAccount = () => {
       {step === 2 && showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full relative">
-            
+
 
             <div className="bg-green-800 rounded-t-lg text-white p-4 text-center relative">
               <h3 className="text-2xl font-bold text-white">Set Up Backup Passkey</h3>

@@ -17,7 +17,8 @@ const ExpenseSummaryModal = ({
   isLoading = false,
   isEditing = false,
   onEnterEditMode,
-  mode = "confirm"
+  mode = "confirm",
+  permissions = {} // Permission checks object
 }) => {
   const [editedData, setEditedData] = useState({
     firstName: firstName || '',
@@ -47,7 +48,7 @@ const ExpenseSummaryModal = ({
   const handleExpenseChange = (index, field, value) => {
     setEditedData(prev => ({
       ...prev,
-      expenses: prev.expenses.map((expense, i) => 
+      expenses: prev.expenses.map((expense, i) =>
         i === index ? { ...expense, [field]: value } : expense
       )
     }));
@@ -90,7 +91,7 @@ const ExpenseSummaryModal = ({
         {/* Modal Header */}
         <div className='bg-[#02542D] text-white py-3 px-4 flex justify-between items-center'>
           <h2 className="text-lg font-bold">Expense Summary</h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-white hover:text-gray-300"
             disabled={isLoading}
@@ -98,11 +99,11 @@ const ExpenseSummaryModal = ({
             <X size={22} />
           </button>
         </div>
-        
+
         {/* Payee Information Section */}
         <div className="overflow-auto flex-1">
-         
-          
+
+
           <table className="w-full text-sm border-collapse">
             <tbody className='bg-green-100'>
               <tr className="border-b border-gray-300">
@@ -151,11 +152,11 @@ const ExpenseSummaryModal = ({
                       if (!editedData.selectedDepartment) {
                         return 'N/A';
                       }
-                      
-                      const dept = departments.find(d => 
+
+                      const dept = departments.find(d =>
                         String(d.departmentId) === String(editedData.selectedDepartment)
                       );
-                      
+
                       return dept ? dept.departmentName : 'N/A';
                     })()
                   )}
@@ -163,16 +164,16 @@ const ExpenseSummaryModal = ({
               </tr>
               <tr className="border-b border-gray-300">
                 <td className="py-2 px-4 font-semibold text-gray-700">Date:</td>
-                <td className="py-2 px-4">{new Date(selectedDate).toLocaleDateString('en-US', { 
+                <td className="py-2 px-4">{new Date(selectedDate).toLocaleDateString('en-US', {
                   month: '2-digit',
-                  day: '2-digit', 
+                  day: '2-digit',
                   year: 'numeric'
                 })}</td>
               </tr>
             </tbody>
           </table>
 
-  
+
 
           {/* Expense Table with Scrollbar */}
           <div className="max-h-[280px] overflow-y-auto">
@@ -249,13 +250,12 @@ const ExpenseSummaryModal = ({
                             <option value="cancelled">Cancelled</option>
                           </select>
                         ) : (
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                            expense.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            expense.status === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
-                            expense.status === 'paid' ? 'bg-green-100 text-green-800' :
-                            expense.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${expense.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              expense.status === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
+                                expense.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                  expense.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                            }`}>
                             {expense.status ? expense.status.charAt(0).toUpperCase() + expense.status.slice(1) : 'Pending'}
                           </span>
                         )}
@@ -290,22 +290,22 @@ const ExpenseSummaryModal = ({
               </tbody>
             </table>
           </div>
-          
+
           {/* Total Row */}
           <div className="border-t-2 border-gray-300 bg-white">
             <div className="px-4 py-3 flex items-center">
               <div className="text-base font-bold text-gray-800">Total:</div>
               <div className="flex-grow"></div>
               <div className="text-base font-bold text-gray-800 text-right">
-                {isEditMode 
+                {isEditMode
                   ? parseFloat(calculateEditedTotal()).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })
                   : parseFloat(calculateTotal ? calculateTotal() : 0).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })
                 }
               </div>
             </div>
@@ -315,7 +315,7 @@ const ExpenseSummaryModal = ({
         {/* Footer */}
         <div className='flex justify-end gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3'>
           {mode === "confirm" ? (
-            <button 
+            <button
               onClick={onConfirm}
               className='bg-[#02542D] text-white py-2 px-8 rounded hover:bg-green-700 font-semibold transition-colors'
               disabled={isLoading}
@@ -342,14 +342,16 @@ const ExpenseSummaryModal = ({
               </>
             ) : (
               <>
+                {permissions.canEdit !== false && (
+                  <button
+                    onClick={handleEnterEdit}
+                    disabled={isLoading}
+                    className='bg-orange-600 text-white py-2 px-8 rounded disabled:opacity-50 hover:bg-orange-700 font-semibold transition-colors'
+                  >
+                    Edit
+                  </button>
+                )}
                 <button
-                  onClick={handleEnterEdit}
-                  disabled={isLoading}
-                  className='bg-orange-600 text-white py-2 px-8 rounded disabled:opacity-50 hover:bg-orange-700 font-semibold transition-colors'
-                >
-                  Edit
-                </button>
-                <button 
                   onClick={onConfirm}
                   className='bg-[#02542D] text-white py-2 px-8 rounded hover:bg-green-700 font-semibold transition-colors'
                   disabled={isLoading}

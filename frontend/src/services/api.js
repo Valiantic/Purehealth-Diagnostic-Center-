@@ -542,5 +542,61 @@ export const settingsAPI = {
   }
 };
 
+// Role & Permission API (RBAC)
+export const roleAPI = {
+  // Get all roles with permissions
+  getAllRoles: () => {
+    return apiClient.get('/roles');
+  },
+
+  // Get single role by ID
+  getRoleById: (roleId) => {
+    return apiClient.get(`/roles/${roleId}`);
+  },
+
+  // Create new role
+  createRole: (roleData, userId) => {
+    return apiClient.post('/roles', {
+      ...roleData,
+      userId
+    });
+  },
+
+  // Update role
+  updateRole: (roleId, roleData, userId) => {
+    return apiClient.put(`/roles/${roleId}`, {
+      ...roleData,
+      userId
+    });
+  },
+
+  // Delete role
+  deleteRole: (roleId, userId) => {
+    return apiClient.delete(`/roles/${roleId}`, {
+      data: { userId }
+    });
+  },
+
+  // Get all permissions (grouped by category)
+  getAllPermissions: () => {
+    return apiClient.get('/roles/permissions');
+  },
+
+  // Get user's permissions
+  getUserPermissions: (userId) => {
+    return apiClient.get(`/roles/user/${userId}/permissions`);
+  },
+
+  // Assign role to user
+  assignRoleToUser: (targetUserId, roleId, userId) => {
+    return apiClient.post('/roles/assign', {
+      targetUserId,
+      roleId,
+      userId
+    });
+  }
+};
+
 export default apiClient;
+
 

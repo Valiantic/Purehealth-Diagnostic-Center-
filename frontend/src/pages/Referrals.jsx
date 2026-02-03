@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import { ArrowUp, ArrowDown, PlusCircle } from 'lucide-react'
 import { referrerAPI, transactionAPI, departmentAPI, settingsAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
@@ -12,6 +13,7 @@ import { exportReferralsToExcel } from '../utils/referralsExporter'
 
 const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
+  const { hasPermission } = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sortDirection, setSortDirection] = useState('asc');
@@ -473,7 +475,7 @@ const Referrals = () => {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Date Picker */}
               <div className="relative w-full sm:w-auto">
                 <input
@@ -506,10 +508,15 @@ const Referrals = () => {
                 )}
               </button>
 
-              {filteredReferrers.length > 0 && (
+              {filteredReferrers.length > 0 && hasPermission('referrals.export') && (
                 <button
                   onClick={handleGenerateReferralsReport}
-                  className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                  disabled={totalReferredTransactions === 0}
+                  className={`px-4 py-2 rounded-lg flex items-center transition-colors ${totalReferredTransactions > 0
+                    ? 'bg-green-800 text-white hover:bg-green-700 cursor-pointer'
+                    : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    }`}
+                  title={totalReferredTransactions === 0 ? 'No referrals for this date' : 'Generate Report'}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -518,14 +525,16 @@ const Referrals = () => {
                 </button>
               )}
 
-              <button
-                onClick={() => setIsReferrerModalOpen(true)}
-                className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
-                title="Add New Referrer"
-              >
-                <PlusCircle size={20} className="mr-2" />
-                Add Referrer
-              </button>
+              {hasPermission('referrals.manage') && (
+                <button
+                  onClick={() => setIsReferrerModalOpen(true)}
+                  className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                  title="Add New Referrer"
+                >
+                  <PlusCircle size={20} className="mr-2" />
+                  Add Referrer
+                </button>
+              )}
             </div>
           </div>
         </div>

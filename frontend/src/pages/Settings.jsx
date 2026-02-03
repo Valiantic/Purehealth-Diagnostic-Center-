@@ -14,6 +14,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import { exportFullBackup } from '../utils/backupExporter'
 import AdminVerificationModal from '../components/AdminVerificationModal'
 import ORConfigModal from '../components/settings/ORConfigModal'
+import RoleManagement from '../components/settings/RoleManagement'
 import apiClient from '../services/api'
 
 const Settings = () => {
@@ -563,9 +564,11 @@ const Settings = () => {
 
   const currentPath = location.pathname;
   const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
-  const activeTab = filteredTabs.find(tab =>
-    currentPath === tab.route || currentPath.startsWith(tab.route)
-  )?.name || 'Account';
+  // Sort by route length descending to match more specific routes first (e.g., /settings/roles before /settings)
+  const sortedTabs = [...filteredTabs].sort((a, b) => b.route.length - a.route.length);
+  const activeTab = sortedTabs.find(tab =>
+    currentPath === tab.route || currentPath.startsWith(tab.route + '/')
+  )?.name || (currentPath === '/settings' ? 'Account' : 'Account');
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen h-full bg-gray-100">
@@ -1078,6 +1081,10 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'Roles' && (
+              <RoleManagement />
             )}
           </div>
         </div>
