@@ -14,7 +14,7 @@ import useReferrerForm from '../hooks/referral-management/useReferrerForm';
 
 const NewAddTransaction = () => {
   const { user, isAuthenticating } = useAuth();
-  const { hasPermission, isLoading: permissionsLoading } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const navigate = useNavigate();
   const [showDeptFilter, setShowDeptFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -461,15 +461,16 @@ const NewAddTransaction = () => {
     fetchNextORNumber();
   }, []);
 
+  // Redirect if user doesn't have permission (must be in useEffect to avoid render-time navigation)
+  useEffect(() => {
+    if (!isAuthenticating && !permissionsLoading && !hasPermission('transactions.create')) {
+      navigate('/manage-transaction');
+    }
+  }, [isAuthenticating, permissionsLoading, hasPermission, navigate]);
+
   if (isAuthenticating || permissionsLoading) return null;
-
-  // Check permission early
-  if (!hasPermission('transactions.create')) {
-    navigate('/transactions');
-    return null;
-  }
-
   if (!user) return null;
+  if (!hasPermission('transactions.create')) return null;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">

@@ -14,7 +14,7 @@ import 'react-toastify/dist/ReactToastify.css';
 const AddExpenses = () => {
 
   const { user, isAuthenticating } = useAuth()
-  const { hasPermission, isLoading: permissionsLoading } = usePermissions()
+  const { hasPermission, loading: permissionsLoading } = usePermissions()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [paidTo, setPaidTo] = useState('');
@@ -299,19 +299,25 @@ const AddExpenses = () => {
     return expenses.reduce((total, expense) => total + expense.amount, 0);
   };
 
+  // Redirect if user doesn't have permission (must be in useEffect to avoid render-time navigation)
+  useEffect(() => {
+    if (!isAuthenticating && !permissionsLoading && !hasPermission('expenses.create')) {
+      navigate('/manage-expenses');
+    }
+  }, [isAuthenticating, permissionsLoading, hasPermission, navigate]);
+
   // Return nothing while authenticating to prevent flash of protected content
   if (isAuthenticating || permissionsLoading) {
     return null;
   }
 
-  // Check permission early
-  if (!hasPermission('expenses.create')) {
-    navigate('/expenses');
+  // If user is null after authentication check, the hook will handle redirect
+  if (!user) {
     return null;
   }
 
-  // If user is null after authentication check, the hook will handle redirect
-  if (!user) {
+  // Don't render if no permission (redirect will happen via useEffect)
+  if (!hasPermission('expenses.create')) {
     return null;
   }
 

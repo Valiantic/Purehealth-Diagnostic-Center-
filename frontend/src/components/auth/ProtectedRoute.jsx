@@ -22,7 +22,7 @@ const ProtectedRoute = ({
     ...rest
 }) => {
     const { user, isAuthenticating } = useAuth();
-    const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
+    const { permissions, hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
 
     // Check access based on permissions or legacy role restriction
     const hasAccess = React.useMemo(() => {
@@ -34,11 +34,13 @@ const ProtectedRoute = ({
 
         // Permission-based checks (new system)
         if (requiredPermission) {
-            return hasPermission(requiredPermission);
+            // Direct check against permissions array for reliability
+            return permissions.includes(requiredPermission);
         }
 
         if (requiredAnyPermission && Array.isArray(requiredAnyPermission)) {
-            return hasAnyPermission(requiredAnyPermission);
+            // Direct check against permissions array for reliability
+            return requiredAnyPermission.some(perm => permissions.includes(perm));
         }
 
         // Legacy role-based restriction (backward compatibility)
@@ -48,7 +50,7 @@ const ProtectedRoute = ({
 
         // No specific permission required, allow access
         return true;
-    }, [user, requiredPermission, requiredAnyPermission, restrictFromRole, hasPermission, hasAnyPermission, permissionsLoading]);
+    }, [user, requiredPermission, requiredAnyPermission, restrictFromRole, permissions, permissionsLoading]);
 
     useEffect(() => {
         // Only show toast if permissions have finished loading and user doesn't have access
@@ -77,6 +79,12 @@ const ProtectedRoute = ({
 
     // No access
     if (!hasAccess) {
+        // Don't redirect to dashboard if we're already trying to access dashboard
+        // This prevents infinite redirect loops
+        if (window.location.pathname === '/dashboard') {
+            // User can't access dashboard, show a basic message or redirect to settings
+            return <Navigate to="/settings" replace />;
+        }
         return <Navigate to="/dashboard" replace />;
     }
 
