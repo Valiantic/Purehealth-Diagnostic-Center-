@@ -9,14 +9,14 @@ VALUES (1, 'admin@purehealth.com', 'Admin', 'User', 'admin', 'active', NOW(), NO
 INSERT IGNORE INTO `Category` (`categoryId`, `name`, `status`, `createdAt`, `updatedAt`)
 VALUES (1, 'Rebates', 'active', NOW(), NOW());
 
--- ============================================
+-- ============================================ 
 
 -- Transaction dates: from yesterday (2026-01-27) back 30 days
 INSERT IGNORE INTO `Transactions` (
   `transactionId`, `mcNo`, `firstName`, `lastName`, `idType`, `idNumber`, 
   `referrerId`, `birthDate`, `sex`, `transactionDate`, 
   `totalAmount`, `totalDiscountAmount`, `totalCashAmount`, `totalGCashAmount`, `totalBalanceAmount`,
-  `status`, `userId`, `createdAt`, `updatedAt`
+  `status`, `userId`, `createdAt`, `updatedAt`z
 ) VALUES
 ('10001', '20001', 'Anna', 'Cruz', 'Regular', 'XXXX-XXXX', NULL, '1985-03-15', 'Female', '2026-01-27 09:30:00', 1800.00, 0.00, 1800.00, 0.00, 0.00, 'active', 1, NOW(), NOW()),
 ('10002', '20002', 'Mark', 'Santos', 'Senior', 'SC-12345', 2, '1958-07-22', 'Male', '2026-01-27 11:00:00', 1500.00, 300.00, 1200.00, 0.00, 0.00, 'active', 1, NOW(), NOW()),

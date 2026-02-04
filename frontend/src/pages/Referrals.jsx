@@ -259,8 +259,6 @@ const Referrals = () => {
           departmentTotals[deptId] += amount
           grandTotal += amount
         })
-      } else {
-        console.warn('Transaction without DepartmentRevenues:', transaction.transactionId)
       }
     })
 
