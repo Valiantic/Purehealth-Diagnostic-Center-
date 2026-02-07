@@ -121,8 +121,8 @@ const usePermissions = () => {
     const hasPermission = useCallback((permissionKey) => {
         if (!permissionKey) return false;
 
-        // Admin role always has all permissions (fallback)
-        if (user?.role === 'admin' && permissions.length === 0) return true;
+        // Admin role always has all permissions
+        if (user?.role === 'admin') return true;
 
         return permissions.includes(permissionKey);
     }, [permissions, user?.role]);
@@ -135,8 +135,8 @@ const usePermissions = () => {
     const hasAnyPermission = useCallback((permissionKeys) => {
         if (!permissionKeys || !Array.isArray(permissionKeys)) return false;
 
-        // Admin role always has all permissions (fallback)
-        if (user?.role === 'admin' && permissions.length === 0) return true;
+        // Admin role always has all permissions
+        if (user?.role === 'admin') return true;
 
         return permissionKeys.some(key => permissions.includes(key));
     }, [permissions, user?.role]);
@@ -149,8 +149,8 @@ const usePermissions = () => {
     const hasAllPermissions = useCallback((permissionKeys) => {
         if (!permissionKeys || !Array.isArray(permissionKeys)) return false;
 
-        // Admin role always has all permissions (fallback)
-        if (user?.role === 'admin' && permissions.length === 0) return true;
+        // Admin role always has all permissions
+        if (user?.role === 'admin') return true;
 
         return permissionKeys.every(key => permissions.includes(key));
     }, [permissions, user?.role]);
