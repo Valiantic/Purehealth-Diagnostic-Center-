@@ -51,6 +51,16 @@ class SocketManager {
     this.emitDashboardUpdate('expense-created', expense);
   }
 
+  // Emit permissions updated event to all connected clients
+  emitPermissionsUpdated(roleId) {
+    if (this.io) {
+      this.io.to('dashboard').emit('permissions-updated', {
+        roleId,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
   // Get connected clients count
   getConnectedCount() {
     return this.connectedClients.size;

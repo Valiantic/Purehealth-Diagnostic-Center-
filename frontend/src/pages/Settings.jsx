@@ -751,8 +751,8 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    {/* Manage Accounts Card */}
-                    {user.role !== 'receptionist' && (
+                    {/* Manage Accounts Card - Only visible to users with accounts.manage permission */}
+                    {hasPermission('accounts.manage') && (
                       <div
                         onClick={!isEditing ? handleViewAccounts : undefined}
                         className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
@@ -815,9 +815,10 @@ const Settings = () => {
                   )}
                 </div>
 
-                {/* Discount Categories Section - Visible to all users */}
+                {/* Discount Categories Section - Admin only */}
+                {user.role === 'admin' && (
                 <div>
-                  {/* Add Discount Button */}
+                  {/* Add Discount Button - Admin only */}
                   <button
                     onClick={handleAddDiscount}
                     disabled={isSavingDiscount}
@@ -1013,7 +1014,7 @@ const Settings = () => {
                     </div>
 
                     {/* Referral Fee Card - Right 1/3 - Admin only */}
-                    {user.role !== 'receptionist' && (
+                    {user.role === 'admin' && (
                       <div className="lg:col-span-1">
                         <div className="bg-green-800 text-white rounded-lg p-4 shadow-sm sticky top-0">
                           {isEditingReferralFee ? (
@@ -1086,6 +1087,7 @@ const Settings = () => {
                     )}
                   </div>
                 </div>
+                )}
               </div>
             )}
 

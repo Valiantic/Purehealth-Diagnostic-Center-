@@ -1,6 +1,7 @@
 const { Role, Permission, RolePermission, User, sequelize } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
 const { Op } = require('sequelize');
+const socketManager = require('../utils/socketManager');
 
 /**
  * Get all roles with their permissions
@@ -232,6 +233,9 @@ async function updateRole(req, res) {
                 through: { attributes: [] }
             }]
         });
+
+        // Notify all connected clients to refresh permissions
+        socketManager.emitPermissionsUpdated(parseInt(roleId));
 
         return res.json({
             success: true,

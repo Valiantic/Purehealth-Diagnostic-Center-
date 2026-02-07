@@ -28,17 +28,30 @@ const ProtectedRoute = ({
     const hasAccess = React.useMemo(() => {
         if (!user) return false;
         
-        // While permissions are still loading, assume access is allowed
+        // While authentication or permissions are still loading, assume access is allowed
         // This prevents false negatives during initial load
-        if (permissionsLoading) return true;
+        if (isAuthenticating || permissionsLoading) return true;
+        
+        // If permissions array is empty and we have a user, wait for permissions to load
+        // This handles race conditions during page reload
+        if (permissions.length === 0 && user.role !== 'admin') {
+            // For non-admin users, if permissions are empty after loading, use fallback logic
+            // Check if the route requires a permission - if not, allow access
+            if (!requiredPermission && !requiredAnyPermission) return true;
+            return false;
+        }
 
         // Permission-based checks (new system)
         if (requiredPermission) {
+            // Admin role always has all permissions
+            if (user.role === 'admin') return true;
             // Direct check against permissions array for reliability
             return permissions.includes(requiredPermission);
         }
 
         if (requiredAnyPermission && Array.isArray(requiredAnyPermission)) {
+            // Admin role always has all permissions
+            if (user.role === 'admin') return true;
             // Direct check against permissions array for reliability
             return requiredAnyPermission.some(perm => permissions.includes(perm));
         }
@@ -50,11 +63,11 @@ const ProtectedRoute = ({
 
         // No specific permission required, allow access
         return true;
-    }, [user, requiredPermission, requiredAnyPermission, restrictFromRole, permissions, permissionsLoading]);
+    }, [user, requiredPermission, requiredAnyPermission, restrictFromRole, permissions, permissionsLoading, isAuthenticating]);
 
     useEffect(() => {
-        // Only show toast if permissions have finished loading and user doesn't have access
-        if (user && !permissionsLoading && !hasAccess) {
+        // Only show toast if authentication and permissions have finished loading and user doesn't have access
+        if (user && !isAuthenticating && !permissionsLoading && !hasAccess) {
             toast.error('You do not have permission to access this page', {
                 position: "top-right",
                 autoClose: 3000,
@@ -65,7 +78,7 @@ const ProtectedRoute = ({
                 toastId: 'permission-denied' // Prevent duplicate toasts
             });
         }
-    }, [user, hasAccess, permissionsLoading]);
+    }, [user, hasAccess, permissionsLoading, isAuthenticating]);
 
     // Loading states
     if (isAuthenticating || permissionsLoading) {

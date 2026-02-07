@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { roleAPI } from '../../services/api';
 import useAuth from './useAuth';
 
@@ -7,7 +8,7 @@ import useAuth from './useAuth';
  * Provides permission checking utilities for UI-level access control
  */
 const usePermissions = () => {
-    const { user } = useAuth();
+    const { user, isAuthenticating } = useAuth();
     const [permissions, setPermissions] = useState([]);
     const [roleInfo, setRoleInfo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -15,6 +16,12 @@ const usePermissions = () => {
 
     // Fetch user permissions on mount or when user changes
     const fetchPermissions = useCallback(async () => {
+        // Keep loading true while authentication is in progress
+        if (isAuthenticating) {
+            setLoading(true);
+            return;
+        }
+        
         if (!user?.userId) {
             setPermissions([]);
             setRoleInfo(null);
@@ -74,11 +81,37 @@ const usePermissions = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.userId, user?.role]);
+    }, [user?.userId, user?.role, isAuthenticating]);
 
     useEffect(() => {
         fetchPermissions();
     }, [fetchPermissions]);
+
+    // Listen for real-time permission updates via socket
+    useEffect(() => {
+        if (!user?.userId) return;
+
+        const serverUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL?.replace('/api', '')) || 'http://localhost:5000';
+        const socket = io(serverUrl, {
+            transports: ['websocket'],
+            reconnection: true,
+            reconnectionDelay: 2000,
+            reconnectionAttempts: 3,
+        });
+
+        socket.on('connect', () => {
+            socket.emit('join', 'dashboard');
+        });
+
+        socket.on('permissions-updated', () => {
+            // Refetch permissions whenever any role is updated
+            fetchPermissions();
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [user?.userId, fetchPermissions]);
 
     /**
      * Check if user has a specific permission
@@ -171,7 +204,7 @@ function getFallbackPermissions(role) {
         'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.archive', 'expenses.export',
         'referrals.view', 'referrals.manage', 'referrals.export',
         'reports.monthly', 'reports.export',
-        'accounts.view', 'accounts.create', 'accounts.edit', 'accounts.archive',
+        'accounts.manage',
         'roles.view', 'roles.manage',
         'settings.view', 'settings.edit',
         'activitylog.view',

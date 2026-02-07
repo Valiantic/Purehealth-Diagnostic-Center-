@@ -86,18 +86,15 @@ INSERT INTO `Permissions` (`permissionKey`, `displayName`, `description`, `categ
 
 -- Referrals
 ('referrals.view', 'View Referrals', 'View referral records', 'Referrals', NOW(), NOW()),
-('referrals.manage', 'Manage Referrers', 'Add, edit, and archive referrers', 'Referrals', NOW(), NOW()),
 ('referrals.export', 'Export Referrals', 'Export referral data', 'Referrals', NOW(), NOW()),
 
 -- Reports
 ('reports.monthly', 'View Monthly Reports', 'Access to monthly income and expense reports', 'Reports', NOW(), NOW()),
 ('reports.export', 'Export Reports', 'Export report data to Excel/PDF', 'Reports', NOW(), NOW()),
 
--- User Accounts
-('accounts.view', 'View User Accounts', 'View list of user accounts', 'Administration', NOW(), NOW()),
-('accounts.create', 'Create User Accounts', 'Add new user accounts', 'Administration', NOW(), NOW()),
-('accounts.edit', 'Edit User Accounts', 'Modify user account details', 'Administration', NOW(), NOW()),
-('accounts.archive', 'Archive User Accounts', 'Archive/deactivate user accounts', 'Administration', NOW(), NOW()),
+-- User Accounts & Administration
+('accounts.manage', 'Manage User Accounts', 'View, create, edit, and archive user accounts', 'Administration', NOW(), NOW()),
+('referrals.manage', 'Manage Referrers', 'Add, edit, and archive referrers', 'Administration', NOW(), NOW()),
 
 -- Roles & Permissions
 ('roles.view', 'View Roles', 'View roles and their permissions', 'Administration', NOW(), NOW()),

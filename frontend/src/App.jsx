@@ -47,12 +47,12 @@ function App() {
           
           {/* Settings and Account Management */}
           <Route path="settings" element={<ProtectedRoute component={Settings} />} />
-          <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} requiredPermission="accounts.view" />} />
-          <Route path="add-account" element={<ProtectedRoute component={AddAccount} requiredPermission="accounts.create" />} />
+          <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} requiredPermission="accounts.manage" />} />
+          <Route path="add-account" element={<ProtectedRoute component={AddAccount} requiredPermission="accounts.manage" />} />
           <Route path="activity-log" element={<ProtectedRoute component={ActivityLog} requiredPermission="activitylog.view" />} />
           <Route path="department-management" element={<ProtectedRoute component={DepartmentManagement} requiredPermission="departments.manage" />} />
           <Route path="test-management" element={<ProtectedRoute component={TestManagement} requiredPermission="tests.manage" />} />
-          <Route path="referral-management" element={<ProtectedRoute component={ReferralManagement} requiredPermission="referrals.view" />} />
+          <Route path="referral-management" element={<ProtectedRoute component={ReferralManagement} requiredPermission="referrals.manage" />} />
           <Route path="settings/roles" element={<ProtectedRoute component={Settings} requiredPermission="roles.manage" />} />
 
           <Route path="*" element={<NotFound />} />

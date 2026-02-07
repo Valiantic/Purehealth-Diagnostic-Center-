@@ -253,7 +253,7 @@ const ViewAccounts = () => {
           {activeTab === 'Account' && (
             <>
               <div className='flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4'>
-                {hasPermission('accounts.create') && (
+                {hasPermission('accounts.manage') && (
                   <button
                     onClick={handleAddAccount}
                     className='bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start'
@@ -317,7 +317,7 @@ const ViewAccounts = () => {
                           <th className='p-1 border-r border-green-800 text-sm font-medium'>
                             Date Created
                           </th>
-                          {hasPermission('accounts.edit') && (
+                          {hasPermission('accounts.manage') && (
                             <th className='p-1 border-r border-green-800 text-sm font-medium'>
                               Actions
                             </th>
@@ -392,7 +392,7 @@ const ViewAccounts = () => {
                               <td className='p-1 border-r border-green-200 text-center'>
                                 {new Date(account.createdAt).toLocaleDateString()}
                               </td>
-                              {hasPermission('accounts.edit') && (
+                              {hasPermission('accounts.manage') && (
                                 <td className='p-1 text-center relative'>
                                   <div
                                     ref={(el) =>
@@ -515,7 +515,7 @@ const ViewAccounts = () => {
                   />
                 </div>
 
-                <div className={`grid ${hasPermission('accounts.archive') ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                <div className={`grid ${hasPermission('accounts.manage') ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
                     <div className="relative">
@@ -540,7 +540,7 @@ const ViewAccounts = () => {
                     </div>
                   </div>
 
-                  {hasPermission('accounts.archive') && (
+                  {hasPermission('accounts.manage') && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                       <div className="relative">

@@ -3,9 +3,11 @@ import { Shield, Plus, Pencil, Archive, X, Save, Users, ChevronDown, ChevronUp, 
 import { roleAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 import useAuth from '../../hooks/auth/useAuth';
+import usePermissions from '../../hooks/auth/usePermissions';
 
 const RoleManagement = () => {
     const { user } = useAuth();
+    const { refetchPermissions } = usePermissions();
     const [roles, setRoles] = useState([]);
     const [permissions, setPermissions] = useState({});
     const [loading, setLoading] = useState(true);
@@ -46,13 +48,19 @@ const RoleManagement = () => {
             if (response.data?.success) {
                 // Filter out permissions that should not be available for custom roles
                 const hiddenPermissions = [
-                    'referrals.manage', // Manage Referrers - not needed as separate permission
                     'reports.export',   // Export Reports - redundant
                     'reports.monthly',  // View Monthly Reports - redundant
                     'settings.edit',    // Edit Settings - not used
                     'settings.view',    // View Settings - not used
                     'expenses.archive', // Archive Expenses - not used
-                    'collectible.export' // Export Collectible Income - not used
+                    'collectible.export', // Export Collectible Income - not used
+                    'departments.view', // View Departments - covered by manage functions
+                    'roles.view',       // View Roles - covered by manage functions
+                    'tests.view',       // View Tests - covered by manage functions
+                    'accounts.view',    // Old - replaced by accounts.manage
+                    'accounts.create',  // Old - replaced by accounts.manage
+                    'accounts.edit',    // Old - replaced by accounts.manage
+                    'accounts.archive'  // Old - replaced by accounts.manage
                 ];
                 
                 const filteredPermissions = {};
@@ -177,6 +185,8 @@ const RoleManagement = () => {
                 if (response.data?.success) {
                     toast.success('Role updated successfully');
                     fetchRoles();
+                    // Refresh current user's permissions in case their role was updated
+                    refetchPermissions();
                     handleCloseModal();
                 }
             } else {
@@ -185,6 +195,8 @@ const RoleManagement = () => {
                 if (response.data?.success) {
                     toast.success('Role created successfully');
                     fetchRoles();
+                    // Refresh current user's permissions
+                    refetchPermissions();
                     handleCloseModal();
                 }
             }

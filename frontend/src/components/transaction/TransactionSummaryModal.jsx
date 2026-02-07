@@ -60,7 +60,7 @@ const TransactionSummaryModal = ({
       <div className="bg-white rounded-md w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] flex flex-col">
         <div className="bg-green-800 text-white p-3 md:p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
           <h2 className="text-lg md:text-xl font-bold">
-            {isEditingSummary ? 'Edit Transaction' : 'Transaction Summary'}
+            {isEditingSummary ? 'Edit Transaction' : 'View Transaction'}
           </h2>
           <button
             onClick={onClose}
@@ -657,6 +657,17 @@ const TransactionSummaryModal = ({
                 </>
               ) : (
                 <>
+                  {permissions.canRefund && !isRefundMode && (
+                    <button
+                      className="bg-red-600 text-white px-8 py-2 rounded hover:bg-red-700 focus:outline-none"
+                      onClick={() => {
+                        handleEnterEditMode();
+                        setTimeout(() => toggleRefundMode(), 0);
+                      }}
+                    >
+                      Refund
+                    </button>
+                  )}
                   {permissions.canEdit && (
                     <button
                       className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
