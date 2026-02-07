@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import { Download } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
+import usePermissions from '../hooks/auth/usePermissions';
 import useProtectedAction from '../hooks/auth/useProtectedAction';
 import WebAuthModal from '../components/auth/WebAuthModal';
 import AdminVerificationModal from '../components/AdminVerificationModal';
@@ -23,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 
 const NewTransaction = () => {
   const { user, isAuthenticating } = useAuth();
+  const { hasPermission } = usePermissions();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
@@ -644,12 +646,14 @@ const NewTransaction = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleNewIncome}
-              className="px-6 md:px-8 py-2 bg-green-600 text-white rounded-md text-sm md:text-base hover:bg-green-700 transition-colors w-full md:w-auto"
-            >
-              Add New
-            </button>
+            {hasPermission('transactions.create') && (
+              <button
+                onClick={handleNewIncome}
+                className="px-6 md:px-8 py-2 bg-green-600 text-white rounded-md text-sm md:text-base hover:bg-green-700 transition-colors w-full md:w-auto"
+              >
+                Add New
+              </button>
+            )}
           </div>
 
           {/* Income Table */}
@@ -663,6 +667,10 @@ const NewTransaction = () => {
             openMenuId={openMenuId}
             referrers={referrers}
             handlers={rowHandlers}
+            permissions={{
+              canEdit: hasPermission('transactions.edit'),
+              canCancel: hasPermission('transactions.cancel')
+            }}
           />
 
           {/* Generate Report Button */}
@@ -674,7 +682,7 @@ const NewTransaction = () => {
                 <>No transactions found</>
               )}
             </div>
-            {filteredTransactions.length > 0 && (
+            {filteredTransactions.length > 0 && hasPermission('transactions.export') && (
               <button
                 onClick={handleGenerateReport}
                 className="bg-green-600 text-white px-4 md:px-6 py-2 rounded-md flex items-center text-sm md:text-base hover:bg-green-700 transition-colors"
@@ -733,6 +741,11 @@ const NewTransaction = () => {
           isMcNoChecking={isMcNoChecking}
           mutations={mutations}
           handlers={summaryHandlers}
+          permissions={{
+            canEdit: hasPermission('transactions.edit'),
+            canRefund: hasPermission('transactions.refund'),
+            canExport: hasPermission('transactions.export')
+          }}
         />
       )}
 

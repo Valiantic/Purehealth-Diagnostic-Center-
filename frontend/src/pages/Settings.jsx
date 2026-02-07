@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/dashboard/Sidebar'
 import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import usePasskeyManager from '../hooks/auth/usePasskeyManager'
 import PasskeyModal from '../components/auth/PasskeyModal'
 import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download, FileText } from 'lucide-react'
@@ -14,10 +15,12 @@ import 'react-toastify/dist/ReactToastify.css'
 import { exportFullBackup } from '../utils/backupExporter'
 import AdminVerificationModal from '../components/AdminVerificationModal'
 import ORConfigModal from '../components/settings/ORConfigModal'
+import RoleManagement from '../components/settings/RoleManagement'
 import apiClient from '../services/api'
 
 const Settings = () => {
   const { user, isAuthenticating, refreshUser } = useAuth()
+  const { hasPermission, loading: permissionsLoading } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
   const [isEditing, setIsEditing] = useState(false)
@@ -548,12 +551,16 @@ const Settings = () => {
     }
   }
 
-  const getAuthorizedTabs = (tabs, userRole) => {
-    if (!userRole) return tabs;
-    return tabs.filter(tab => tab.roles.includes(userRole));
+  const getAuthorizedTabs = (tabs) => {
+    return tabs.filter(tab => {
+      // If no permission is specified, show the tab
+      if (!tab.permission) return true;
+      // Check if user has the required permission
+      return hasPermission(tab.permission);
+    });
   }
 
-  if (isAuthenticating) {
+  if (isAuthenticating || permissionsLoading) {
     return null;
   }
 
@@ -562,10 +569,12 @@ const Settings = () => {
   }
 
   const currentPath = location.pathname;
-  const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
-  const activeTab = filteredTabs.find(tab =>
-    currentPath === tab.route || currentPath.startsWith(tab.route)
-  )?.name || 'Account';
+  const filteredTabs = getAuthorizedTabs(tabsConfig);
+  // Sort by route length descending to match more specific routes first (e.g., /settings/roles before /settings)
+  const sortedTabs = [...filteredTabs].sort((a, b) => b.route.length - a.route.length);
+  const activeTab = sortedTabs.find(tab =>
+    currentPath === tab.route || currentPath.startsWith(tab.route + '/')
+  )?.name || (currentPath === '/settings' ? 'Account' : 'Account');
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen h-full bg-gray-100">
@@ -742,8 +751,8 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    {/* Manage Accounts Card */}
-                    {user.role !== 'receptionist' && (
+                    {/* Manage Accounts Card - Only visible to users with accounts.manage permission */}
+                    {hasPermission('accounts.manage') && (
                       <div
                         onClick={!isEditing ? handleViewAccounts : undefined}
                         className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
@@ -806,9 +815,10 @@ const Settings = () => {
                   )}
                 </div>
 
-                {/* Discount Categories Section - Visible to all users */}
+                {/* Discount Categories Section - Admin only */}
+                {user.role === 'admin' && (
                 <div>
-                  {/* Add Discount Button */}
+                  {/* Add Discount Button - Admin only */}
                   <button
                     onClick={handleAddDiscount}
                     disabled={isSavingDiscount}
@@ -1004,7 +1014,7 @@ const Settings = () => {
                     </div>
 
                     {/* Referral Fee Card - Right 1/3 - Admin only */}
-                    {user.role !== 'receptionist' && (
+                    {user.role === 'admin' && (
                       <div className="lg:col-span-1">
                         <div className="bg-green-800 text-white rounded-lg p-4 shadow-sm sticky top-0">
                           {isEditingReferralFee ? (
@@ -1077,7 +1087,12 @@ const Settings = () => {
                     )}
                   </div>
                 </div>
+                )}
               </div>
+            )}
+
+            {activeTab === 'Roles' && (
+              <RoleManagement />
             )}
           </div>
         </div>

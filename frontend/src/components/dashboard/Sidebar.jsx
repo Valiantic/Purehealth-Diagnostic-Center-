@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Menu, 
-  X, 
-  Settings, 
-  LogOut 
+import {
+  Menu,
+  X,
+  Settings,
+  LogOut
 } from 'lucide-react';
 import dashboardIcon from '../../assets/icons/dashboard.png';
 import newDashbordIcon from '../../assets/icons/dashboardIcon.png';
@@ -17,12 +17,14 @@ import annualIcon from '../../assets/icons/annual.png';
 import referralIcon from '../../assets/icons/network.png';
 import PDCHI from '../../assets/icons/purehealth_logo.jpg';
 import LogoutConfirmModal from './LogoutConfirmModal';
+import usePermissions from '../../hooks/auth/usePermissions';
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const location = useLocation(); 
+  const location = useLocation();
   const isLogged = localStorage.getItem('user');
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const { hasPermission } = usePermissions();
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -37,51 +39,89 @@ const Sidebar = () => {
     setIsOpen(!isOpen);
   };
 
-  const menuItems = [
-    { title: 'Dashboard', path: '/dashboard', icon: newDashbordIcon },
-    { title: 'Transaction', path: '/transaction', icon: newTransactionIcon, dropdown: [
-      { label: 'Add', icon: addIcon, path: '/add-transaction' },
-      { label: 'Manage', icon: manageIcon, path: '/manage-transaction' }
-    ] },
-    { title: 'Expenses', path: '/expenses', icon: expensesIcon, dropdown: [
-      { label: 'Add', icon: addIcon, path: '/add-expenses' },
-      { label: 'Manage', icon: manageIcon, path: '/manage-expenses' }
-    ] },
-    { title: 'Monthly', path: '/monthly-income', icon: annualIcon },
-    { title: 'Referrals', path: '/referrals', icon: referralIcon },
-    { title: 'Settings', path: '/settings', icon: <Settings size={20} /> },
-  ];
+  // Build menu items with permission-based dropdown filtering
+  const menuItems = useMemo(() => {
+    const items = [];
+
+    // Dashboard - only show if user has dashboard.view permission
+    if (hasPermission('dashboard.view')) {
+      items.push({ title: 'Dashboard', path: '/dashboard', icon: newDashbordIcon });
+    }
+
+    // Transaction - only show if user has transactions.view permission
+    if (hasPermission('transactions.view')) {
+      const transactionDropdown = [
+        hasPermission('transactions.create') && { label: 'Add', icon: addIcon, path: '/add-transaction' },
+        { label: 'Manage', icon: manageIcon, path: '/manage-transaction' }
+      ].filter(Boolean);
+
+      items.push({
+        title: 'Transaction',
+        path: '/transaction',
+        icon: newTransactionIcon,
+        dropdown: transactionDropdown.length > 0 ? transactionDropdown : undefined
+      });
+    }
+
+    // Expenses - only show if user has expenses.view permission
+    if (hasPermission('expenses.view')) {
+      const expensesDropdown = [
+        hasPermission('expenses.create') && { label: 'Add', icon: addIcon, path: '/add-expenses' },
+        { label: 'Manage', icon: manageIcon, path: '/manage-expenses' }
+      ].filter(Boolean);
+
+      items.push({
+        title: 'Expenses',
+        path: '/expenses',
+        icon: expensesIcon,
+        dropdown: expensesDropdown.length > 0 ? expensesDropdown : undefined
+      });
+    }
+
+    // Monthly Reports - always visible (for now, could add reports.view permission)
+    items.push({ title: 'Monthly', path: '/monthly-income', icon: annualIcon });
+
+    // Referrals - only show if user has referrals.view permission
+    if (hasPermission('referrals.view')) {
+      items.push({ title: 'Referrals', path: '/referrals', icon: referralIcon });
+    }
+
+    // Settings - always visible (individual tabs will have their own permissions)
+    items.push({ title: 'Settings', path: '/settings', icon: <Settings size={20} /> });
+
+    return items;
+  }, [hasPermission]);
 
   // ADD ROUTES HERE IF NEW PAGE IS CREATED FOR HOVER ACTIVE
   const isRouteActive = (itemPath) => {
-   
+
     if (location.pathname === itemPath) return true;
-    
+
     if (itemPath === '/transaction') {
-      return ['/add-transaction', '/manage-transaction'].includes(location.pathname) || 
-             location.pathname.startsWith('/transaction/');
+      return ['/add-transaction', '/manage-transaction'].includes(location.pathname) ||
+        location.pathname.startsWith('/transaction/');
     }
     else if (itemPath === '/expenses') {
       return ['/add-expenses', '/manage-expenses'].includes(location.pathname) ||
-             location.pathname.startsWith('/add-expenses');
+        location.pathname.startsWith('/add-expenses');
     }
     else if (itemPath === '/monthly-income') {
       return ['/monthly-income', '/monthly-expenses'].includes(location.pathname) ||
-             location.pathname.startsWith('/monthly-income/') ||
-             location.pathname.startsWith('/monthly-expenses');
+        location.pathname.startsWith('/monthly-income/') ||
+        location.pathname.startsWith('/monthly-expenses');
     }
     else if (itemPath === '/settings') {
-      return ['/view-accounts','/add-account', '/activity-log', '/department-management', '/test-management', '/referral-management', '/settings'].includes(location.pathname) ||
-      location.pathname.startsWith('/settings/');
+      return ['/view-accounts', '/add-account', '/activity-log', '/department-management', '/test-management', '/referral-management', '/settings'].includes(location.pathname) ||
+        location.pathname.startsWith('/settings/');
     }
-    
+
     return false;
   };
 
   return (
     <>
-     
-      <button 
+
+      <button
         className="lg:hidden fixed z-20 top-4 left-4 p-2 rounded-md bg-white shadow-md transition-colors duration-300 hover:bg-green-100 focus:outline-none"
         onClick={toggleSidebar}
         aria-label="Toggle menu"
@@ -90,7 +130,7 @@ const Sidebar = () => {
       </button>
 
       {isOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-10"
           onClick={toggleSidebar}
         />
@@ -99,10 +139,10 @@ const Sidebar = () => {
       {/* Sidebar content */}
       <div className={`fixed left-0 top-0 h-full bg-[#02542D] shadow-xl z-20 transform transition-transform duration-300 ease-in-out w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="p-6 flex flex-row items-left text-center">
-          <img 
-            src={PDCHI} 
-            alt="Purehealth Logo" 
-            className="h-16 mb-1 hidden lg:block rounded-full border border-white border-2" 
+          <img
+            src={PDCHI}
+            alt="Purehealth Logo"
+            className="h-16 mb-1 hidden lg:block rounded-full border border-white border-2"
           />
           <div className="text-left ml-4 mt-2">
             <h2 className="text-xl font-leading text-white">Purehealth</h2>
@@ -110,8 +150,8 @@ const Sidebar = () => {
           </div>
         </div>
 
-        <hr className='border-2 border-white'/>
-        
+        <hr className='border-2 border-white' />
+
         <nav className="mt-4">
           <ul className="space-y-2 px-4">
             {menuItems.map((item, index) => {
@@ -175,7 +215,7 @@ const Sidebar = () => {
                 </li>
               );
             })}
-            
+
             {/* Logout item with onClick handler */}
             <li>
               <div

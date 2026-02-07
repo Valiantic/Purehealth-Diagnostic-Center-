@@ -141,7 +141,6 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     } else if (expensesData?.expenses && Array.isArray(expensesData.expenses)) {
       rawExpenses = expensesData.expenses;
     } else {
-      console.warn('Could not find expenses array in response:', expensesData);
       rawExpenses = [];
     }
 
