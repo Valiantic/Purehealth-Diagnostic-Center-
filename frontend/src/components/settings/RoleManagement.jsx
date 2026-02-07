@@ -46,35 +46,10 @@ const RoleManagement = () => {
         try {
             const response = await roleAPI.getAllPermissions();
             if (response.data?.success) {
-                // Filter out permissions that should not be available for custom roles
-                const hiddenPermissions = [
-                    'reports.export',   // Export Reports - redundant
-                    'reports.monthly',  // View Monthly Reports - redundant
-                    'settings.edit',    // Edit Settings - not used
-                    'settings.view',    // View Settings - not used
-                    'expenses.archive', // Archive Expenses - not used
-                    'collectible.export', // Export Collectible Income - not used
-                    'departments.view', // View Departments - covered by manage functions
-                    'roles.view',       // View Roles - covered by manage functions
-                    'tests.view',       // View Tests - covered by manage functions
-                    'accounts.view',    // Old - replaced by accounts.manage
-                    'accounts.create',  // Old - replaced by accounts.manage
-                    'accounts.edit',    // Old - replaced by accounts.manage
-                    'accounts.archive'  // Old - replaced by accounts.manage
-                ];
-                
-                const filteredPermissions = {};
-                Object.entries(response.data.permissions).forEach(([category, perms]) => {
-                    const filteredPerms = perms.filter(p => !hiddenPermissions.includes(p.permissionKey));
-                    if (filteredPerms.length > 0) {
-                        filteredPermissions[category] = filteredPerms;
-                    }
-                });
-                
-                setPermissions(filteredPermissions);
+                setPermissions(response.data.permissions);
                 // Expand all categories by default
                 const expanded = {};
-                Object.keys(filteredPermissions).forEach(cat => {
+                Object.keys(response.data.permissions).forEach(cat => {
                     expanded[cat] = true;
                 });
                 setExpandedCategories(expanded);

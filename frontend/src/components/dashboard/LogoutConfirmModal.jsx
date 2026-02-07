@@ -1,11 +1,12 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { LogOut, X } from 'lucide-react';
 
 const LogoutConfirmModal = ({ isOpen, onClose, onConfirm }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
         <div className="bg-red-600 rounded-t-lg text-white p-4 flex justify-between items-center">
           <div className="flex items-center">
@@ -42,7 +43,8 @@ const LogoutConfirmModal = ({ isOpen, onClose, onConfirm }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -10,7 +10,7 @@ import 'react-toastify/dist/ReactToastify.css'
  * 
  * Props:
  * - component: Component to render if authorized
- * - requiredPermission: Single permission required (e.g., 'accounts.view')
+ * - requiredPermission: Single permission required (e.g., 'accounts.manage')
  * - requiredAnyPermission: Array of permissions, user needs at least one
  * - restrictFromRole: Legacy support - restrict specific role (deprecated)
  */
