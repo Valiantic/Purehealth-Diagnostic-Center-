@@ -88,31 +88,20 @@ INSERT INTO `Permissions` (`permissionKey`, `displayName`, `description`, `categ
 ('referrals.view', 'View Referrals', 'View referral records', 'Referrals', NOW(), NOW()),
 ('referrals.export', 'Export Referrals', 'Export referral data', 'Referrals', NOW(), NOW()),
 
--- Reports
-('reports.monthly', 'View Monthly Reports', 'Access to monthly income and expense reports', 'Reports', NOW(), NOW()),
-('reports.export', 'Export Reports', 'Export report data to Excel/PDF', 'Reports', NOW(), NOW()),
-
 -- User Accounts & Administration
 ('accounts.manage', 'Manage User Accounts', 'View, create, edit, and archive user accounts', 'Administration', NOW(), NOW()),
 ('referrals.manage', 'Manage Referrers', 'Add, edit, and archive referrers', 'Administration', NOW(), NOW()),
 
 -- Roles & Permissions
-('roles.view', 'View Roles', 'View roles and their permissions', 'Administration', NOW(), NOW()),
 ('roles.manage', 'Manage Roles', 'Create, edit, and delete roles and assign permissions', 'Administration', NOW(), NOW()),
-
--- Settings
-('settings.view', 'View Settings', 'Access to view application settings', 'Settings', NOW(), NOW()),
-('settings.edit', 'Edit Settings', 'Modify application settings', 'Settings', NOW(), NOW()),
 
 -- Activity Logs
 ('activitylog.view', 'View Activity Logs', 'View system activity logs', 'Administration', NOW(), NOW()),
 
 -- Department Management
-('departments.view', 'View Departments', 'View department list', 'Administration', NOW(), NOW()),
 ('departments.manage', 'Manage Departments', 'Create, edit, and delete departments', 'Administration', NOW(), NOW()),
 
 -- Test Management
-('tests.view', 'View Tests', 'View test list', 'Administration', NOW(), NOW()),
 ('tests.manage', 'Manage Tests', 'Create, edit, and delete tests', 'Administration', NOW(), NOW())
 ON DUPLICATE KEY UPDATE `displayName` = VALUES(`displayName`);
 
@@ -136,11 +125,9 @@ FROM Permissions p
 WHERE p.permissionKey IN (
   'dashboard.view',
   'transactions.view', 'transactions.create', 'transactions.edit', 'transactions.export',
-  'collectible.view', 'collectible.create', 'collectible.edit', 'collectible.export',
+  'collectible.view', 'collectible.create', 'collectible.edit',
   'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.export',
-  'referrals.view', 'referrals.export',
-  'reports.monthly', 'reports.export',
-  'settings.view'
+  'referrals.view', 'referrals.export'
 )
 ON DUPLICATE KEY UPDATE `updatedAt` = NOW();
 

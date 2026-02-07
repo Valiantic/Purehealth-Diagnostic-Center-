@@ -200,26 +200,22 @@ function getFallbackPermissions(role) {
     const adminPermissions = [
         'dashboard.view',
         'transactions.view', 'transactions.create', 'transactions.edit', 'transactions.cancel', 'transactions.refund', 'transactions.export',
-        'collectible.view', 'collectible.create', 'collectible.edit', 'collectible.export',
-        'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.archive', 'expenses.export',
+        'collectible.view', 'collectible.create', 'collectible.edit',
+        'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.export',
         'referrals.view', 'referrals.manage', 'referrals.export',
-        'reports.monthly', 'reports.export',
         'accounts.manage',
-        'roles.view', 'roles.manage',
-        'settings.view', 'settings.edit',
+        'roles.manage',
         'activitylog.view',
-        'departments.view', 'departments.manage',
-        'tests.view', 'tests.manage'
+        'departments.manage',
+        'tests.manage'
     ];
 
     const receptionistPermissions = [
         'dashboard.view',
         'transactions.view', 'transactions.create', 'transactions.edit', 'transactions.cancel', 'transactions.export',
-        'collectible.view', 'collectible.create', 'collectible.edit', 'collectible.export',
+        'collectible.view', 'collectible.create', 'collectible.edit',
         'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.export',
-        'referrals.view', 'referrals.export',
-        'reports.monthly', 'reports.export',
-        'settings.view'
+        'referrals.view', 'referrals.export'
     ];
 
     if (role === 'admin') {
