@@ -39,15 +39,9 @@ module.exports = (sequelize) => {
     },
     // Store user information as JSON in case the user gets deleted
     userInfo: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSONB,
       allowNull: true,
-      get() {
-        const value = this.getDataValue('userInfo');
-        return value ? JSON.parse(value) : null;
-      },
-      set(value) {
-        this.setDataValue('userInfo', value ? JSON.stringify(value) : null);
-      }
+      defaultValue: null
     }
   }, {
     tableName: 'ActivityLogs',
