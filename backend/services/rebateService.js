@@ -1,3 +1,4 @@
+
 const { Transaction, TestDetails, ReferrerRebate, Referrer, Expense, ExpenseItem, Settings, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
@@ -55,8 +56,10 @@ class RebateService {
         return;
       }
 
-      // Get referral fee percentage from settings
-      const referralFeeRate = await this.getReferralFeePercentage();
+      // Use referral fee percentage from transaction if available, otherwise get from settings
+      const referralFeeRate = transaction.referralFeePercentage
+        ? parseFloat(transaction.referralFeePercentage) / 100
+        : await this.getReferralFeePercentage();
 
       // Group tests by department and calculate department totals
       const departmentTotals = {};
@@ -113,7 +116,7 @@ class RebateService {
         }
 
         // Record the rebate as an expense
-        await this.recordRebateAsExpense(referrer, totalRebates, rebateDate, transaction.userId, t);
+        await this.recordRebateAsExpense(referrer, totalRebates, rebateDate, transaction.userId, t, referralFeeRate);
 
         console.log(`Rebate calculated for ${referrer.firstName} ${referrer.lastName}: ₱${totalRebates.toFixed(2)}`);
         console.log('Department breakdown:', departmentRebates);
@@ -130,10 +133,12 @@ class RebateService {
   /**
    * Record rebate as an expense in the monthly expenses
    */
-  static async recordRebateAsExpense(referrer, rebateAmount, expenseDate, userId, transaction) {
+  static async recordRebateAsExpense(referrer, rebateAmount, expenseDate, userId, transaction, explicitRate = null) {
     try {
       // Get the referral fee percentage for display
-      const feePercentage = await this.getReferralFeePercentageDisplay();
+      const feePercentage = explicitRate !== null
+        ? (parseFloat(explicitRate) * 100).toFixed(0)
+        : await this.getReferralFeePercentageDisplay();
 
       // Find or create "Rebates" category
       const { Category } = require('../models');
@@ -192,6 +197,21 @@ class RebateService {
           totalAmount: parseFloat(expense.totalAmount) + rebateAmount
         }, { transaction });
       }
+      
+      // Log activity for referrer rebate expense item creation
+      const { ActivityLog } = require('../models');
+      await ActivityLog.create({
+        userId: userId,
+        action: itemCreated ? 'CREATE' : 'UPDATE',
+        resourceType: 'REFERRER_REBATE',
+        resourceId: expenseItem.expenseItemId,
+        details: itemCreated 
+          ? `Created referrer rebate for Dr. ${referrer.lastName} - ₱${parseFloat(rebateAmount).toFixed(2)}` 
+          : `Updated referrer rebate for Dr. ${referrer.lastName} - added ₱${parseFloat(rebateAmount).toFixed(2)} (Total: ₱${parseFloat(expenseItem.amount).toFixed(2)})`,
+        userInfo: {
+          id: userId
+        }
+      }, { transaction });
 
     } catch (error) {
       console.error('Error recording rebate as expense:', error);
@@ -290,8 +310,10 @@ class RebateService {
         return;
       }
 
-      // Get referral fee percentage from settings
-      const referralFeeRate = await this.getReferralFeePercentage();
+      // Use referral fee percentage from transaction if available, otherwise get from settings
+      const referralFeeRate = transaction.referralFeePercentage
+        ? parseFloat(transaction.referralFeePercentage) / 100
+        : await this.getReferralFeePercentage();
 
       // Calculate the total rebate amount that was previously calculated for this transaction
       const departmentTotals = {};
@@ -337,7 +359,7 @@ class RebateService {
           }, { transaction: t });
 
           // Update the corresponding expense items to cancelled status
-          await this.cancelRebateExpenses(referrer, totalRebateToDeduct, rebateDate, userId, t);
+          await this.cancelRebateExpenses(referrer, totalRebateToDeduct, rebateDate, userId, t, referralFeeRate);
 
           console.log(`Rebate deducted for cancelled transaction - ${referrer.firstName} ${referrer.lastName}: ₱${totalRebateToDeduct.toFixed(2)}`);
         }
@@ -378,8 +400,10 @@ class RebateService {
         return;
       }
 
-      // Get referral fee percentage from settings
-      const referralFeeRate = await this.getReferralFeePercentage();
+      // Use referral fee percentage from transaction if available, otherwise get from settings
+      const referralFeeRate = transaction.referralFeePercentage
+        ? parseFloat(transaction.referralFeePercentage) / 100
+        : await this.getReferralFeePercentage();
 
       // Calculate the rebate amount to deduct based on refunded test details
       const departmentTotals = {};
@@ -440,7 +464,7 @@ class RebateService {
   /**
    * Cancel rebate expenses when transaction is cancelled
    */
-  static async cancelRebateExpenses(referrer, rebateAmount, expenseDate, userId, transaction) {
+  static async cancelRebateExpenses(referrer, rebateAmount, expenseDate, userId, transaction, explicitRate = null) {
     try {
       // Find the expense record for rebates (using Pure Health as the name)
       const expense = await Expense.findOne({
@@ -460,7 +484,7 @@ class RebateService {
             expenseId: expense.expenseId,
             paidTo: `Dr. ${referrer.lastName}`,
             purpose: {
-              [Op.like]: 'Referrer Rebate - %% of department totals'
+              [Op.like]: 'Referrer Rebate - %'
             }
           },
           transaction
@@ -569,7 +593,7 @@ class RebateService {
               expenseId: expense.expenseId,
               paidTo: `Dr. ${oldReferrer.lastName}`,
               purpose: {
-                [Op.like]: 'Referrer Rebate - %% of department totals'
+                [Op.like]: 'Referrer Rebate - %'
               }
             },
             transaction: t
@@ -610,8 +634,10 @@ class RebateService {
       const referrer = await Referrer.findByPk(referrerId, { transaction: dbTransaction });
       if (!referrer) return;
 
-      // Get referral fee percentage from settings
-      const referralFeeRate = await this.getReferralFeePercentage();
+      // Use referral fee percentage from transaction if available, otherwise get from settings
+      const referralFeeRate = transaction.referralFeePercentage
+        ? parseFloat(transaction.referralFeePercentage) / 100
+        : await this.getReferralFeePercentage();
 
       // Calculate the rebate amount to remove
       const departmentTotals = {};
@@ -656,7 +682,7 @@ class RebateService {
         }
 
         // Remove from expense items
-        await this.cancelRebateExpenses(referrer, totalRebateToRemove, transactionDate, userId, dbTransaction);
+        await this.cancelRebateExpenses(referrer, totalRebateToRemove, transactionDate, userId, dbTransaction, referralFeeRate);
 
         console.log(`Removed rebate expense for referrer change - Dr. ${referrer.lastName}: ₱${totalRebateToRemove.toFixed(2)}`);
       } else {
@@ -706,7 +732,7 @@ class RebateService {
             expenseId: expense.expenseId,
             paidTo: `Dr. ${oldReferrer.lastName}`,
             purpose: {
-              [Op.like]: 'Referrer Rebate - %% of department totals'
+              [Op.like]: 'Referrer Rebate - %'
             }
           },
           transaction: dbTransaction
@@ -830,9 +856,16 @@ class RebateService {
           }, { transaction: dbTransaction });
         }
 
+        // Update the purpose strings for existing expense items if necessary
+        // This ensures the displayed percentage is correct for the new referrer
+        await this.updateExpenseItemPurpose(expense.expenseId, newReferrerId, referralFeeRate, dbTransaction);
+
         console.log(`Updated rebate records for referrer change - From Dr. ${oldReferrer.lastName} to Dr. ${newReferrer.lastName}: ₱${totalRebateAmount.toFixed(2)}`);
       }
+
+      if (shouldCommit) await t.commit();
     } catch (error) {
+      if (shouldCommit) await t.rollback();
       console.error('Error updating rebate records for referrer change:', error);
       throw error;
     }
@@ -847,8 +880,10 @@ class RebateService {
       const referrer = await Referrer.findByPk(referrerId, { transaction: dbTransaction });
       if (!referrer) return;
 
-      // Get referral fee percentage from settings
-      const referralFeeRate = await this.getReferralFeePercentage();
+      // Use referral fee percentage from transaction if available, otherwise get from settings
+      const referralFeeRate = transaction.referralFeePercentage
+        ? parseFloat(transaction.referralFeePercentage) / 100
+        : await this.getReferralFeePercentage();
 
       // Calculate the rebate amount to add
       const departmentTotals = {};
@@ -895,7 +930,7 @@ class RebateService {
         }
 
         // Add to expense items
-        await this.recordRebateAsExpense(referrer, totalRebateToAdd, transactionDate, userId, dbTransaction);
+        await this.recordRebateAsExpense(referrer, totalRebateToAdd, transactionDate, userId, dbTransaction, referralFeeRate);
 
         console.log(`Added rebate expense for referrer change - Dr. ${referrer.lastName}: ₱${totalRebateToAdd.toFixed(2)}`);
       }
@@ -928,7 +963,7 @@ class RebateService {
             expenseId: expense.expenseId,
             paidTo: `Dr. ${referrer.lastName}`,
             purpose: {
-              [Op.like]: 'Referrer Rebate - %% of department totals'
+              [Op.like]: 'Referrer Rebate - %'
             }
           },
           transaction
@@ -953,7 +988,37 @@ class RebateService {
       throw error;
     }
   }
+
+  /**
+   * Update the purpose of an expense item to reflect the current rate
+   */
+  static async updateExpenseItemPurpose(expenseId, referrerId, referralFeeRate, transaction) {
+    try {
+      const referrer = await Referrer.findByPk(referrerId, { transaction });
+      if (!referrer) return;
+
+      const feePercentage = (parseFloat(referralFeeRate) * 100).toFixed(0);
+
+      const expenseItem = await ExpenseItem.findOne({
+        where: {
+          expenseId: expenseId,
+          paidTo: `Dr. ${referrer.lastName}`,
+          purpose: {
+            [Op.like]: 'Referrer Rebate - %'
+          }
+        },
+        transaction
+      });
+
+      if (expenseItem) {
+        await expenseItem.update({
+          purpose: `Referrer Rebate - ${feePercentage}% of department totals`
+        }, { transaction });
+      }
+    } catch (error) {
+      console.error('Error updating expense item purpose:', error);
+    }
+  }
 }
 
 module.exports = RebateService;
-

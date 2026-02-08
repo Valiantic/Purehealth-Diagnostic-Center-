@@ -16,6 +16,9 @@ const ReferrerRebate = require('./ReferrerRebate')(sequelize);
 const Settings = require('./Settings')(sequelize);
 const DiscountCategory = require('./DiscountCategory')(sequelize);
 const CollectibleIncomeItems = require('./CollectibleIncomeItems')(sequelize);
+const Role = require('./Role')(sequelize);
+const Permission = require('./Permission')(sequelize);
+const RolePermission = require('./RolePermission')(sequelize);
 
 // Relationships
 User.hasMany(Authenticator, { foreignKey: 'userId' });
@@ -177,6 +180,27 @@ CollectibleIncomeItems.belongsTo(CollectibleIncome, {
   foreignKey: 'companyId'
 });
 
+// Role and Permission relationships
+Role.hasMany(User, {
+  foreignKey: 'roleId',
+  onDelete: 'RESTRICT'
+});
+User.belongsTo(Role, {
+  foreignKey: 'roleId',
+  onDelete: 'RESTRICT'
+});
+
+Role.belongsToMany(Permission, {
+  through: RolePermission,
+  foreignKey: 'roleId',
+  otherKey: 'permissionId'
+});
+Permission.belongsToMany(Role, {
+  through: RolePermission,
+  foreignKey: 'permissionId',
+  otherKey: 'roleId'
+});
+
 module.exports = {
   sequelize,
   User,
@@ -195,5 +219,8 @@ module.exports = {
   CollectibleIncomeItems,
   ReferrerRebate,
   Settings,
-  DiscountCategory
+  DiscountCategory,
+  Role,
+  Permission,
+  RolePermission
 };

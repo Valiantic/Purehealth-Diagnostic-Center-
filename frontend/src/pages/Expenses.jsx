@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import { Download, Search } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
+import usePermissions from '../hooks/auth/usePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,9 +15,10 @@ import { exportExpenseToExcel } from '../utils/expenseExcelExporter';
 
 const Expenses = () => {
   const { user, isAuthenticating } = useAuth();
+  const { hasPermission } = usePermissions();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
+
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [expenseSearchTerm, setExpenseSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('This Month');
@@ -25,7 +27,7 @@ const Expenses = () => {
   const [isEditingExpense, setIsEditingExpense] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   const expenseDateInputRef = useRef(null);
 
   // Fetch expenses data
@@ -58,19 +60,19 @@ const Expenses = () => {
   });
 
   // Process data
-  const expenses = expensesData ? 
-    (Array.isArray(expensesData) ? expensesData : 
-    (expensesData.data && Array.isArray(expensesData.data) ? expensesData.data : [])) 
+  const expenses = expensesData ?
+    (Array.isArray(expensesData) ? expensesData :
+      (expensesData.data && Array.isArray(expensesData.data) ? expensesData.data : []))
     : [];
 
-  const departments = departmentsData ? 
-    (Array.isArray(departmentsData) ? departmentsData : 
-    (departmentsData.data && Array.isArray(departmentsData.data) ? departmentsData.data : [])) 
+  const departments = departmentsData ?
+    (Array.isArray(departmentsData) ? departmentsData :
+      (departmentsData.data && Array.isArray(departmentsData.data) ? departmentsData.data : []))
     : [];
 
-  const categories = categoriesData ? 
-    (Array.isArray(categoriesData) ? categoriesData : 
-    (categoriesData.data && Array.isArray(categoriesData.data) ? categoriesData.data : [])) 
+  const categories = categoriesData ?
+    (Array.isArray(categoriesData) ? categoriesData :
+      (categoriesData.data && Array.isArray(categoriesData.data) ? categoriesData.data : []))
     : [];
 
   // Filter expenses by search term
@@ -78,7 +80,7 @@ const Expenses = () => {
     const name = `${expense.firstName || ''} ${expense.lastName || ''}`.toLowerCase();
     const department = expense.Department?.departmentName?.toLowerCase() || '';
     const searchLower = expenseSearchTerm.toLowerCase();
-    
+
     return name.includes(searchLower) || department.includes(searchLower);
   });
 
@@ -87,7 +89,7 @@ const Expenses = () => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    
+
     switch (selectedMonth) {
       case 'This Month':
         return {
@@ -118,7 +120,7 @@ const Expenses = () => {
   };
 
   const dateRange = getDateRange();
-  
+
   const monthFilteredExpenses = filteredExpenses.filter((expense) => {
     const expenseDate = new Date(expense.createdAt || expense.date);
     return expenseDate >= dateRange.start && expenseDate <= dateRange.end;
@@ -134,7 +136,7 @@ const Expenses = () => {
   const getPageNumbers = () => {
     const pages = [];
     const maxPagesToShow = 5;
-    
+
     if (totalPages <= maxPagesToShow) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -162,7 +164,7 @@ const Expenses = () => {
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -183,8 +185,8 @@ const Expenses = () => {
   }, 0);
 
   // Calculate reimbursed percentage
-  const reimbursedPercentage = totalExpense > 0 
-    ? ((reimbursedTotal / totalExpense) * 100).toFixed(1) 
+  const reimbursedPercentage = totalExpense > 0
+    ? ((reimbursedTotal / totalExpense) * 100).toFixed(1)
     : 0;
 
   // Handle date change
@@ -196,7 +198,7 @@ const Expenses = () => {
         newDate.getMonth(),
         newDate.getDate()
       );
-      
+
       setExpenseDate(normalizedDate);
       setExpenseSearchTerm('');
     }
@@ -212,30 +214,30 @@ const Expenses = () => {
   // Get expense modal data
   const getExpenseModalData = () => {
     if (!selectedExpense) return {};
-    
+
     const firstName = selectedExpense.firstName || selectedExpense.name?.split(' ')[0] || '';
     const lastName = selectedExpense.lastName || selectedExpense.name?.split(' ').slice(1).join(' ') || '';
-    
-    const expenses = selectedExpense.ExpenseItems && selectedExpense.ExpenseItems.length > 0 
+
+    const expenses = selectedExpense.ExpenseItems && selectedExpense.ExpenseItems.length > 0
       ? selectedExpense.ExpenseItems.map((item, index) => ({
-          id: item.id || index,
-          paidTo: item.paidTo || `${firstName} ${lastName}`,
-          purpose: item.purpose || '',
-          categoryId: item.Category?.categoryId || item.categoryId || '',
-          categoryName: item.Category?.name || 'No Category',
-          status: item.status || 'pending',
-          amount: parseFloat(item.amount || 0)
-        }))
+        id: item.id || index,
+        paidTo: item.paidTo || `${firstName} ${lastName}`,
+        purpose: item.purpose || '',
+        categoryId: item.Category?.categoryId || item.categoryId || '',
+        categoryName: item.Category?.name || 'No Category',
+        status: item.status || 'pending',
+        amount: parseFloat(item.amount || 0)
+      }))
       : [{
-          id: 1,
-          paidTo: `${firstName} ${lastName}`,
-          purpose: selectedExpense.purpose || selectedExpense.description || '',
-          categoryId: selectedExpense.Category?.categoryId || selectedExpense.categoryId || '',
-          categoryName: selectedExpense.Category?.name || 'No Category',
-          status: selectedExpense.status || 'pending',
-          amount: parseFloat(selectedExpense.amount || 0)
-        }];
-    
+        id: 1,
+        paidTo: `${firstName} ${lastName}`,
+        purpose: selectedExpense.purpose || selectedExpense.description || '',
+        categoryId: selectedExpense.Category?.categoryId || selectedExpense.categoryId || '',
+        categoryName: selectedExpense.Category?.name || 'No Category',
+        status: selectedExpense.status || 'pending',
+        amount: parseFloat(selectedExpense.amount || 0)
+      }];
+
     return {
       firstName,
       lastName,
@@ -262,7 +264,7 @@ const Expenses = () => {
   const handleSaveExpenseChanges = async (updatedData) => {
     try {
       const totalAmount = updatedData.expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-      
+
       const expenseUpdateData = {
         firstName: updatedData.firstName,
         lastName: updatedData.lastName,
@@ -286,13 +288,13 @@ const Expenses = () => {
       }
 
       await expenseAPI.updateExpense(expenseId, expenseUpdateData);
-      
+
       await refetchExpenses();
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['expenses', expenseDate] 
+
+      queryClient.invalidateQueries({
+        queryKey: ['expenses', expenseDate]
       });
-      
+
       toast.success('Expense updated successfully');
       closeExpenseSummary();
     } catch (error) {
@@ -357,12 +359,12 @@ const Expenses = () => {
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
-      
+
       <div className="flex-1 overflow-auto p-4 sm:p-6 pt-16 lg:pt-6 lg:ml-64">
         {/* Page Header with Month Selector */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Expenses</h1>
-          
+
           {/* Month Selector - Top Right */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Showing data for:</span>
@@ -439,15 +441,17 @@ const Expenses = () => {
             </div>
 
             {/* Right side - Add New Button */}
-            <button
-              onClick={handleNewExpense}
-              className="bg-[#02542D] text-white px-6 py-2 rounded-lg hover:bg-green-600 font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add New
-            </button>
+            {hasPermission('expenses.create') && (
+              <button
+                onClick={handleNewExpense}
+                className="bg-[#02542D] text-white px-6 py-2 rounded-lg hover:bg-green-600 font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add New
+              </button>
+            )}
           </div>
 
           {/* Table Header Info */}
@@ -467,48 +471,51 @@ const Expenses = () => {
             editedExpense={null}
             openMenuId={null}
             handlers={{
-              handleEditClick: () => {},
-              handleCancelClick: () => {},
-              handleSaveClick: () => {},
-              handleCancelInlineEdit: () => {},
+              handleEditClick: () => { },
+              handleCancelClick: () => { },
+              handleSaveClick: () => { },
+              handleCancelInlineEdit: () => { },
               toggleExpenseMenu: null
             }}
             expenseSearchTerm={expenseSearchTerm}
             onEditExpense={handleEditExpense}
+            permissions={{
+              canEdit: hasPermission('expenses.edit')
+            }}
             key={`expense-table-${expenseDate.toISOString().split('T')[0]}`}
           />
 
           {/* Footer with Generate Report and Pagination */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <button
-                onClick={handleGenerateExpenseReport}
-                disabled={monthFilteredExpenses.length === 0}
-                className={`${
-                  monthFilteredExpenses.length === 0
+              {hasPermission('expenses.export') && (
+                <button
+                  onClick={handleGenerateExpenseReport}
+                  disabled={monthFilteredExpenses.length === 0}
+                  className={`${monthFilteredExpenses.length === 0
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-[#02542D] hover:bg-green-600'
-                } text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2`}
-              >
-                <Download className="w-5 h-5" />
-                Generate Report
-              </button>
+                    } text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2`}
+                >
+                  <Download className="w-5 h-5" />
+                  Generate Report
+                </button>
+              )}
 
               {/* Pagination - only show if there are pages */}
               {totalPages > 0 && (
                 <div className="flex gap-2 items-center">
-                  <button 
+                  <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-3 py-1 rounded font-semibold ${
-                      currentPage === 1 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                        : 'bg-[#02542D] text-white hover:bg-green-600'
-                    }`}
+                    className={`px-3 py-1 rounded font-semibold ${currentPage === 1
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#02542D] text-white hover:bg-green-600'
+                      }`}
                   >
                     Prev
                   </button>
-                  
+
                   {getPageNumbers().map((page, index) => (
                     page === '...' ? (
                       <span key={`ellipsis-${index}`} className="px-3 py-1">...</span>
@@ -516,25 +523,23 @@ const Expenses = () => {
                       <button
                         key={page}
                         onClick={() => handlePageChange(page)}
-                        className={`px-3 py-1 rounded ${
-                          currentPage === page
-                            ? 'bg-[#02542D] text-white font-semibold'
-                            : 'bg-white border border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`px-3 py-1 rounded ${currentPage === page
+                          ? 'bg-[#02542D] text-white font-semibold'
+                          : 'bg-white border border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         {page}
                       </button>
                     )
                   ))}
-                  
-                  <button 
+
+                  <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`px-3 py-1 rounded font-semibold ${
-                      currentPage === totalPages 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                        : 'bg-[#02542D] text-white hover:bg-green-600'
-                    }`}
+                    className={`px-3 py-1 rounded font-semibold ${currentPage === totalPages
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#02542D] text-white hover:bg-green-600'
+                      }`}
                   >
                     Next
                   </button>
@@ -563,6 +568,9 @@ const Expenses = () => {
           isEditing={isEditingExpense}
           onEnterEditMode={() => setIsEditingExpense(true)}
           mode="edit"
+          permissions={{
+            canEdit: hasPermission('expenses.edit')
+          }}
         />
       )}
     </div>

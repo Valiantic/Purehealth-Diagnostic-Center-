@@ -25,7 +25,8 @@ const TransactionSummaryModal = ({
   isMcNoChecking,
   mutations,
   handlers,
-  ConfirmButton
+  ConfirmButton,
+  permissions = {} // Permission checks object
 }) => {
   if (!isOpen || !transaction) return null;
 
@@ -59,7 +60,7 @@ const TransactionSummaryModal = ({
       <div className="bg-white rounded-md w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] flex flex-col">
         <div className="bg-green-800 text-white p-3 md:p-4 flex justify-between items-center rounded-t-md sticky top-0 z-10">
           <h2 className="text-lg md:text-xl font-bold">
-            {isEditingSummary ? 'Edit Transaction' : 'Transaction Summary'}
+            {isEditingSummary ? 'Edit Transaction' : 'View Transaction'}
           </h2>
           <button
             onClick={onClose}
@@ -628,21 +629,22 @@ const TransactionSummaryModal = ({
                   >
                     Cancel
                   </button>
-                  {isRefundMode ? (
-                    <button
-                      className="bg-blue-600 text-white px-8 py-2 rounded hover:bg-blue-700 focus:outline-none"
-                      onClick={toggleRefundMode}
-                      disabled={mutations?.saveTransaction?.isPending}
-                    >
-                      Exit Refund Mode
-                    </button>
-                  ) : (
+                  {permissions.canRefund && !isRefundMode && (
                     <button
                       className="bg-red-600 text-white px-8 py-2 rounded hover:bg-red-700 focus:outline-none"
                       onClick={toggleRefundMode}
                       disabled={mutations?.saveTransaction?.isPending}
                     >
                       Refund
+                    </button>
+                  )}
+                  {isRefundMode && (
+                    <button
+                      className="bg-blue-600 text-white px-8 py-2 rounded hover:bg-blue-700 focus:outline-none"
+                      onClick={toggleRefundMode}
+                      disabled={mutations?.saveTransaction?.isPending}
+                    >
+                      Exit Refund Mode
                     </button>
                   )}
                   <button
@@ -655,17 +657,32 @@ const TransactionSummaryModal = ({
                 </>
               ) : (
                 <>
-                  <button
-                    className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
-                    onClick={handleEnterEditMode}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
-                  >
-                    Export
-                  </button>
+                  {permissions.canRefund && !isRefundMode && (
+                    <button
+                      className="bg-red-600 text-white px-8 py-2 rounded hover:bg-red-700 focus:outline-none"
+                      onClick={() => {
+                        handleEnterEditMode();
+                        setTimeout(() => toggleRefundMode(), 0);
+                      }}
+                    >
+                      Refund
+                    </button>
+                  )}
+                  {permissions.canEdit && (
+                    <button
+                      className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
+                      onClick={handleEnterEditMode}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {permissions.canExport && (
+                    <button
+                      className="bg-green-800 text-white px-8 py-2 rounded hover:bg-green-700 focus:outline-none"
+                    >
+                      Export
+                    </button>
+                  )}
                 </>
               )}
             </div>

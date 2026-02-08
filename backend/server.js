@@ -24,6 +24,7 @@ const monthlyExpenseRoutes = require('./routes/monthlyExpenseRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const rebateRoutes = require('./routes/rebateRoute');
 const settingsRoutes = require('./routes/settingsRoutes');
+const roleRoutes = require('./routes/roleRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -112,6 +113,7 @@ app.use('/api/monthly-expenses', monthlyExpenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/rebates', rebateRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/roles', roleRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

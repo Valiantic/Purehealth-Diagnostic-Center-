@@ -8,7 +8,7 @@ import { isTestRefunded } from '../../utils/transactionUtils';
  */
 export const useTransactionData = (selectedDate, expenseDate, discountCategories = []) => {
   const queryClient = useQueryClient();
-  
+
   // Transactions data query
   const {
     data: transactionsData = { data: { transactions: [], count: 0 } },
@@ -23,7 +23,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
-      
+
       const response = await transactionAPI.getAllTransactions({
         page: 1,
         limit: 50,
@@ -72,7 +72,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
-      
+
       const response = await revenueAPI.getRefundsByDepartment({
         date: dateString
       });
@@ -96,7 +96,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
         const month = String(expenseDate.getMonth() + 1).padStart(2, '0');
         const day = String(expenseDate.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
-        
+
         const response = await expenseAPI.getExpenses({ date: dateStr });
         return response;
       } catch (error) {
@@ -104,9 +104,9 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
         throw error;
       }
     },
-    staleTime: 0, 
-    refetchOnWindowFocus: false, 
-    refetchOnMount: true, 
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 
   // Process raw data into more usable formats
@@ -131,7 +131,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
   // Process expenses data
   const expenses = (() => {
     let rawExpenses = [];
-    
+
     if (Array.isArray(expensesData)) {
       rawExpenses = expensesData;
     } else if (expensesData?.data && Array.isArray(expensesData.data)) {
@@ -141,42 +141,41 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     } else if (expensesData?.expenses && Array.isArray(expensesData.expenses)) {
       rawExpenses = expensesData.expenses;
     } else {
-      console.warn('Could not find expenses array in response:', expensesData);
       rawExpenses = [];
     }
-    
+
     const year = expenseDate.getFullYear();
-    const month = String(expenseDate.getMonth() + 1).padStart(2, '0'); 
+    const month = String(expenseDate.getMonth() + 1).padStart(2, '0');
     const day = String(expenseDate.getDate()).padStart(2, '0');
     const selectedDateStr = `${year}-${month}-${day}`;
-        
+
     const filteredByDate = rawExpenses.filter(expense => {
       if (!expense) return false;
-      
+
       const expenseDateStr = expense.createdAt || expense.date || expense.expenseDate;
       if (!expenseDateStr) return false;
-      
+
       try {
         const expDate = new Date(expenseDateStr);
         const expYear = expDate.getFullYear();
         const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
         const expDay = String(expDate.getDate()).padStart(2, '0');
-        
+
         const expDateStr = `${expYear}-${expMonth}-${expDay}`;
-        
+
         return expDateStr === selectedDateStr;
       } catch (e) {
         console.error('Error comparing dates:', e);
         return false;
       }
     });
-    
+
     return filteredByDate;
   })();
 
   // Create department totals objects
   const departmentTotals = {};
-  const departmentBalanceTotals = {}; 
+  const departmentBalanceTotals = {};
   const departmentRefundTotals = {};
 
   if (departments && departments.length > 0) {
@@ -193,9 +192,11 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     // Process transactions into the format needed for display
     const processedTransactions = transactions
       .filter((transaction) => {
-        if (!transaction.createdAt) return true; 
-        
-        const transactionDate = new Date(transaction.createdAt);
+        // Use transactionDate for filtering (matches backend query)
+        const dateField = transaction.transactionDate || transaction.createdAt;
+        if (!dateField) return true;
+
+        const transactionDate = new Date(dateField);
         return (
           transactionDate.getDate() === selectedDate.getDate() &&
           transactionDate.getMonth() === selectedDate.getMonth() &&
@@ -210,7 +211,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
             amount: 0,
             isActive: dept.status === 'active',
             refundAmount: 0,
-            balanceAmount: 0 
+            balanceAmount: 0
           };
         });
 
@@ -218,70 +219,34 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
           transaction.TestDetails.forEach((test) => {
             const deptId = test.departmentId;
             if (!departmentRevenues[deptId]) return;
-            
+
             if (isTestRefunded(test)) {
               departmentRevenues[deptId].refundAmount += parseFloat(test.originalPrice || test.discountedPrice) || 0;
             } else {
               const testPrice = parseFloat(test.discountedPrice) || 0;
               const balanceAmount = parseFloat(test.balanceAmount) || 0;
-              
+
               departmentRevenues[deptId].balanceAmount += balanceAmount;
-              
+
               departmentRevenues[deptId].amount += (testPrice - balanceAmount);
             }
           });
         }
-        
-        // Calculate gross: Should match TOTAL AMOUNT DUE in modal
-        // TOTAL AMOUNT DUE = Total Paid × (1 - discount% / 100)
-        let grossDeposit = 0;
-        
-        // First, calculate total paid (cash + gcash) from test details
-        let totalPaid = 0;
-        if (transaction.TestDetails && transaction.TestDetails.length > 0) {
-          transaction.TestDetails.forEach(test => {
-            if (test.status !== 'refunded') {
-              const cashAmount = parseFloat(test.cashAmount) || 0;
-              const gCashAmount = parseFloat(test.gCashAmount) || 0;
-              totalPaid += cashAmount + gCashAmount;
-            }
-          });
-        }
-        
-        // Check if we have totalDiscountAmount saved in database
-        if (transaction.totalDiscountAmount !== null && transaction.totalDiscountAmount !== undefined) {
-          // Use the saved totalDiscountAmount
-          grossDeposit = parseFloat(transaction.totalDiscountAmount) || 0;
-        } else if (totalPaid > 0) {
-          // Calculate discount on the fly if totalDiscountAmount doesn't exist
-          // Get discount percentage from idType
-          const idType = transaction.idType || '';
-          const discountCategory = discountCategories.find(
-            cat => cat.categoryName === idType
-          );
-          
-          if (discountCategory && discountCategory.percentage > 0) {
-            // Apply discount: totalPaid × (1 - discount% / 100)
-            grossDeposit = totalPaid * (1 - discountCategory.percentage / 100);
-          } else {
-            // No discount
-            grossDeposit = totalPaid;
-          }
-        } else {
-          // Fallback to totalAmount
-          grossDeposit = parseFloat(transaction.totalAmount) || 0;
-        }
-        
+
+        // Calculate gross: Use totalDiscountAmount (the amount due after discount)
+        // This is the "TOTAL AMOUNT DUE" value shown in the transaction summary
+        const grossDeposit = parseFloat(transaction.totalDiscountAmount) || parseFloat(transaction.totalAmount) || 0;
+
         let referrerName = 'Out Patient';
-        
+
         if (transaction.referrerId) {
           const transactionReferrerId = String(transaction.referrerId);
           const referrer = referrers.find(ref => String(ref.referrerId) === transactionReferrerId);
-          
+
           if (referrer) {
             referrerName = referrer.lastName ? `Dr. ${referrer.lastName}` : 'Unknown';
           } else {
-            referrerName = 'Out Patient';    
+            referrerName = 'Out Patient';
           }
         }
 
@@ -300,7 +265,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       });
 
     // Filter by search term if provided
-    const filteredTransactions = searchTerm ? 
+    const filteredTransactions = searchTerm ?
       processedTransactions.filter((transaction) => {
         return (
           transaction.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -318,7 +283,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       departmentTotals[key] = 0;
       departmentBalanceTotals[key] = 0;
     });
-    
+
     filteredTransactions.forEach((transaction) => {
       // Only process non-cancelled transactions for totals
       if (transaction.status !== 'cancelled') {
@@ -339,7 +304,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
 
   // Get departments that have values
   const getDepartmentsWithValues = () => {
-    return departments.filter(dept => 
+    return departments.filter(dept =>
       departmentTotals[dept.departmentId] > 0 || departmentRefundTotals[dept.departmentId] > 0 || dept.status === 'active'
     );
   };
@@ -356,7 +321,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       if (typeof transaction.grossDeposit === 'number') {
         return sum + transaction.grossDeposit;
       }
-      
+
       return sum + parseFloat(transaction.originalTransaction?.totalAmount || 0);
     }, 0);
 
@@ -373,10 +338,10 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
             const gCashAmount = parseFloat(test.gCashAmount || 0);
             return testSum + gCashAmount;
           }, 0);
-        
+
         return sum + gCashTotal;
       }
-      
+
       return sum + parseFloat(transaction.originalTransaction?.totalGCashAmount || 0);
     }, 0);
 
@@ -386,36 +351,36 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
   // Filter expenses by search term
   const filterExpenses = (expenses, searchTerm) => {
     if (!searchTerm) return expenses;
-    
+
     return expenses.filter((expense) => {
       if (!expense) return false;
-      
+
       const name = String(expense.name || '').toLowerCase();
       const purpose = String(expense.purpose || expense.expensePurpose || expense.description || '').toLowerCase();
-      const department = String(expense.departmentName || 
-                       (expense.department?.departmentName) || 
-                       (expense.Department?.departmentName) || '').toLowerCase();
+      const department = String(expense.departmentName ||
+        (expense.department?.departmentName) ||
+        (expense.Department?.departmentName) || '').toLowerCase();
       const amount = String(expense.amount || expense.expenseAmount || 0);
-      
+
       let itemsMatch = false;
       if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
         itemsMatch = expense.ExpenseItems.some(item => {
           const itemPurpose = String(item.purpose || item.description || '').toLowerCase();
           const itemAmount = String(item.amount || 0);
-          
-          return itemPurpose.includes(searchTerm.toLowerCase()) || 
-                 itemAmount.includes(searchTerm);
+
+          return itemPurpose.includes(searchTerm.toLowerCase()) ||
+            itemAmount.includes(searchTerm);
         });
       }
-      
+
       const searchLower = searchTerm.toLowerCase();
-      
-      return searchLower === '' || 
-             name.includes(searchLower) || 
-             purpose.includes(searchLower) || 
-             department.includes(searchLower) ||
-             amount.includes(searchTerm) ||
-             itemsMatch;
+
+      return searchLower === '' ||
+        name.includes(searchLower) ||
+        purpose.includes(searchLower) ||
+        department.includes(searchLower) ||
+        amount.includes(searchTerm) ||
+        itemsMatch;
     });
   };
 
@@ -449,7 +414,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
 
   const refetchExpenseData = (date) => {
     const dateToUse = date || expenseDate;
-    
+
     let dateStr;
     try {
       if (dateToUse instanceof Date && !isNaN(dateToUse.getTime())) {
@@ -473,9 +438,9 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       const day = String(now.getDate()).padStart(2, '0');
       dateStr = `${year}-${month}-${day}`;
     }
-        
+
     queryClient.invalidateQueries({ queryKey: ['expenses'] });
-    
+
     return queryClient.fetchQuery({
       queryKey: ['expenses', dateToUse],
       queryFn: () => expenseAPI.getExpenses({ date: dateStr })
@@ -489,18 +454,18 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     referrers,
     departmentRefunds,
     expenses,
-    
+
     // Loading states
     isLoading: isLoadingTransactions || isLoadingDepartments || isLoadingReferrers || isLoadingRefunds || isLoadingExpenses,
     isLoadingTransactions,
     isLoadingExpenses,
-    
+
     // Error states
     isTransactionsError,
     transactionsError,
     isExpensesError,
     expensesError,
-    
+
     // Data processing functions
     processTransactions,
     calculateDepartmentTotals,
@@ -508,11 +473,11 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     calculateTotalValues,
     filterExpenses,
     calculateTotalExpense,
-    
+
     // Refetch functions
     refetchTransactionData,
     refetchExpenseData,
-    
+
     // Department totals
     departmentTotals,
     departmentBalanceTotals,

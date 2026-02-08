@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/dashboard/Sidebar'
 import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import usePasskeyManager from '../hooks/auth/usePasskeyManager'
 import PasskeyModal from '../components/auth/PasskeyModal'
 import { Pencil, Key, Users, Save, X, Plus, Trash2, ChevronUp, ChevronDown, Download, FileText } from 'lucide-react'
@@ -13,10 +15,12 @@ import 'react-toastify/dist/ReactToastify.css'
 import { exportFullBackup } from '../utils/backupExporter'
 import AdminVerificationModal from '../components/AdminVerificationModal'
 import ORConfigModal from '../components/settings/ORConfigModal'
+import RoleManagement from '../components/settings/RoleManagement'
 import apiClient from '../services/api'
 
 const Settings = () => {
   const { user, isAuthenticating, refreshUser } = useAuth()
+  const { hasPermission, loading: permissionsLoading } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
   const [isEditing, setIsEditing] = useState(false)
@@ -34,6 +38,7 @@ const Settings = () => {
   const [newDiscount, setNewDiscount] = useState({ categoryName: '', percentage: '' })
   const [editingDiscountId, setEditingDiscountId] = useState(null)
   const [editingDiscountData, setEditingDiscountData] = useState({})
+  const [isSavingDiscount, setIsSavingDiscount] = useState(false)
 
   // Referral fee state
   const [referralFee, setReferralFee] = useState(12)
@@ -193,6 +198,16 @@ const Settings = () => {
       return;
     }
 
+    // Set loading state and show info toast
+    setIsSavingDiscount(true);
+    toast.info('Please authenticate with your passkey...', {
+      position: "top-center",
+      autoClose: false,
+      closeButton: false,
+      draggable: false,
+      toastId: 'auth-loading'
+    });
+
     // If admin is logged in, trigger WebAuthn directly
     if (user?.role === 'admin') {
       try {
@@ -202,6 +217,8 @@ const Settings = () => {
         });
 
         if (!optionsResponse.data.success) {
+          toast.dismiss('auth-loading');
+          setIsSavingDiscount(false);
           toast.error('Failed to generate authentication options');
           return;
         }
@@ -219,6 +236,8 @@ const Settings = () => {
         });
 
         if (!verifyResponse.data.success) {
+          toast.dismiss('auth-loading');
+          setIsSavingDiscount(false);
           toast.error('Authentication failed');
           return;
         }
@@ -229,13 +248,18 @@ const Settings = () => {
         });
 
         if (roleVerifyResponse.data.success && roleVerifyResponse.data.isAdmin) {
+          toast.dismiss('auth-loading');
           // Admin verified - execute add discount
           await executeAddDiscount();
         } else {
+          toast.dismiss('auth-loading');
+          setIsSavingDiscount(false);
           toast.error('Admin privileges required');
         }
       } catch (error) {
         console.error('Admin verification error:', error);
+        toast.dismiss('auth-loading');
+        setIsSavingDiscount(false);
 
         // Handle cancellation or timeout specifically
         if (error.name === 'NotAllowedError' || error.message.includes('timed out') || error.message.includes('not allowed')) {
@@ -246,6 +270,7 @@ const Settings = () => {
       }
     } else {
       // Receptionist - show modal for admin verification
+      toast.dismiss('auth-loading');
       setPendingDiscountAdd(() => executeAddDiscount);
       setShowAdminVerifyModal(true);
     }
@@ -256,16 +281,19 @@ const Settings = () => {
     // If form is empty, just show the form
     if (!newDiscount.categoryName && !newDiscount.percentage) {
       setNewDiscount({ categoryName: '', percentage: '20' });
+      setIsSavingDiscount(false);
       return;
     }
 
     if (!newDiscount.categoryName || !newDiscount.percentage) {
+      setIsSavingDiscount(false);
       toast.error('Please fill in all fields', { position: "top-right", autoClose: 3000 });
       return;
     }
 
     const percentage = parseFloat(newDiscount.percentage);
     if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+      setIsSavingDiscount(false);
       toast.error('Percentage must be between 0 and 100', { position: "top-right", autoClose: 3000 });
       return;
     }
@@ -277,11 +305,13 @@ const Settings = () => {
       );
 
       if (response.data && response.data.success) {
+        setIsSavingDiscount(false);
         toast.success('Discount category added successfully', { position: "top-right", autoClose: 3000 });
         setNewDiscount({ categoryName: '', percentage: '' });
         fetchDiscountCategories();
       }
     } catch (error) {
+      setIsSavingDiscount(false);
       toast.error(error.response?.data?.message || 'Failed to add discount category', {
         position: "top-right",
         autoClose: 3000
@@ -521,12 +551,16 @@ const Settings = () => {
     }
   }
 
-  const getAuthorizedTabs = (tabs, userRole) => {
-    if (!userRole) return tabs;
-    return tabs.filter(tab => tab.roles.includes(userRole));
+  const getAuthorizedTabs = (tabs) => {
+    return tabs.filter(tab => {
+      // If no permission is specified, show the tab
+      if (!tab.permission) return true;
+      // Check if user has the required permission
+      return hasPermission(tab.permission);
+    });
   }
 
-  if (isAuthenticating) {
+  if (isAuthenticating || permissionsLoading) {
     return null;
   }
 
@@ -535,10 +569,12 @@ const Settings = () => {
   }
 
   const currentPath = location.pathname;
-  const filteredTabs = getAuthorizedTabs(tabsConfig, user.role);
-  const activeTab = filteredTabs.find(tab =>
-    currentPath === tab.route || currentPath.startsWith(tab.route)
-  )?.name || 'Account';
+  const filteredTabs = getAuthorizedTabs(tabsConfig);
+  // Sort by route length descending to match more specific routes first (e.g., /settings/roles before /settings)
+  const sortedTabs = [...filteredTabs].sort((a, b) => b.route.length - a.route.length);
+  const activeTab = sortedTabs.find(tab =>
+    currentPath === tab.route || currentPath.startsWith(tab.route + '/')
+  )?.name || (currentPath === '/settings' ? 'Account' : 'Account');
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen h-full bg-gray-100">
@@ -715,8 +751,8 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    {/* Manage Accounts Card */}
-                    {user.role !== 'receptionist' && (
+                    {/* Manage Accounts Card - Only visible to users with accounts.manage permission */}
+                    {hasPermission('accounts.manage') && (
                       <div
                         onClick={!isEditing ? handleViewAccounts : undefined}
                         className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${!isEditing ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
@@ -779,15 +815,29 @@ const Settings = () => {
                   )}
                 </div>
 
-                {/* Discount Categories Section - Visible to all users */}
+                {/* Discount Categories Section - Admin only */}
+                {user.role === 'admin' && (
                 <div>
-                  {/* Add Discount Button */}
+                  {/* Add Discount Button - Admin only */}
                   <button
                     onClick={handleAddDiscount}
-                    className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2"
+                    disabled={isSavingDiscount}
+                    className="mb-4 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Plus className="w-5 h-5" />
-                    <span className="font-medium">Add Discount</span>
+                    {isSavingDiscount ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="font-medium">Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-5 h-5" />
+                        <span className="font-medium">Add Discount</span>
+                      </>
+                    )}
                   </button>
 
                   {/* Discount Categories Grid */}
@@ -800,13 +850,13 @@ const Settings = () => {
                             <div className="space-y-3">
                               <input
                                 type="text"
-                                value={editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName}
+                                value={editingDiscountData[category.discountCategoryId]?.categoryName ?? category.categoryName}
                                 onChange={(e) => setEditingDiscountData({
                                   ...editingDiscountData,
                                   [category.discountCategoryId]: {
                                     ...editingDiscountData[category.discountCategoryId],
                                     categoryName: e.target.value,
-                                    percentage: editingDiscountData[category.discountCategoryId]?.percentage || category.percentage
+                                    percentage: editingDiscountData[category.discountCategoryId]?.percentage ?? category.percentage
                                   }
                                 })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
@@ -815,12 +865,12 @@ const Settings = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="number"
-                                    value={editingDiscountData[category.discountCategoryId]?.percentage || category.percentage}
+                                    value={editingDiscountData[category.discountCategoryId]?.percentage ?? category.percentage}
                                     onChange={(e) => setEditingDiscountData({
                                       ...editingDiscountData,
                                       [category.discountCategoryId]: {
                                         ...editingDiscountData[category.discountCategoryId],
-                                        categoryName: editingDiscountData[category.discountCategoryId]?.categoryName || category.categoryName,
+                                        categoryName: editingDiscountData[category.discountCategoryId]?.categoryName ?? category.categoryName,
                                         percentage: e.target.value
                                       }
                                     })}
@@ -964,7 +1014,7 @@ const Settings = () => {
                     </div>
 
                     {/* Referral Fee Card - Right 1/3 - Admin only */}
-                    {user.role !== 'receptionist' && (
+                    {user.role === 'admin' && (
                       <div className="lg:col-span-1">
                         <div className="bg-green-800 text-white rounded-lg p-4 shadow-sm sticky top-0">
                           {isEditingReferralFee ? (
@@ -1037,7 +1087,12 @@ const Settings = () => {
                     )}
                   </div>
                 </div>
+                )}
               </div>
+            )}
+
+            {activeTab === 'Roles' && (
+              <RoleManagement />
             )}
           </div>
         </div>

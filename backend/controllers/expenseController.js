@@ -41,7 +41,7 @@ const createExpense = async (req, res) => {
       )
     );
     
-    // Log activity
+    // Log activity for expense record
     await ActivityLog.create({
       userId,
       action: 'CREATE',
@@ -52,6 +52,22 @@ const createExpense = async (req, res) => {
         id: userId
       }
     }, { transaction });
+    
+    // Log activity for each expense item created
+    await Promise.all(
+      expenseItems.map(item => 
+        ActivityLog.create({
+          userId,
+          action: 'CREATE',
+          resourceType: 'EXPENSE_ITEM',
+          resourceId: item.expenseItemId,
+          details: `Created expense item: ${item.paidTo} - ${item.purpose} (₱${parseFloat(item.amount).toFixed(2)})`,
+          userInfo: {
+            id: userId
+          }
+        }, { transaction })
+      )
+    );
     
     await transaction.commit();
     

@@ -154,9 +154,9 @@ export const useTransactionManagement = (user, selectedDate, departments, referr
     setOpenMenuId(null);
   };
   
-  // Toggle edit mode for a transaction
-  const handleEditClick = (transaction) => {
-    openTransactionSummary(transaction, true);
+  // Toggle edit mode for a transaction (only if user has edit permission)
+  const handleEditClick = (transaction, canEdit = false) => {
+    openTransactionSummary(transaction, canEdit);
     setOpenMenuId(null); // Close the dropdown
   };
 

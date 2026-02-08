@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import { ArrowUp, ArrowDown, PlusCircle } from 'lucide-react'
 import { referrerAPI, transactionAPI, departmentAPI, settingsAPI } from '../services/api'
 import { useQuery } from '@tanstack/react-query'
@@ -12,16 +13,17 @@ import { exportReferralsToExcel } from '../utils/referralsExporter'
 
 const Referrals = () => {
   const { user, isAuthenticating } = useAuth()
+  const { hasPermission } = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [sortDirection, setSortDirection] = useState('asc'); 
+  const [sortDirection, setSortDirection] = useState('asc');
   const [isReferrerModalOpen, setIsReferrerModalOpen] = useState(false);
   const incomeDateInputRef = useRef(null);
   const {
-      firstName, lastName, birthday, sex, clinicName, clinicAddress, contactNo,
-      setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
-      resetForm, validateForm, getFormData
-    } = useReferrerForm();
+    firstName, lastName, birthday, sex, clinicName, clinicAddress, contactNo,
+    setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
+    resetForm, validateForm, getFormData
+  } = useReferrerForm();
 
   // Fetch referral fee percentage from settings
   const { data: referralFeeData } = useQuery({
@@ -51,15 +53,15 @@ const Referrals = () => {
     enabled: !!user,
     staleTime: 5 * 60 * 1000
   })
-  
+
   const departments = useMemo(() => {
     if (!departmentsData) return [];
-    const depts = Array.isArray(departmentsData.data) ? departmentsData.data : 
-                 (Array.isArray(departmentsData) ? departmentsData : []);
-    
+    const depts = Array.isArray(departmentsData.data) ? departmentsData.data :
+      (Array.isArray(departmentsData) ? departmentsData : []);
+
     return depts;
   }, [departmentsData]);
-  
+
   const activeDepartments = useMemo(() => {
     const filtered = departments.filter(dept => dept.status?.toLowerCase() === 'active');
     return filtered;
@@ -71,40 +73,40 @@ const Referrals = () => {
       const response = await referrerAPI.getAllReferrers(true)
       return response
     },
-    enabled: !!user, 
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false 
+    refetchOnWindowFocus: false
   })
-  
+
   const referrers = referrersData?.data?.data || []
-  
+
   const formattedDate = useMemo(() => {
     return selectedDate.toISOString().split('T')[0]
   }, [selectedDate])
-  
-  
+
+
   // Get transactions for all active referrers
-  const { 
-    data: allReferrerTransactions = {}, 
-    isLoading: isTransactionsLoading, 
+  const {
+    data: allReferrerTransactions = {},
+    isLoading: isTransactionsLoading,
     isFetching: isTransactionsFetching,
-    refetch: refetchTransactions 
+    refetch: refetchTransactions
   } = useQuery({
     queryKey: ['referrerTransactions', formattedDate],
     queryFn: async () => {
       if (!referrers || referrers.length === 0) return {}
-      
+
       const activeReferrers = referrers.filter(r => r.status?.toLowerCase() === 'active')
       const transactionsMap = {}
-      
+
       await Promise.all(
         activeReferrers.map(async (referrer) => {
           try {
             const result = await transactionAPI.getTransactionsByReferrerId(
-              referrer.referrerId, 
+              referrer.referrerId,
               formattedDate
             )
-            
+
             if (result.success && result.data?.length > 0) {
               transactionsMap[referrer.referrerId] = result.data
             }
@@ -113,17 +115,17 @@ const Referrals = () => {
           }
         })
       )
-      
+
       return transactionsMap
     },
     enabled: !!user && referrers.length > 0,
     staleTime: 10 * 1000, // Reduced to 10 seconds to keep data fresher
-    refetchOnWindowFocus: true, 
-    refetchOnMount: true,     
-    refetchInterval: 60 * 1000, 
-    refetchIntervalInBackground: false 
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: false
   })
-  
+
 
   // Helper functions
   const handleDateChange = (e) => {
@@ -132,17 +134,17 @@ const Referrals = () => {
       setSelectedDate(newDate);
     }
   }
-  
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value)
   }
-  
+
   const toggleSortDirection = () => {
     setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
   }
 
   const handleReferrerSubmit = async () => {
-    try {  
+    try {
       const formData = getFormData();
       const response = await referrerAPI.createReferrer(formData, user.userId);
       toast.success('Referrer added successfully');
@@ -150,7 +152,7 @@ const Referrals = () => {
       if (response?.data?.success || response?.success) {
         await refetchReferrers();
         await refetchTransactions();
-        
+
         setIsReferrerModalOpen(false);
         resetForm();
       } else {
@@ -180,11 +182,11 @@ const Referrals = () => {
       toast.error('Failed to export rebate report. Please try again.');
     }
   };
-  
+
   // Filter referrers based on search term
   const filteredReferrers = useMemo(() => {
     if (!referrers || !Array.isArray(referrers)) return []
-    
+
     return referrers
       .filter(ref => ref.status?.toLowerCase() === 'active')
       .filter(ref => {
@@ -197,38 +199,38 @@ const Referrals = () => {
         return nameA.localeCompare(nameB)
       })
   }, [referrers, searchTerm])
-  
+
   const sortTransactions = (a, b) => {
     const aTotal = a.DepartmentRevenues?.reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0) || 0
     const bTotal = b.DepartmentRevenues?.reduce((sum, rev) => sum + parseFloat(rev.amount || 0), 0) || 0
-    
+
     return sortDirection === 'asc' ? aTotal - bTotal : bTotal - aTotal
   }
-  
+
   const getTestsForDepartment = (transaction, departmentId) => {
     if (!transaction?.TestDetails || !Array.isArray(transaction.TestDetails)) {
       return []
     }
-    
+
     const targetDeptId = String(departmentId)
     return transaction.TestDetails.filter(test => {
       const testDeptId = String(test.departmentId)
       return testDeptId === targetDeptId || parseInt(testDeptId) === parseInt(targetDeptId)
     })
   }
-  
+
   // Calculate total revenue for a referrer
   const calculateReferrerTotals = (transactions) => {
-    if (!transactions || !transactions.length) return { 
-      departmentTotals: {}, 
+    if (!transactions || !transactions.length) return {
+      departmentTotals: {},
       testDetailTotals: {},
-      grandTotal: 0 
+      grandTotal: 0
     }
-    
+
     const departmentTotals = {}
     const testDetailTotals = {}
     let grandTotal = 0
-    
+
     transactions.forEach(transaction => {
       // Calculate test details totals by department
       if (transaction.TestDetails && Array.isArray(transaction.TestDetails)) {
@@ -236,55 +238,53 @@ const Referrals = () => {
 
           const deptId = String(test.departmentId)
           const amount = parseFloat(test.discountedPrice || 0)
-          
+
           if (!testDetailTotals[deptId]) {
             testDetailTotals[deptId] = 0
           }
-          
+
           testDetailTotals[deptId] += amount
         })
       }
-      
+
       if (transaction.DepartmentRevenues && Array.isArray(transaction.DepartmentRevenues)) {
         transaction.DepartmentRevenues.forEach(revenue => {
           const deptId = String(revenue.departmentId)
           const amount = parseFloat(revenue.amount || 0)
-          
+
           if (!departmentTotals[deptId]) {
             departmentTotals[deptId] = 0
           }
-          
+
           departmentTotals[deptId] += amount
           grandTotal += amount
         })
-      } else {
-        console.warn('Transaction without DepartmentRevenues:', transaction.transactionId)
       }
     })
-    
-    return { 
-      departmentTotals, 
+
+    return {
+      departmentTotals,
       testDetailTotals,
-      grandTotal, 
-      testDetailsByDepartment: getTestDetailsByDepartment(transactions) 
+      grandTotal,
+      testDetailsByDepartment: getTestDetailsByDepartment(transactions)
     }
   }
-  
+
   // Group test details by department for summary display
   const getTestDetailsByDepartment = (transactions) => {
     const testDetailsByDept = {}
-    
+
     if (!transactions || !transactions.length) return testDetailsByDept
-    
+
     transactions.forEach(transaction => {
       if (transaction.TestDetails && Array.isArray(transaction.TestDetails)) {
         transaction.TestDetails.forEach(test => {
           const deptId = String(test.departmentId)
-          
+
           if (!testDetailsByDept[deptId]) {
             testDetailsByDept[deptId] = []
           }
-          
+
           testDetailsByDept[deptId].push({
             testDetailId: test.testDetailId,
             testName: test.testName,
@@ -294,26 +294,26 @@ const Referrals = () => {
         })
       }
     })
-    
+
     return testDetailsByDept
   }
 
   // Fallback for empty departments
   useEffect(() => {
     if (!isDepartmentsLoading && activeDepartments.length === 0) {
-      
+
       const allDepartmentIds = new Set();
-      
+
       Object.values(allReferrerTransactions || {}).forEach(transactions => {
         if (!Array.isArray(transactions)) return;
-        
+
         transactions.forEach(transaction => {
           if (transaction.DepartmentRevenues && Array.isArray(transaction.DepartmentRevenues)) {
             transaction.DepartmentRevenues.forEach(rev => {
               if (rev.departmentId) allDepartmentIds.add(String(rev.departmentId));
             });
           }
-          
+
           if (transaction.TestDetails && Array.isArray(transaction.TestDetails)) {
             transaction.TestDetails.forEach(test => {
               if (test.departmentId) allDepartmentIds.add(String(test.departmentId));
@@ -321,21 +321,21 @@ const Referrals = () => {
           }
         });
       });
-      
+
     }
   }, [isDepartmentsLoading, activeDepartments, allReferrerTransactions]);
 
 
   const renderableDepartments = useMemo(() => {
     if (activeDepartments.length > 0) {
-      return activeDepartments; 
+      return activeDepartments;
     }
-    
+
     const departmentMap = new Map();
-    
+
     Object.values(allReferrerTransactions || {}).forEach(transactions => {
       if (!Array.isArray(transactions)) return;
-      
+
       transactions.forEach(transaction => {
         if (transaction.DepartmentRevenues && Array.isArray(transaction.DepartmentRevenues)) {
           transaction.DepartmentRevenues.forEach(rev => {
@@ -344,14 +344,14 @@ const Referrals = () => {
               if (!departmentMap.has(deptId)) {
                 departmentMap.set(deptId, {
                   departmentId: rev.departmentId,
-                  departmentName: `Dept ${deptId}`, 
+                  departmentName: `Dept ${deptId}`,
                   status: 'active'
                 });
               }
             }
           });
         }
-        
+
         // Add departments from TestDetails
         if (transaction.TestDetails && Array.isArray(transaction.TestDetails)) {
           transaction.TestDetails.forEach(test => {
@@ -369,7 +369,7 @@ const Referrals = () => {
         }
       });
     });
-    
+
     const syntheticDepartments = Array.from(departmentMap.values());
     return syntheticDepartments;
   }, [activeDepartments, allReferrerTransactions]);
@@ -378,7 +378,7 @@ const Referrals = () => {
     return null;
   }
 
-  if(!user) {
+  if (!user) {
     return null;
   }
 
@@ -391,13 +391,16 @@ const Referrals = () => {
       const transactions = allReferrerTransactions[referrer.referrerId] || [];
       transactionsCount += transactions.length;
 
-      if (transactions.length > 0) {
-        const { testDetailTotals } = calculateReferrerTotals(transactions);
-        const grandTotal = Object.values(testDetailTotals).reduce(
-          (sum, amount) => sum + parseFloat(amount || 0), 0
-        );
-        rebatesSum += grandTotal * (referralFeePercentage / 100);
-      }
+      transactions.forEach(transaction => {
+        const tests = transaction.TestDetails || [];
+        const transTotal = tests.reduce((sum, test) => sum + parseFloat(test.discountedPrice || 0), 0);
+        // Use transaction's specific rate if available, fallback to current setting
+        const rate = (transaction.referralFeePercentage !== undefined && transaction.referralFeePercentage !== null)
+          ? parseFloat(transaction.referralFeePercentage)
+          : referralFeePercentage;
+
+        rebatesSum += transTotal * (rate / 100);
+      });
     });
 
     return {
@@ -412,9 +415,9 @@ const Referrals = () => {
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
-      
+
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
-        
+
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Referral</h1>
@@ -452,21 +455,34 @@ const Referrals = () => {
         {/* Search and Actions Bar */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            
-            {/* Left side - Search */}
-            <div className="relative w-full lg:w-96">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent"
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
+
+            {/* Left side - Search and Date Picker */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Date Picker */}
+              <div className="relative w-full sm:w-auto">
+                <input
+                  ref={incomeDateInputRef}
+                  type="date"
+                  value={formattedDate}
+                  onChange={handleDateChange}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-800 focus:border-transparent"
+                />
               </div>
             </div>
 
@@ -490,10 +506,15 @@ const Referrals = () => {
                 )}
               </button>
 
-              {filteredReferrers.length > 0 && (
-                <button 
+              {filteredReferrers.length > 0 && hasPermission('referrals.export') && (
+                <button
                   onClick={handleGenerateReferralsReport}
-                  className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                  disabled={totalReferredTransactions === 0}
+                  className={`px-4 py-2 rounded-lg flex items-center transition-colors ${totalReferredTransactions > 0
+                    ? 'bg-green-800 text-white hover:bg-green-700 cursor-pointer'
+                    : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    }`}
+                  title={totalReferredTransactions === 0 ? 'No referrals for this date' : 'Generate Report'}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -502,18 +523,20 @@ const Referrals = () => {
                 </button>
               )}
 
-              <button
-                onClick={() => setIsReferrerModalOpen(true)}
-                className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
-                title="Add New Referrer"
-              >
-                <PlusCircle size={20} className="mr-2"/>
-                Add Referrer
-              </button>
+              {hasPermission('referrals.manage') && (
+                <button
+                  onClick={() => setIsReferrerModalOpen(true)}
+                  className="bg-green-800 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-700 transition-colors"
+                  title="Add New Referrer"
+                >
+                  <PlusCircle size={20} className="mr-2" />
+                  Add Referrer
+                </button>
+              )}
             </div>
           </div>
         </div>
-      
+
 
         {isReferrersLoading || isTransactionsLoading || isDepartmentsLoading ? (
           <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-md">
@@ -544,8 +567,8 @@ const Referrals = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Client Name</th>
                         {renderableDepartments.length > 0 ? renderableDepartments.map(department => (
-                          <th 
-                            key={`header-${department.departmentId}`} 
+                          <th
+                            key={`header-${department.departmentId}`}
                             className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[100px]"
                             title={`Department ID: ${department.departmentId}`}
                           >
@@ -560,148 +583,162 @@ const Referrals = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {allReferrerTransactions[referrer.referrerId]?.length ? (
-                          [...allReferrerTransactions[referrer.referrerId]]
-                            .sort(sortTransactions)
-                            .map(transaction => {
-                              const transactionDate = new Date(transaction.transactionDate);
-                              const formattedTransactionDate = `${String(transactionDate.getMonth() + 1).padStart(2, '0')}-${String(transactionDate.getDate()).padStart(2, '0')}`;
-                              
-                              return (
-                                <tr key={transaction.transactionId} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3 text-sm text-gray-700">{transaction.mcNo}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">{formattedTransactionDate}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-700">
-                                    {transaction.firstName} {transaction.lastName}
-                                  </td>
-                                  {renderableDepartments.map(department => {
-                                    const deptId = String(department.departmentId);
-                                    const testsForDepartment = getTestsForDepartment(transaction, deptId);
-                                    
-                                    const testTotalAmount = testsForDepartment.reduce(
-                                      (sum, test) => sum + parseFloat(test.discountedPrice || 0), 
+                      {allReferrerTransactions[referrer.referrerId]?.length ? (
+                        [...allReferrerTransactions[referrer.referrerId]]
+                          .sort(sortTransactions)
+                          .map(transaction => {
+                            const transactionDate = new Date(transaction.transactionDate);
+                            const formattedTransactionDate = `${String(transactionDate.getMonth() + 1).padStart(2, '0')}-${String(transactionDate.getDate()).padStart(2, '0')}`;
+
+                            return (
+                              <tr key={transaction.transactionId} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm text-gray-700">{transaction.mcNo}</td>
+                                <td className="px-4 py-3 text-sm text-gray-700">{formattedTransactionDate}</td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  {transaction.firstName} {transaction.lastName}
+                                </td>
+                                {renderableDepartments.map(department => {
+                                  const deptId = String(department.departmentId);
+                                  const testsForDepartment = getTestsForDepartment(transaction, deptId);
+
+                                  const testTotalAmount = testsForDepartment.reduce(
+                                    (sum, test) => sum + parseFloat(test.discountedPrice || 0),
+                                    0
+                                  );
+
+                                  return (
+                                    <td
+                                      key={`${transaction.transactionId}-${deptId}`}
+                                      className="px-4 py-3 text-sm text-center text-gray-700"
+                                    >
+                                      {testsForDepartment.length > 0 ? (
+                                        <span className="font-medium">
+                                          {testTotalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                                <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900">
+                                  {(() => {
+                                    const testsForTransaction = transaction.TestDetails || [];
+                                    const totalAmount = testsForTransaction.reduce(
+                                      (sum, test) => sum + parseFloat(test.discountedPrice || 0),
                                       0
                                     );
-                                    
-                                    return (
-                                      <td 
-                                        key={`${transaction.transactionId}-${deptId}`}
-                                        className="px-4 py-3 text-sm text-center text-gray-700"
-                                      >
-                                        {testsForDepartment.length > 0 ? (
-                                          <span className="font-medium">
-                                            {testTotalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                          </span>
-                                        ) : (
-                                          <span className="text-gray-400">-</span>
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                  <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900">
-                                    {(() => {
-                                      const testsForTransaction = transaction.TestDetails || [];
-                                      const totalAmount = testsForTransaction.reduce(
-                                        (sum, test) => sum + parseFloat(test.discountedPrice || 0),
-                                        0
-                                      );
-                                      return totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                    })()}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                        ) : (
-                          <tr>
-                            <td colSpan={4 + renderableDepartments.length} className="px-4 py-8 text-center text-gray-500">
-                              No transactions found
-                            </td>
-                          </tr>
-                        )}
-                        
-                        {/* Total Row */}
-                        <tr className="bg-gray-100 font-semibold border-t-2 border-gray-300">
-                          <td colSpan="3" className="px-4 py-3 text-sm text-green-800">
-                            Referred Transactions Total:
-                          </td>
-                          
-                          {(() => {
-                            const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
-                              ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
-                              : { testDetailTotals: {} };
-                            
-                            return (
-                              <>
-                                {renderableDepartments.map(department => {
-                                  const deptId = String(department.departmentId);
-                                  const deptTotal = testDetailTotals[deptId] || 0;
-                                  
-                                  return (
-                                    <td 
-                                      key={`total-${deptId}`}
-                                      className="px-4 py-3 text-sm text-center text-green-800"
-                                    >
-                                      {deptTotal > 0 ? deptTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
-                                    </td>
-                                  );
-                                })}
-                                <td className="px-4 py-3 text-sm text-center text-green-800">
-                                  {Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </td>
-                              </>
-                            );
-                          })()}
-                        </tr>
-
-                        {/* Rebates Row */}
-                        <tr className="bg-yellow-100 font-semibold">
-                          <td colSpan="3" className="px-4 py-3 text-sm text-green-800">
-                            Rebates Total:
-                          </td>
-                          
-                          {(() => {
-                            const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length 
-                              ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
-                              : { testDetailTotals: {} };
-                            
-                            return (
-                              <>
-                                {renderableDepartments.map(department => {
-                                  const deptId = String(department.departmentId);
-                                  const deptTotal = testDetailTotals[deptId] || 0;
-                                  const deptRebate = deptTotal * (referralFeePercentage / 100);
-                                  
-                                  return (
-                                    <td 
-                                      key={`rebate-${deptId}`}
-                                      className="px-4 py-3 text-sm text-center text-green-800"
-                                    >
-                                      {deptRebate > 0 ? deptRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
-                                    </td>
-                                  );
-                                })}
-                                <td className="px-4 py-3 text-sm text-center text-green-800 font-bold">
-                                  {(() => {
-                                    const grandTotal = Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0);
-                                    const totalRebate = grandTotal * (referralFeePercentage / 100);
-                                    return totalRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    return totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                   })()}
                                 </td>
-                              </>
+                              </tr>
                             );
-                          })()}
+                          })
+                      ) : (
+                        <tr>
+                          <td colSpan={4 + renderableDepartments.length} className="px-4 py-8 text-center text-gray-500">
+                            No transactions found
+                          </td>
                         </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                      )}
 
-        {isReferrerModalOpen && (
-          <ReferrerModal
+                      {/* Total Row */}
+                      <tr className="bg-gray-100 font-semibold border-t-2 border-gray-300">
+                        <td colSpan="3" className="px-4 py-3 text-sm text-green-800">
+                          Referred Transactions Total:
+                        </td>
+
+                        {(() => {
+                          const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length
+                            ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
+                            : { testDetailTotals: {} };
+
+                          return (
+                            <>
+                              {renderableDepartments.map(department => {
+                                const deptId = String(department.departmentId);
+                                const deptTotal = testDetailTotals[deptId] || 0;
+
+                                return (
+                                  <td
+                                    key={`total-${deptId}`}
+                                    className="px-4 py-3 text-sm text-center text-green-800"
+                                  >
+                                    {deptTotal > 0 ? deptTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                                  </td>
+                                );
+                              })}
+                              <td className="px-4 py-3 text-sm text-center text-green-800">
+                                {Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </>
+                          );
+                        })()}
+                      </tr>
+
+                      {/* Rebates Row */}
+                      <tr className="bg-yellow-100 font-semibold">
+                        <td colSpan="3" className="px-4 py-3 text-sm text-green-800">
+                          Rebates Total:
+                        </td>
+
+                        {(() => {
+                          const { testDetailTotals } = allReferrerTransactions[referrer.referrerId]?.length
+                            ? calculateReferrerTotals(allReferrerTransactions[referrer.referrerId])
+                            : { testDetailTotals: {} };
+
+                          return (
+                            <>
+                              {renderableDepartments.map(department => {
+                                const deptId = String(department.departmentId);
+
+                                // Calculate rebate for this department across all transactions for this referrer
+                                const deptRebate = (allReferrerTransactions[referrer.referrerId] || []).reduce((sum, trans) => {
+                                  const tests = getTestsForDepartment(trans, deptId);
+                                  const deptTotal = tests.reduce((s, t) => s + parseFloat(t.discountedPrice || 0), 0);
+                                  const rate = (trans.referralFeePercentage !== undefined && trans.referralFeePercentage !== null)
+                                    ? parseFloat(trans.referralFeePercentage)
+                                    : referralFeePercentage;
+                                  return sum + (deptTotal * (rate / 100));
+                                }, 0);
+
+                                return (
+                                  <td
+                                    key={`rebate-${deptId}`}
+                                    className="px-4 py-3 text-sm text-center text-green-800"
+                                  >
+                                    {deptRebate > 0 ? deptRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                                  </td>
+                                );
+                              })}
+                              <td className="px-4 py-3 text-sm text-center text-green-800 font-bold">
+                                {(() => {
+                                  const totalRebate = (allReferrerTransactions[referrer.referrerId] || []).reduce((sum, trans) => {
+                                    const tests = trans.TestDetails || [];
+                                    const transTotal = tests.reduce((s, t) => s + parseFloat(t.discountedPrice || 0), 0);
+                                    const rate = (trans.referralFeePercentage !== undefined && trans.referralFeePercentage !== null)
+                                      ? parseFloat(trans.referralFeePercentage)
+                                      : referralFeePercentage;
+                                    return sum + (transTotal * (rate / 100));
+                                  }, 0);
+                                  return totalRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                })()}
+                              </td>
+                            </>
+                          );
+                        })()}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isReferrerModalOpen && (
+        <ReferrerModal
           isOpen={isReferrerModalOpen}
           onClose={() => {
             setIsReferrerModalOpen(false);
@@ -723,9 +760,9 @@ const Referrals = () => {
           contactNo={contactNo}
           setContactNo={setContactNo}
           validateForm={validateForm}
-          />
-         
-        )}
+        />
+
+      )}
     </div>
   )
 }

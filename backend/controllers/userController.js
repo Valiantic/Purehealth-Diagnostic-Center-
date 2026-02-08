@@ -1,4 +1,4 @@
-const { User, Authenticator } = require('../models');
+const { User, Authenticator, Role } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
 
 async function registerUserDetails(req, res) {
@@ -22,13 +22,42 @@ async function registerUserDetails(req, res) {
       });
     }
 
-    // Create new user
+    // Get the default receptionist role
+    let defaultRoleId = null;
+    let defaultRoleName = 'receptionist';
+    try {
+      const receptionistRole = await Role.findOne({ where: { roleName: 'receptionist' } });
+      if (receptionistRole) {
+        defaultRoleId = receptionistRole.roleId;
+        defaultRoleName = receptionistRole.roleName;
+      }
+    } catch (roleError) {
+      console.warn('Could not find receptionist role, proceeding without roleId:', roleError.message);
+    }
+
+    // Create new user with default role
     const user = await User.create({
       email,
       firstName,
       middleName: middleName || null,
-      lastName
+      lastName,
+      role: defaultRoleName,
+      roleId: defaultRoleId
     });
+
+    // Log activity for new user registration
+    try {
+      await logActivity({
+        userId: req.body.currentUserId || user.userId,
+        action: 'CREATE_USER',
+        resourceType: 'USER',
+        resourceId: user.userId,
+        details: `New user account created: ${user.email} (${user.firstName} ${user.lastName}) with role: ${defaultRoleName}`,
+        ipAddress: req.ip || '127.0.0.1'
+      });
+    } catch (logError) {
+      console.error('Failed to log user creation activity:', logError);
+    }
 
     res.status(201).json({
       success: true,
@@ -38,7 +67,9 @@ async function registerUserDetails(req, res) {
         email: user.email,
         firstName: user.firstName,
         middleName: user.middleName,
-        lastName: user.lastName
+        lastName: user.lastName,
+        role: user.role,
+        roleId: user.roleId
       }
     });
   } catch (error) {
@@ -71,6 +102,14 @@ async function findUserByEmail(req, res) {
       });
     }
 
+    // Check if user is archived
+    if (user.status === 'archived') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been archived. Please contact an administrator.'
+      });
+    }
+
     // Check if user has authenticators
     const authenticators = await Authenticator.findAll({
       where: { userId: user.userId }
@@ -92,6 +131,7 @@ async function findUserByEmail(req, res) {
         middleName: user.middleName,
         lastName: user.lastName,
         role: user.role,
+        roleId: user.roleId,
         status: user.status
       }
     });
@@ -109,7 +149,7 @@ async function getAllUsers(req, res) {
   try {
     // Get all users with role and status included in attributes
     const users = await User.findAll({
-      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role', 'status', 'createdAt'],
+      attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role', 'roleId', 'status', 'createdAt'],
       order: [['createdAt', 'DESC']]
     });
 
@@ -124,6 +164,7 @@ async function getAllUsers(req, res) {
         username: user.email.split('@')[0],
         email: user.email,
         role: user.role,
+        roleId: user.roleId,
         status: user.status,
         createdAt: user.createdAt
       }))
@@ -152,10 +193,10 @@ async function updateUserStatus(req, res) {
     }
 
     // Validate status value
-    if (!['active', 'inactive'].includes(status)) {
+    if (!['active', 'archived'].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Status must be either active or inactive'
+        message: 'Status must be either active or archived'
       });
     }
 
@@ -174,10 +215,10 @@ async function updateUserStatus(req, res) {
     // After updating user status
     await logActivity({
       userId: currentUserId || userId,
-      action: status === 'active' ? 'ACTIVATE_ACCOUNT' : 'DEACTIVATE_ACCOUNT',
+      action: status === 'active' ? 'UNARCHIVE_ACCOUNT' : 'ARCHIVE_ACCOUNT',
       resourceType: 'USER',
       resourceId: user.userId,
-      details: `User account ${status === 'active' ? 'activated' : 'deactivated'} for ${user.email}`,
+      details: `User account ${status === 'active' ? 'unarchived' : 'archived'} for ${user.email}`,
       ipAddress: req.ip
     });
 
@@ -342,11 +383,11 @@ async function updateUserDetails(req, res) {
       console.log('Detected status change, logging status update');
 
       try {
-        const statusMessage = `User account ${updatedStatus === 'active' ? 'activated' : 'deactivated'} for ${email} (${oldValues.status} → ${updatedStatus}) by ${editorEmail}`;
+        const statusMessage = `User account ${updatedStatus === 'active' ? 'unarchived' : 'archived'} for ${email} (${oldValues.status} → ${updatedStatus}) by ${editorEmail}`;
 
         const activityLog = await logActivity({
           userId: editorId,
-          action: updatedStatus === 'active' ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
+          action: updatedStatus === 'active' ? 'UNARCHIVE_USER' : 'ARCHIVE_USER',
           resourceType: 'USER',
           resourceId: userId,
           details: statusMessage,
@@ -416,6 +457,7 @@ async function getUserById(req, res) {
         middleName: user.middleName,
         lastName: user.lastName,
         role: user.role,
+        roleId: user.roleId,
         status: user.status
       }
     });

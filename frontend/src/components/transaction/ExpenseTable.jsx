@@ -4,7 +4,8 @@ import { MoreVertical, Download, Edit } from 'lucide-react';
 const ExpenseTable = ({ 
   filteredExpenses, 
   expenseSearchTerm,
-  onEditExpense
+  onEditExpense,
+  permissions = {}
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   
@@ -174,27 +175,29 @@ const ExpenseTable = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <div className="relative">
-                        <button 
-                          type="button"
-                          className="text-gray-600 hover:text-green-600 focus:outline-none"
-                          onClick={(e) => toggleDropdown(expenseId, e)}
-                        >
-                          <MoreVertical size={20} />
-                        </button>
-                        
-                        {openDropdownId === expenseId && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
-                            <button
-                              onClick={(e) => handleEditFromDropdown(expense, e)}
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                            >
-                              <Edit size={16} className="mr-2" />
-                              Edit Expense
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {permissions.canEdit && (
+                        <div className="relative">
+                          <button 
+                            type="button"
+                            className="text-gray-600 hover:text-green-600 focus:outline-none"
+                            onClick={(e) => toggleDropdown(expenseId, e)}
+                          >
+                            <MoreVertical size={20} />
+                          </button>
+                          
+                          {openDropdownId === expenseId && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
+                              <button
+                                onClick={(e) => handleEditFromDropdown(expense, e)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
+                                <Edit size={16} className="mr-2" />
+                                Edit Expense
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )];
@@ -288,27 +291,29 @@ const ExpenseTable = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <div className="relative">
-                        <button 
-                          type="button"
-                          className="text-gray-600 hover:text-green-600 focus:outline-none"
-                          onClick={(e) => toggleDropdown(`${expenseId}-item-${itemIndex}`, e)}
-                        >
-                          <MoreVertical size={20} />
-                        </button>
-                        
-                        {openDropdownId === `${expenseId}-item-${itemIndex}` && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
-                            <button
-                              onClick={(e) => handleEditFromDropdown(expense, e)}
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                            >
-                              <Edit size={16} className="mr-2" />
-                              Edit Expense
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {permissions.canEdit && (
+                        <div className="relative">
+                          <button 
+                            type="button"
+                            className="text-gray-600 hover:text-green-600 focus:outline-none"
+                            onClick={(e) => toggleDropdown(`${expenseId}-item-${itemIndex}`, e)}
+                          >
+                            <MoreVertical size={20} />
+                          </button>
+                          
+                          {openDropdownId === `${expenseId}-item-${itemIndex}` && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
+                              <button
+                                onClick={(e) => handleEditFromDropdown(expense, e)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
+                                <Edit size={16} className="mr-2" />
+                                Edit Expense
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

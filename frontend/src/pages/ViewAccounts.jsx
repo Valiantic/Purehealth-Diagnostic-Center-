@@ -2,16 +2,18 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PlusCircle, XCircle, MoreVertical, X, Edit, Save, Key } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { userAPI } from '../services/api'
+import { userAPI, roleAPI } from '../services/api'
 import Sidebar from '../components/dashboard/Sidebar'
 import TabNavigation from '../components/dashboard/TabNavigation'
 import useAuth from '../hooks/auth/useAuth'
+import usePermissions from '../hooks/auth/usePermissions'
 import tabsConfig from '../config/tabsConfig'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const ViewAccounts = () => {
   const { user, isAuthenticating } = useAuth()
+  const { hasPermission } = usePermissions()
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -26,7 +28,8 @@ const ViewAccounts = () => {
     middleName: '',
     lastName: '',
     email: '',
-    status: 'active'
+    status: 'active',
+    roleId: null
   })
   const [originalUserData, setOriginalUserData] = useState(null)
   const [windowWidth, setWindowWidth] = useState(window.innerWidth)
@@ -55,7 +58,7 @@ const ViewAccounts = () => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth)
     }
-    
+
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -64,6 +67,15 @@ const ViewAccounts = () => {
     queryKey: ['accounts'],
     queryFn: async () => {
       const response = await userAPI.getAllUsers()
+      return response.data
+    }
+  })
+
+  // Fetch available roles
+  const { data: rolesData } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const response = await roleAPI.getAllRoles()
       return response.data
     }
   })
@@ -98,9 +110,10 @@ const ViewAccounts = () => {
         middleName: userData.middleName || '',
         lastName: userData.lastName,
         email: userData.email,
-        status: userData.status || 'active'
+        status: userData.status || 'active',
+        roleId: userData.roleId || null
       }
-      
+
       setEditUserData(userDataForEdit)
       // Create a true deep copy of the data to preserve original values
       setOriginalUserData(JSON.parse(JSON.stringify(userDataForEdit)))
@@ -126,7 +139,8 @@ const ViewAccounts = () => {
       middleName: '',
       lastName: '',
       email: '',
-      status: 'active'
+      status: 'active',
+      roleId: null
     })
     setOriginalUserData(null)
   }
@@ -139,28 +153,52 @@ const ViewAccounts = () => {
     }))
   }
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault()
     if (!selectedUser) return
 
     // Force string comparison to ensure differences are detected
     const statusChanged = String(originalUserData.status) !== String(editUserData.status);
-    const detailsChanged = 
+    const roleChanged = originalUserData.roleId !== editUserData.roleId;
+    const detailsChanged =
       String(originalUserData.firstName) !== String(editUserData.firstName) ||
       String(originalUserData.middleName) !== String(editUserData.middleName) ||
       String(originalUserData.lastName) !== String(editUserData.lastName) ||
       String(originalUserData.email) !== String(editUserData.email);
 
-    // Always send these as explicit boolean values
-    updateUserMutation.mutate({
-      userId: selectedUser,
-      userData: {
-        ...editUserData,
-        statusChanged: statusChanged === true,
-        detailsChanged: detailsChanged === true,
-        currentUserId: user.userId
+    // If role changed, update role assignment first
+    if (roleChanged && editUserData.roleId) {
+      try {
+        await roleAPI.assignRoleToUser(selectedUser, editUserData.roleId, user.userId);
+        // If ONLY role changed (no other details or status), close modal and refresh
+        if (!detailsChanged && !statusChanged) {
+          queryClient.invalidateQueries(['accounts']);
+          toast.success('User role updated successfully');
+          setShowEditModal(false);
+          return;
+        }
+      } catch (error) {
+        toast.error('Failed to update user role');
+        return;
       }
-    });
+    }
+
+    // Only call updateUserMutation if details or status changed
+    if (detailsChanged || statusChanged) {
+      updateUserMutation.mutate({
+        userId: selectedUser,
+        userData: {
+          ...editUserData,
+          statusChanged: statusChanged === true,
+          detailsChanged: detailsChanged === true,
+          currentUserId: user.userId
+        }
+      });
+    } else if (!roleChanged) {
+      // Nothing changed at all
+      toast.info('No changes detected');
+      setShowEditModal(false);
+    }
   }
 
   const filteredAccounts = accountsData?.users?.filter((account) => {
@@ -191,7 +229,7 @@ const ViewAccounts = () => {
   return (
     <div className='flex flex-col md:flex-row h-screen'>
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
-      
+
       <div className='md:sticky md:top-0 md:h-screen z-10'>
         <Sidebar />
       </div>
@@ -215,13 +253,15 @@ const ViewAccounts = () => {
           {activeTab === 'Account' && (
             <>
               <div className='flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4'>
-                <button
-                  onClick={handleAddAccount}
-                  className='bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start'
-                >
-                  <PlusCircle className='mr-1 sm:mr-2' size={18} />
-                  Add Account
-                </button>
+                {hasPermission('accounts.manage') && (
+                  <button
+                    onClick={handleAddAccount}
+                    className='bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start'
+                  >
+                    <PlusCircle className='mr-1 sm:mr-2' size={18} />
+                    Add Account
+                  </button>
+                )}
 
                 <div className='relative w-full sm:w-64'>
                   <input
@@ -277,9 +317,11 @@ const ViewAccounts = () => {
                           <th className='p-1 border-r border-green-800 text-sm font-medium'>
                             Date Created
                           </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
-                            Actions
-                          </th>
+                          {hasPermission('accounts.manage') && (
+                            <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                              Actions
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -319,79 +361,85 @@ const ViewAccounts = () => {
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
                                 <span
-                                  className={`px-2 py-1 rounded text-xs ${
-                                    account.role === 'admin'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-green-100 text-green-800'
-                                  }`}
+                                  className={`px-2 py-1 rounded text-xs ${account.role === 'admin'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-green-100 text-green-800'
+                                    }`}
                                 >
-                                  {account.role
-                                    ? account.role === 'admin'
-                                      ? 'Admin'
-                                      : 'Receptionist'
-                                    : 'Receptionist'}
+                                  {(() => {
+                                    // Try to find role display name from roles data
+                                    const roleData = rolesData?.roles?.find(r => r.roleId === account.roleId || r.roleName === account.role);
+                                    if (roleData) {
+                                      return roleData.displayName;
+                                    }
+                                    // Fallback to capitalizing the role string
+                                    return account.role 
+                                      ? account.role.charAt(0).toUpperCase() + account.role.slice(1)
+                                      : 'Receptionist';
+                                  })()}
                                 </span>
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
                                 <span
-                                  className={`px-2 py-1 rounded text-xs ${
-                                    account.status === 'active'
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-red-100 text-red-800'
-                                  }`}
+                                  className={`px-2 py-1 rounded text-xs ${account.status === 'active'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-orange-100 text-orange-800'
+                                    }`}
                                 >
-                                  {account.status === 'active' ? 'Active' : 'Inactive'}
+                                  {account.status === 'active' ? 'Active' : 'Archived'}
                                 </span>
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
                                 {new Date(account.createdAt).toLocaleDateString()}
                               </td>
-                              <td className='p-1 text-center relative'>
-                                <div
-                                  ref={(el) =>
-                                    (dropdownRefs.current[account.userId] = el)
-                                  }
-                                  className='inline-block'
-                                >
-                                  <button
-                                    className='text-gray-600 hover:text-gray-800 p-1'
-                                    onClick={(e) =>
-                                      toggleDropdown(e, account.userId)
+                              {hasPermission('accounts.manage') && (
+                                <td className='p-1 text-center relative'>
+                                  <div
+                                    ref={(el) =>
+                                      (dropdownRefs.current[account.userId] = el)
                                     }
+                                    className='inline-block'
                                   >
-                                    <MoreVertical size={18} />
-                                  </button>
+                                    <button
+                                      className='text-gray-600 hover:text-gray-800 p-1'
+                                      onClick={(e) =>
+                                        toggleDropdown(e, account.userId)
+                                      }
+                                    >
+                                      <MoreVertical size={18} />
+                                    </button>
 
-                                  {activeDropdown === account.userId && (
-                                    <div
-                                      className='absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200'
-                                      style={{
-                                        right: windowWidth < 640 ? '220px' : '50px',
-                                        ...(filteredAccounts.indexOf(account) < 2
-                                          ? { 
+                                    {activeDropdown === account.userId && (
+                                      <div
+                                        className='absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200'
+                                        style={{
+                                          right: windowWidth < 640 ? '220px' : '50px',
+                                          ...(filteredAccounts.indexOf(account) < 2
+                                            ? {
                                               top: '100%',
                                               marginTop: '-30px'
-                                            } 
-                                          : { 
+                                            }
+                                            : {
                                               bottom: '100%',
                                               marginBottom: '20px'
                                             }
-                                        )
-                                      }}
-                                    >
-                                      <div className='py-1'>
-                                        <button 
-                                          className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
-                                          onClick={(e) => openEditModal(e, account.userId)}
-                                        >
-                                          <Edit size={16} className="mr-2" />
-                                          Edit User
-                                        </button>
+                                          )
+                                        }}
+                                      >
+                                        <div className='py-1'>
+                                          <button
+                                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center"
+                                            onClick={(e) => openEditModal(e, account.userId)}
+                                          >
+                                            <Edit size={16} className="mr-2" />
+                                            Edit User
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))
                         )}
@@ -431,7 +479,7 @@ const ViewAccounts = () => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Middle Name</label>
                   <input
@@ -442,7 +490,7 @@ const ViewAccounts = () => {
                     className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 text-sm"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
                   <input
@@ -454,7 +502,7 @@ const ViewAccounts = () => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
                   <input
@@ -467,18 +515,22 @@ const ViewAccounts = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid ${hasPermission('accounts.manage') ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
                     <div className="relative">
                       <select
-                        name="status"
-                        value={editUserData.status}
+                        name="roleId"
+                        value={editUserData.roleId || ''}
                         onChange={handleEditFormChange}
                         className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 appearance-none text-sm"
                       >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="">Select Role</option>
+                        {rolesData?.roles?.map((role) => (
+                          <option key={role.roleId} value={role.roleId}>
+                            {role.displayName}
+                          </option>
+                        ))}
                       </select>
                       <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                         <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
@@ -487,22 +539,44 @@ const ViewAccounts = () => {
                       </div>
                     </div>
                   </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Security</label>
-                    <button 
-                      type="button"
-                      className="w-full px-2 py-1.5 border border-blue-300 bg-blue-50 text-blue-600 rounded-md shadow-sm hover:bg-blue-100 flex items-center justify-center text-sm"
-                    >
-                      <Key className="mr-1" size={14} />
-                      Change Passkey
-                    </button>
-                  </div>
+
+                  {hasPermission('accounts.manage') && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                      <div className="relative">
+                        <select
+                          name="status"
+                          value={editUserData.status}
+                          onChange={handleEditFormChange}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 appearance-none text-sm"
+                        >
+                          <option value="active">Active</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                          <svg className="w-4 h-4 fill-current text-gray-500" viewBox="0 0 20 20">
+                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Security</label>
+                  <button
+                    type="button"
+                    className="w-full px-2 py-1.5 border border-blue-300 bg-blue-50 text-blue-600 rounded-md shadow-sm hover:bg-blue-100 flex items-center justify-center text-sm"
+                  >
+                    <Key className="mr-1" size={14} />
+                    Change Passkey
+                  </button>
                 </div>
               </div>
 
               <div className="border-t border-gray-300 my-3"></div>
-              
+
               <div className="flex justify-center">
                 <button
                   type="submit"

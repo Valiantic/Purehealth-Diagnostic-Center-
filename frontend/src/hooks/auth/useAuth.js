@@ -76,9 +76,6 @@ const useAuth = () => {
   // Add login function to set user data and update cache
   const login = (userData) => {
     try {
-      // Log the received user data
-      console.log('User data received during login:', userData);
-      
       const completeUserData = {
         ...userData,
         middleName: userData.middleName !== undefined ? userData.middleName : ''

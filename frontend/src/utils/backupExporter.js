@@ -11,8 +11,6 @@ export const exportFullBackup = async () => {
         workbook.modified = new Date();
 
         // Fetch all data
-        console.log('Fetching all data...');
-
         const [
             transactionsResponse,
             expensesResponse,
@@ -29,16 +27,6 @@ export const exportFullBackup = async () => {
             collectibleIncomeAPI.getAllCollectibleIncome()
         ]);
 
-        console.log('Raw API responses:', {
-            transactionsResponse,
-            expensesResponse
-        });
-
-        console.log('Transactions response full data:', transactionsResponse.data?.data);
-
-        console.log('Transactions response data:', transactionsResponse.data);
-        console.log('Transactions response data keys:', Object.keys(transactionsResponse.data || {}));
-
         // Extract data arrays - try all possible paths
         let transactions = [];
         if (transactionsResponse.data) {
@@ -52,11 +40,6 @@ export const exportFullBackup = async () => {
                 transactions = transactionsResponse.data;
             }
         }
-
-        console.log('Extracted transactions:', transactions.length, transactions);
-
-        console.log('Expenses response:', expensesResponse);
-        console.log('Expenses response.data:', expensesResponse.data);
 
         // Extract expenses - try same pattern as transactions
         let expenses = [];
@@ -72,8 +55,6 @@ export const exportFullBackup = async () => {
             }
         }
 
-        console.log('Extracted expenses:', expenses.length, expenses);
-
         // Extract collectible income
         let collectibles = [];
         if (collectiblesResponse.data) {
@@ -83,10 +64,6 @@ export const exportFullBackup = async () => {
                 collectibles = collectiblesResponse.data;
             }
         }
-        console.log('Extracted collectibles:', collectibles.length, collectibles);
-
-        console.log('Referrers response:', referrersResponse);
-        console.log('Referrers response.data:', referrersResponse.data);
 
         // Extract referrers - try same pattern as transactions
         let referrers = [];
@@ -102,8 +79,6 @@ export const exportFullBackup = async () => {
             }
         }
 
-        console.log('Extracted referrers:', referrers.length, referrers);
-
         const departments = Array.isArray(departmentsResponse.data?.departments)
             ? departmentsResponse.data.departments
             : Array.isArray(departmentsResponse.data) ? departmentsResponse.data : [];
@@ -111,14 +86,6 @@ export const exportFullBackup = async () => {
         const tests = Array.isArray(testsResponse.data?.tests)
             ? testsResponse.data.tests
             : Array.isArray(testsResponse.data) ? testsResponse.data : [];
-
-        console.log('Data fetched:', {
-            transactions: transactions.length,
-            expenses: expenses.length,
-            referrers: referrers.length,
-            departments: departments.length,
-            tests: tests.length
-        });
 
         // 1. TRANSACTIONS SHEET
         const transactionsSheet = workbook.addWorksheet('Transactions');
@@ -152,20 +119,9 @@ export const exportFullBackup = async () => {
         });
         headerRow.commit();
 
-        console.log('Transactions to process:', transactions.length);
-        console.log('Sample transaction:', transactions[0]);
-        console.log('Sample transaction keys:', Object.keys(transactions[0] || {}));
-        console.log('Sample transaction.originalTransaction:', transactions[0]?.originalTransaction);
-        console.log('Sample transaction.TestDetails:', transactions[0]?.TestDetails);
-        console.log('Sample transaction.originalTransaction?.TestDetails:', transactions[0]?.originalTransaction?.TestDetails);
-
         // Add transaction data
         transactions.forEach((transaction, txIndex) => {
             const rowData = new Array(headers.length).fill('');
-
-            if (txIndex === 0) {
-                console.log('First transaction full data:', transaction);
-            }
 
             // OR# and Patient Name
             rowData[0] = transaction.mcNo || transaction.id || transaction.transactionId || '';
@@ -175,14 +131,6 @@ export const exportFullBackup = async () => {
             const testDetails = transaction.TestDetails || transaction.originalTransaction?.TestDetails || [];
             const deptRevenues = {};
 
-            if (txIndex === 0) {
-                console.log('First transaction test details:', testDetails);
-                if (testDetails.length > 0) {
-                    console.log('First test detail:', testDetails[0]);
-                    console.log('First test detail keys:', Object.keys(testDetails[0]));
-                }
-            }
-
             testDetails.forEach(test => {
                 if (test.departmentId) {
                     if (!deptRevenues[test.departmentId]) {
@@ -191,10 +139,6 @@ export const exportFullBackup = async () => {
                     deptRevenues[test.departmentId] += parseFloat(test.originalPrice || test.price || 0);
                 }
             });
-
-            if (txIndex === 0) {
-                console.log('First transaction dept revenues:', deptRevenues);
-            }
 
             // Fill department columns
             let colIndex = 2;
@@ -211,24 +155,12 @@ export const exportFullBackup = async () => {
 
             // If not, try to look it up by referrerId
             if (!transaction.referrer && transaction.referrerId) {
-                if (txIndex === 0) {
-                    console.log('Transaction referrerId:', transaction.referrerId, typeof transaction.referrerId);
-                    console.log('Referrers array length:', referrers.length);
-                    console.log('Sample referrer:', referrers[0]);
-                }
                 const referrer = referrers.find(r => String(r.referrerId) === String(transaction.referrerId));
-                if (txIndex === 0) {
-                    console.log('Found referrer:', referrer);
-                }
                 if (referrer) {
                     referrerName = `Dr. ${referrer.firstName || ''} ${referrer.lastName || ''}`.trim();
                 }
             }
             rowData[headers.length - 1] = referrerName;
-
-            if (txIndex === 0) {
-                console.log('First transaction row data:', rowData);
-            }
 
             // Add row
             const dataRow = transactionsSheet.getRow(transactionsSheet.rowCount + 1);
@@ -482,7 +414,6 @@ export const exportFullBackup = async () => {
         }
 
         // Add collectible income data
-        console.log('Processing collectible income...');
         collectibles.forEach((item) => {
             collectibleSheet.addRow({
                 company: item.companyName || 'N/A',
@@ -491,7 +422,6 @@ export const exportFullBackup = async () => {
                 income: parseFloat(item.totalIncome || 0)
             });
         });
-        console.log(`Added ${collectibles.length} collectible income records`);
         collectibleSheet.getColumn('income').numFmt = '#,##0.00';
 
         // 6. DEPARTMENTS SHEET

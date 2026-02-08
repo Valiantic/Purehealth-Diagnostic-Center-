@@ -1,25 +1,38 @@
 import ExcelJS from 'exceljs';
 
-export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, collectibles, currentMonth, profitLossData = null) => {
+export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, collectibles, currentMonth, profitLossData = null, allTransactions = []) => {
   try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Monthly Income Report');
 
-  // Set column widths
-  // Total columns = Day + Gross + each Department + GCash
-  const totalColumns = 3 + monthlyData.departments.length; // Day, Gross, Departments..., GCash
+    // Helper functions
+    const formatCurrency = (value) => parseFloat(value || 0).toFixed(2);
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear().toString().slice(-2);
+      return `${day}-${month}-${year}`;
+    };
+
+    // Total columns for the main monthly table (Day + Gross + each Department + GCash)
+    const mainTableColumns = 3 + monthlyData.departments.length;
+    // We'll use at least 5 columns for the transaction details (Date, OR#, Name, Services, Amount)
+    const maxColumns = Math.max(mainTableColumns, 5);
+
+    // Set initial column widths
     worksheet.columns = [
-      { width: 12 }, // Day
-      { width: 15 }, // Gross
-      ...monthlyData.departments.map(() => ({ width: 15 })), // Department columns
-      { width: 15 }, // GCash
+      { width: 12 }, // Date / Day
+      { width: 15 }, // OR# / Gross
+      { width: 25 }, // Patient Name / Dept 1
+      { width: 40 }, // Services / Dept 2
+      { width: 15 }, // Amount / Dept 3 ...
     ];
 
-  // Add title - merge across the entire table width and occupy rows 1-2
-  const titleEndColumn = totalColumns; // Merge to the last column of the table
-  worksheet.mergeCells(1, 1, 2, titleEndColumn); // Merge from A1 to the last header column in row 2
+    // Add title
+    worksheet.mergeCells(1, 1, 2, maxColumns);
     const titleCell = worksheet.getCell(1, 1);
-    titleCell.value = `Monthly Income Report - ${currentMonth}`;
+    titleCell.value = `Monthly Transaction & Income Report - ${currentMonth}`;
     titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -30,12 +43,20 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       right: { style: 'thick', color: { argb: 'FF166534' } }
     };
 
-    // Add monthly income table headers
-    const headerRow = 3;
-    const headers = ['Day', 'Gross', ...monthlyData.departments.map(dept => dept.name), 'GCash'];
-    
-    headers.forEach((header, index) => {
-      const cell = worksheet.getCell(headerRow, index + 1);
+    let currentRow = 4;
+
+    // SECTION 1: TRANSACTION DETAILS
+    worksheet.mergeCells(currentRow, 1, currentRow, maxColumns);
+    const transTitleCell = worksheet.getCell(currentRow, 1);
+    transTitleCell.value = 'Transaction Details';
+    transTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    transTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
+    transTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    currentRow++;
+
+    const transHeaders = ['Date', 'OR#', 'Patient Name', 'Services/Tests', 'Amount'];
+    transHeaders.forEach((header, index) => {
+      const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = header;
       cell.font = { bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
@@ -47,17 +68,78 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
         right: { style: 'thin', color: { argb: 'FF166534' } }
       };
     });
+    currentRow++;
 
-    // Add monthly income data
-    let currentRow = headerRow + 1;
-    const formatCurrency = (value) => parseFloat(value || 0).toFixed(2);
-    const formatDate = (dateString) => {
-      const date = new Date(dateString);
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear().toString().slice(-2);
-      return `${day}-${month}-${year}`;
-    };
+    let transTotal = 0;
+    if (allTransactions && allTransactions.length > 0) {
+      allTransactions.forEach(trans => {
+        const tests = (trans.TestDetails || []).map(td => td.testName).join(', ');
+        const amount = parseFloat(trans.totalAmount || 0);
+        transTotal += amount;
+
+        const rowData = [
+          formatDate(trans.transactionDate),
+          trans.mcNo,
+          `${trans.firstName} ${trans.lastName}`,
+          tests,
+          formatCurrency(amount)
+        ];
+
+        rowData.forEach((data, index) => {
+          const cell = worksheet.getCell(currentRow, index + 1);
+          cell.value = data;
+          cell.alignment = { horizontal: index === 3 ? 'left' : 'center', vertical: 'middle', wrapText: true };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFCCE3D5' } },
+            left: { style: 'thin', color: { argb: 'FFCCE3D5' } },
+            bottom: { style: 'thin', color: { argb: 'FFCCE3D5' } },
+            right: { style: 'thin', color: { argb: 'FFCCE3D5' } }
+          };
+        });
+        currentRow++;
+      });
+    } else {
+      worksheet.mergeCells(currentRow, 1, currentRow, 5);
+      worksheet.getCell(currentRow, 1).value = 'No transactions found for this period';
+      worksheet.getCell(currentRow, 1).alignment = { horizontal: 'center' };
+      currentRow++;
+    }
+
+    // Transaction Summary Row
+    const transSummaryCell = worksheet.getCell(currentRow, 4);
+    transSummaryCell.value = 'TOTAL TRANSACTIONS:';
+    transSummaryCell.font = { bold: true };
+    const transTotalCell = worksheet.getCell(currentRow, 5);
+    transTotalCell.value = formatCurrency(transTotal);
+    transTotalCell.font = { bold: true };
+    currentRow += 3;
+
+    // SECTION 2: DAILY SUMMARY
+    worksheet.mergeCells(currentRow, 1, currentRow, mainTableColumns);
+    const dailyTitleCell = worksheet.getCell(currentRow, 1);
+    dailyTitleCell.value = 'Daily Income Summary';
+    dailyTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    dailyTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
+    dailyTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    currentRow++;
+
+    const dailyHeadersRow = currentRow;
+    const headers = ['Day', 'Gross', ...monthlyData.departments.map(dept => dept.name), 'GCash'];
+
+    headers.forEach((header, index) => {
+      const cell = worksheet.getCell(dailyHeadersRow, index + 1);
+      cell.value = header;
+      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF166534' } },
+        left: { style: 'thin', color: { argb: 'FF166534' } },
+        bottom: { style: 'thin', color: { argb: 'FF166534' } },
+        right: { style: 'thin', color: { argb: 'FF166534' } }
+      };
+    });
+    currentRow++;
 
     monthlyData.dailyIncome.forEach((day) => {
       const rowData = [
@@ -103,10 +185,10 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       };
     });
 
-    // Add collectible income section
+    // SECTION 3: COLLECTIBLE INCOME
     currentRow += 3; // Add spacing
 
-    // Collectible income title - never exceed column D (4th column)
+    // Collectible income title
     worksheet.mergeCells(currentRow, 1, currentRow, 4);
     const collectibleTitleCell = worksheet.getCell(currentRow, 1);
     collectibleTitleCell.value = 'Collectible Income';
@@ -123,7 +205,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     // Collectible income headers
     currentRow += 1;
     const collectibleHeaders = ['Company', 'Coordinator', 'Date', 'Income'];
-    
+
     collectibleHeaders.forEach((header, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = header;
@@ -137,9 +219,9 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
         right: { style: 'thin', color: { argb: 'FF166534' } }
       };
     });
+    currentRow += 1;
 
     // Add collectible income data
-    currentRow += 1;
     collectibles.forEach((item) => {
       const rowData = [
         item.companyName,
@@ -180,34 +262,25 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       };
     });
 
-    // Set column widths for collectible section
-    worksheet.getColumn(1).width = 20; // Company
-    worksheet.getColumn(2).width = 20; // Coordinator
-    worksheet.getColumn(3).width = 15; // Date
-    worksheet.getColumn(4).width = 15; // Income
-
     // ===== ADD PROFIT & LOSS REPORT SHEET =====
     if (profitLossData) {
       const plWorksheet = workbook.addWorksheet('Profit&Loss Report');
-      
-      // Set column widths - Make columns B and C wider for better month visibility
+
       plWorksheet.columns = [
-        { width: 25 }, // Column A - Category names
-        { width: 22 }, // Column B - Previous month values (increased from 18)
-        { width: 22 }, // Column C - Current month values (increased from 18)
+        { width: 25 }, // Category names
+        { width: 22 }, // Previous month
+        { width: 22 }, // Current month
       ];
 
       let plRow = 1;
-      
-      // Title: Purehealth Diagnostic Center Inc.
+
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
-      let titleCell = plWorksheet.getCell(plRow, 1);
-      titleCell.value = 'Purehealth Diagnostic Center Inc.';
-      titleCell.font = { bold: true, size: 16, color: { argb: 'FF166534' } };
-      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      let titleCellPL = plWorksheet.getCell(plRow, 1);
+      titleCellPL.value = 'Purehealth Diagnostic Center Inc.';
+      titleCellPL.font = { bold: true, size: 16, color: { argb: 'FF166534' } };
+      titleCellPL.alignment = { horizontal: 'center', vertical: 'middle' };
       plRow++;
 
-      // Subtitle: General Mariano Alvarez, Cavite Branch
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let subtitleCell = plWorksheet.getCell(plRow, 1);
       subtitleCell.value = 'General Mariano Alvarez, Cavite Branch';
@@ -215,15 +288,13 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       plRow++;
 
-      // Date: October 1, 2025
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let dateCell = plWorksheet.getCell(plRow, 1);
       dateCell.value = `Date: ${profitLossData.date}`;
       dateCell.font = { size: 10, color: { argb: 'FF000000' } };
       dateCell.alignment = { horizontal: 'left', vertical: 'middle' };
-      plRow += 2; // Add spacing
+      plRow += 2;
 
-      // Section Title: Profit&Loss Report
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let sectionTitleCell = plWorksheet.getCell(plRow, 1);
       sectionTitleCell.value = 'Profit&Loss Report';
@@ -236,13 +307,8 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
         bottom: { style: 'thin', color: { argb: 'FF000000' } },
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
-      plRow++;
+      plRow += 2;
 
-      // Empty row
-      plRow++;
-
-      // Header Row
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       const headerData = ['', profitLossData.previousMonth, profitLossData.currentMonth];
       headerData.forEach((header, index) => {
         const cell = plWorksheet.getCell(plRow, index + 1);
@@ -257,14 +323,13 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
           right: { style: 'thin', color: { argb: 'FF000000' } }
         };
       });
-      // Set row height for better visibility of month names
       plWorksheet.getRow(plRow).height = 30;
       plRow++;
 
-      // Revenue Section Header
+      // Revenue Section
       let revenueHeaderCell = plWorksheet.getCell(plRow, 1);
       revenueHeaderCell.value = 'Revenue';
-      revenueHeaderCell.font = { bold: true, size: 11, color: { argb: 'FF000000' } };
+      revenueHeaderCell.font = { bold: true, size: 11 };
       revenueHeaderCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
       revenueHeaderCell.border = {
         top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -274,7 +339,6 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       };
       plRow++;
 
-      // Revenue items (departments)
       profitLossData.revenue.departments.forEach(dept => {
         const rowData = [dept.name, dept.previousMonth, dept.currentMonth];
         rowData.forEach((value, index) => {
@@ -298,87 +362,56 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       });
 
       // Additional Income
-      const additionalIncomeData = ['Additional Income', profitLossData.revenue.additionalIncome.previousMonth, profitLossData.revenue.additionalIncome.currentMonth];
-      additionalIncomeData.forEach((value, index) => {
+      ['Additional Income', profitLossData.revenue.additionalIncome.previousMonth, profitLossData.revenue.additionalIncome.currentMonth].forEach((value, index) => {
         const cell = plWorksheet.getCell(plRow, index + 1);
         cell.value = value;
         if (index === 0) {
           cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF4EA' } };
         } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = '₱#,##0.00';
         }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
+        cell.border = { style: 'thin', color: { argb: 'FF000000' } };
       });
       plRow++;
 
       // GCash Income
-      const gCashIncomeData = ['GCash Income', profitLossData.revenue.gCashIncome.previousMonth, profitLossData.revenue.gCashIncome.currentMonth];
-      gCashIncomeData.forEach((value, index) => {
+      ['GCash Income', profitLossData.revenue.gCashIncome.previousMonth, profitLossData.revenue.gCashIncome.currentMonth].forEach((value, index) => {
         const cell = plWorksheet.getCell(plRow, index + 1);
         cell.value = value;
         if (index === 0) {
           cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF4EA' } };
         } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = '₱#,##0.00';
         }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
+        cell.border = { style: 'thin', color: { argb: 'FF000000' } };
       });
       plRow++;
 
       // Total Revenue
-      const totalRevenueData = ['Total Revenue', profitLossData.revenue.total.previousMonth, profitLossData.revenue.total.currentMonth];
-      totalRevenueData.forEach((value, index) => {
+      ['Total Revenue', profitLossData.revenue.total.previousMonth, profitLossData.revenue.total.currentMonth].forEach((value, index) => {
         const cell = plWorksheet.getCell(plRow, index + 1);
         cell.value = value;
-        cell.font = { bold: true, size: 11 };
+        cell.font = { bold: true };
         if (index === 0) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
         } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = '₱#,##0.00';
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF4EA' } };
         }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
+        cell.border = { style: 'thin', color: { argb: 'FF000000' } };
       });
-      plRow++;
+      plRow += 2;
 
-      // Empty row
-      plRow++;
-
-      // Expenses Section Header
+      // Expense Section
       let expensesHeaderCell = plWorksheet.getCell(plRow, 1);
       expensesHeaderCell.value = 'Expenses';
-      expensesHeaderCell.font = { bold: true, size: 11, color: { argb: 'FF000000' } };
+      expensesHeaderCell.font = { bold: true, size: 11 };
       expensesHeaderCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
-      expensesHeaderCell.border = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
-      };
+      expensesHeaderCell.border = { style: 'thin', color: { argb: 'FF000000' } };
       plRow++;
 
-      // Expense categories
       profitLossData.expenses.categories.forEach(category => {
         const rowData = [category.name, category.previousMonth, category.currentMonth];
         rowData.forEach((value, index) => {
@@ -388,104 +421,43 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
             cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF4EA' } };
           } else {
-            cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.numFmt = '₱#,##0.00';
           }
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FF000000' } },
-            left: { style: 'thin', color: { argb: 'FF000000' } },
-            bottom: { style: 'thin', color: { argb: 'FF000000' } },
-            right: { style: 'thin', color: { argb: 'FF000000' } }
-          };
+          cell.border = { style: 'thin', color: { argb: 'FF000000' } };
         });
         plRow++;
       });
 
       // Total Expenses
-      const totalExpensesData = ['Total Expenses', profitLossData.expenses.total.previousMonth, profitLossData.expenses.total.currentMonth];
-      totalExpensesData.forEach((value, index) => {
+      ['Total Expenses', profitLossData.expenses.total.previousMonth, profitLossData.expenses.total.currentMonth].forEach((value, index) => {
         const cell = plWorksheet.getCell(plRow, index + 1);
         cell.value = value;
-        cell.font = { bold: true, size: 11 };
+        cell.font = { bold: true };
         if (index === 0) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
         } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = '₱#,##0.00';
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAF4EA' } };
         }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
+        cell.border = { style: 'thin', color: { argb: 'FF000000' } };
       });
-      plRow++;
+      plRow += 2;
 
-      // Empty row
-      plRow++;
-
-      // Income before tax
-      const incomeBeforeTaxData = ['Income before tax', profitLossData.incomeBeforeTax.previousMonth, profitLossData.incomeBeforeTax.currentMonth];
-      incomeBeforeTaxData.forEach((value, index) => {
-        const cell = plWorksheet.getCell(plRow, index + 1);
-        cell.value = value;
-        cell.font = { bold: true, size: 11 };
-        if (index === 0) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-        } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '₱#,##0.00';
-        }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
-      });
-      plRow++;
-
-      // Income tax expense (12%)
-      const incomeTaxData = ['Income tax expense (12%)', profitLossData.incomeTax.previousMonth, profitLossData.incomeTax.currentMonth];
-      incomeTaxData.forEach((value, index) => {
-        const cell = plWorksheet.getCell(plRow, index + 1);
-        cell.value = value;
-        if (index === 0) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-        } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '₱#,##0.00';
-        }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
-      });
-      plRow++;
-
-      // Net Profit (Loss)
-      const netProfitData = ['Net Profit (Loss)', profitLossData.netProfit.previousMonth, profitLossData.netProfit.currentMonth];
-      netProfitData.forEach((value, index) => {
-        const cell = plWorksheet.getCell(plRow, index + 1);
-        cell.value = value;
-        cell.font = { bold: true, size: 11 };
-        if (index === 0) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-        } else {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
-          cell.numFmt = '₱#,##0.00';
-        }
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
+      // Bottom Summary
+      [['Income before tax', profitLossData.incomeBeforeTax],
+      ['Income tax expense (12%)', profitLossData.incomeTax],
+      ['Net Profit (Loss)', profitLossData.netProfit]].forEach(([label, data]) => {
+        [label, data.previousMonth, data.currentMonth].forEach((value, index) => {
+          const cell = plWorksheet.getCell(plRow, index + 1);
+          cell.value = value;
+          if (index === 0) {
+            cell.font = { bold: label.includes('Net Profit') || label.includes('Income before') };
+          } else {
+            cell.numFmt = '₱#,##0.00';
+          }
+          cell.border = { style: 'thin', color: { argb: 'FF000000' } };
+        });
+        plRow++;
       });
     }
 
