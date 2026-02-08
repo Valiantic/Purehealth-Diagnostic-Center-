@@ -250,17 +250,19 @@ const ActivityLog = () => {
                               </td>
                               <td className="p-1 border-r border-green-200 text-center hidden sm:table-cell">
                                 <span
-                                  className={`px-2 py-1 rounded text-xs ${
-                                    log.user?.role === 'admin'
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    log.user?.role?.toLowerCase() === 'administrator' || log.user?.role?.toLowerCase() === 'admin'
                                       ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-green-100 text-green-800'
+                                      : log.user?.role?.toLowerCase() === 'marketing'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : log.user?.role?.toLowerCase() === 'accounting'
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : log.user?.role?.toLowerCase() === 'cashier' || log.user?.role?.toLowerCase() === 'receptionist'
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-gray-100 text-gray-800'
                                   }`}
                                 >
-                                  {log.user?.role
-                                    ? log.user.role === 'admin'
-                                      ? 'Admin'
-                                      : 'Receptionist'
-                                    : 'SYSTEM'}
+                                  {log.user?.role || 'SYSTEM'}
                                 </span>
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
@@ -302,16 +304,18 @@ const ActivityLog = () => {
                               </div>
                               <span
                                 className={`px-2 py-1 rounded text-xs font-medium ${
-                                  log.user?.role === 'admin'
+                                  log.user?.role?.toLowerCase() === 'administrator' || log.user?.role?.toLowerCase() === 'admin'
                                     ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-green-100 text-green-800'
+                                    : log.user?.role?.toLowerCase() === 'marketing'
+                                      ? 'bg-purple-100 text-purple-800'
+                                      : log.user?.role?.toLowerCase() === 'accounting'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : log.user?.role?.toLowerCase() === 'cashier' || log.user?.role?.toLowerCase() === 'receptionist'
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-gray-100 text-gray-800'
                                 }`}
                               >
-                                {log.user?.role
-                                  ? log.user.role === 'admin'
-                                    ? 'Admin'
-                                    : 'Receptionist'
-                                  : 'SYSTEM'}
+                                {log.user?.role || 'SYSTEM'}
                               </span>
                             </div>
                             <div className="text-sm text-gray-700 leading-relaxed">
