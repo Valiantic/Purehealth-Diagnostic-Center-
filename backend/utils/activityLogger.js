@@ -1,4 +1,4 @@
-const { ActivityLog, User } = require('../models');
+const { ActivityLog, User, Role } = require('../models');
 
 /**
  * Log user activity
@@ -40,8 +40,12 @@ const logActivity = async (logData) => {
     
     if (logData.userId) {
       try {
-        const user = await User.findByPk(logData.userId);
+        const user = await User.findByPk(logData.userId, {
+          include: [{ model: Role, attributes: ['roleId', 'roleName', 'displayName'] }]
+        });
         if (user) {
+          // Use Role table (RBAC) for the role name, fall back to old role column
+          const roleName = user.Role ? user.Role.displayName : (user.role || 'Unknown');
           userInfo = {
             userId: user.userId,
             name: `${user.firstName} ${user.middleName ? user.middleName + ' ' : ''}${user.lastName}`,
@@ -49,7 +53,7 @@ const logActivity = async (logData) => {
             middleName: user.middleName || '',
             lastName: user.lastName,
             email: user.email,
-            role: user.role
+            role: roleName
           };
         } else {
           console.warn(`User with ID ${logData.userId} not found for activity logging`);
