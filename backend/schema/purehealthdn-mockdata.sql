@@ -1,94 +1,201 @@
--- departments 
+-- =============================================================================
+-- PUREHEALTH DIAGNOSTIC CENTER - MYSQL MOCK DATA
+-- =============================================================================
+-- SCOPE: Departments, Tests (real data), Referrers, Roles, Permissions, RolePermissions
+-- NO transactions, expenses, or other unrelated data.
+-- =============================================================================
 
-INSERT INTO departments (
-  departmentId, departmentName, testQuantity, status, createdAt, updatedAt
-) VALUES
-  (1, 'Hematology', 120, 'active', '2025-09-28 21:57:00', '2025-09-28 21:57:00'),
-  (2, 'Radiology', 85, 'active', '2025-09-28 21:57:00', '2025-09-28 21:57:00'),
-  (3, 'Microbiology', 60, 'active', '2025-09-28 21:57:00', '2025-09-28 21:57:00'),
-  (4, 'Pathology', 45, 'active', '2025-09-28 21:57:00', '2025-09-28 21:57:00'),
-  (5, 'Cardiology Diagnostics', 70, 'active', '2025-09-28 21:57:00', '2025-09-28 21:57:00');
+-- FIX: Error Code 1046 - No database selected
+USE `devpurehealthdb`;
 
--- tests
+SET FOREIGN_KEY_CHECKS = 0;
 
-INSERT INTO tests (
-  testId, testName, departmentId, price, status, dateCreated, createdAt, updatedAt
-) VALUES
--- Hematology (departmentId = 1)
-(1, 'Complete Blood Count (CBC)', 1, 350.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(2, 'Hemoglobin Test', 1, 200.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(3, 'Platelet Count', 1, 250.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(4, 'Prothrombin Time (PT)', 1, 300.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(5, 'Erythrocyte Sedimentation Rate (ESR)', 1, 280.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(6, 'Reticulocyte Count', 1, 320.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(7, 'White Blood Cell Differential', 1, 310.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(8, 'Blood Smear', 1, 270.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
+START TRANSACTION;
 
--- Radiology (departmentId = 2)
-(9, 'Chest X-Ray', 2, 500.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(10, 'Abdominal Ultrasound', 2, 850.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(11, 'CT Scan – Head', 2, 3200.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(12, 'MRI – Spine', 2, 4500.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(13, 'Mammography', 2, 1200.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(14, 'Bone Densitometry', 2, 950.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(15, 'Pelvic Ultrasound', 2, 900.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(16, 'CT Angiography', 2, 3800.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
+-- =====================================================
+-- 1. DEPARTMENTS
+-- =====================================================
+INSERT IGNORE INTO `Departments` (`departmentId`, `departmentName`, `testQuantity`, `status`, `createdAt`, `updatedAt`)
+VALUES
+  (1, 'Laboratory',              20, 'active', NOW(), NOW()),
+  (2, 'Ultrasound',              10, 'active', NOW(), NOW()),
+  (3, 'ECG / 2D Echo',            5, 'active', NOW(), NOW()),
+  (4, 'X-Ray',                    5, 'active', NOW(), NOW()),
+  (5, 'COVID Tests',              3, 'active', NOW(), NOW()),
+  (6, 'Pre-Employment Packages',  3, 'active', NOW(), NOW()),
+  (7, 'Pre-Natal Packages',       2, 'active', NOW(), NOW()),
+  (8, 'Blood Chemistry Packages', 2, 'active', NOW(), NOW());
 
--- Microbiology (departmentId = 3)
-(17, 'Urine Culture', 3, 600.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(18, 'Sputum Culture', 3, 650.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(19, 'Stool Culture', 3, 620.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(20, 'Blood Culture', 3, 700.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(21, 'Throat Swab Culture', 3, 580.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(22, 'Wound Culture', 3, 640.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(23, 'AFB Smear', 3, 500.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(24, 'Gram Stain', 3, 450.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
+-- =====================================================
+-- 2. TESTS (real data with correct prices)
+-- =====================================================
+-- LABORATORY (departmentId = 1)
+INSERT IGNORE INTO `tests` (`testId`, `testName`, `departmentId`, `price`, `status`, `dateCreated`, `createdAt`, `updatedAt`)
+VALUES
+( 1, 'CBC + Platelet Count',        1,   260.00, 'active', NOW(), NOW(), NOW()),
+( 2, 'Blood Typing with RH Typing', 1,   320.00, 'active', NOW(), NOW(), NOW()),
+( 3, 'ESR',                         1,   130.00, 'active', NOW(), NOW(), NOW()),
+( 4, 'FBS',                         1,   150.00, 'active', NOW(), NOW(), NOW()),
+( 5, 'BUN',                         1,   155.00, 'active', NOW(), NOW(), NOW()),
+( 6, 'Creatinine',                  1,   155.00, 'active', NOW(), NOW(), NOW()),
+( 7, 'Cholesterol',                 1,   155.00, 'active', NOW(), NOW(), NOW()),
+( 8, 'Triglycerides',               1,   255.00, 'active', NOW(), NOW(), NOW()),
+( 9, 'HDL',                         1,   255.00, 'active', NOW(), NOW(), NOW()),
+(10, 'LDL',                         1,   255.00, 'active', NOW(), NOW(), NOW()),
+(11, 'SGOT',                        1,   260.00, 'active', NOW(), NOW(), NOW()),
+(12, 'SGPT',                        1,   260.00, 'active', NOW(), NOW(), NOW()),
+(13, 'VDRL/RPR',                    1,   260.00, 'active', NOW(), NOW(), NOW()),
+(14, 'Widal Test',                  1,   380.00, 'active', NOW(), NOW(), NOW()),
+(15, 'Urinalysis',                  1,   105.00, 'active', NOW(), NOW(), NOW()),
+(16, 'Fecalysis',                   1,   105.00, 'active', NOW(), NOW(), NOW()),
+(17, 'Albumin',                     1,   410.00, 'active', NOW(), NOW(), NOW()),
+(18, 'Pregnancy Test Urine',        1,   350.00, 'active', NOW(), NOW(), NOW()),
+(19, 'TSH',                         1,   710.00, 'active', NOW(), NOW(), NOW()),
+(20, 'HIV Test',                    1,   760.00, 'active', NOW(), NOW(), NOW()),
 
--- Pathology (departmentId = 4)
-(25, 'Biopsy – Skin', 4, 1800.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(26, 'Biopsy – Liver', 4, 2500.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(27, 'Pap Smear', 4, 700.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(28, 'Histopathology – Tumor', 4, 3200.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(29, 'Cytology – Pleural Fluid', 4, 1500.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(30, 'Bone Marrow Aspiration', 4, 2800.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
-(31, 'Frozen Section', 4, 3500.00, 'active', '2025-09-28 22:10:00', '2025-09-28 22:10:00', '2025-09-28 22:10:00'),
--- Pathology (departmentId = 4)
-(32, 'Immunohistochemistry (IHC)', 4, 4000.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(33, 'Cervical Biopsy', 4, 2200.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(34, 'Endometrial Biopsy', 4, 2300.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(35, 'Lymph Node Biopsy', 4, 2400.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(36, 'Fine Needle Aspiration Cytology (FNAC)', 4, 1600.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
+-- ULTRASOUND (departmentId = 2)
+(21, 'Pelvic Ultrasound',                2,   470.00, 'active', NOW(), NOW(), NOW()),
+(22, 'Biophysical Profile',              2,   810.00, 'active', NOW(), NOW(), NOW()),
+(23, 'Transvaginal Non-Pregnant',        2,  1000.00, 'active', NOW(), NOW(), NOW()),
+(24, 'Liver Ultrasound',                 2,   550.00, 'active', NOW(), NOW(), NOW()),
+(25, 'Kidneys Ultrasound',               2,   650.00, 'active', NOW(), NOW(), NOW()),
+(26, 'Prostate Ultrasound',              2,   900.00, 'active', NOW(), NOW(), NOW()),
+(27, 'Thyroid Ultrasound',               2,  1550.00, 'active', NOW(), NOW(), NOW()),
+(28, 'Neck Ultrasound',                  2,  1750.00, 'active', NOW(), NOW(), NOW()),
+(29, 'Breast Ultrasound',                2,  1550.00, 'active', NOW(), NOW(), NOW()),
+(30, 'Whole Abdomen Ultrasound',         2,  2250.00, 'active', NOW(), NOW(), NOW()),
 
--- Cardiology Diagnostics (departmentId = 5)
-(37, 'Electrocardiogram (ECG)', 5, 500.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(38, 'Echocardiogram', 5, 1800.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(39, 'Stress Test (Treadmill)', 5, 2200.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(40, 'Holter Monitoring (24hr)', 5, 2500.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(41, 'Cardiac MRI', 5, 4800.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(42, 'Coronary Calcium Scan', 5, 3500.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(43, 'Ambulatory Blood Pressure Monitoring', 5, 1200.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(44, 'Tilt Table Test', 5, 1600.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(45, 'Cardiac Enzyme Panel', 5, 950.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(46, 'Pulse Wave Velocity Test', 5, 1400.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(47, 'Ankle-Brachial Index (ABI)', 5, 1100.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(48, 'Cardiac CT for Congenital Defects', 5, 4200.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(49, 'Myocardial Perfusion Imaging', 5, 3900.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00'),
-(50, 'Fractional Flow Reserve (FFR)', 5, 4600.00, 'active', '2025-09-28 22:15:00', '2025-09-28 22:15:00', '2025-09-28 22:15:00');
+-- ECG / 2D ECHO (departmentId = 3)
+(31, 'ECG',                              3,   380.00, 'active', NOW(), NOW(), NOW()),
+(32, 'ECG Pedia',                        3,   660.00, 'active', NOW(), NOW(), NOW()),
+(33, '2D-Echo Plain',                    3,  2200.00, 'active', NOW(), NOW(), NOW()),
+(34, '2D-Echo Colored Doppler Study',    3,  3500.00, 'active', NOW(), NOW(), NOW()),
+(35, '2D-Echo Pedia',                    3,  4000.00, 'active', NOW(), NOW(), NOW()),
 
+-- X-RAY (departmentId = 4)
+(36, 'Chest PA X-Ray',                      4,   310.00, 'active', NOW(), NOW(), NOW()),
+(37, 'Chest AP-Lateral Adult/Pedia X-Ray',  4,   510.00, 'active', NOW(), NOW(), NOW()),
+(38, 'Shoulder X-Ray',                      4,   710.00, 'active', NOW(), NOW(), NOW()),
+(39, 'Thoracolumbar Spine X-Ray',           4,  1310.00, 'active', NOW(), NOW(), NOW()),
+(40, 'Skull X-Ray',                          4,   660.00, 'active', NOW(), NOW(), NOW()),
 
--- referrers
+-- COVID TESTS (departmentId = 5)
+(41, 'Rapid Antibody COVID Test',        5,   600.00, 'active', NOW(), NOW(), NOW()),
+(42, 'Swab Antigen COVID Test',          5,   370.00, 'active', NOW(), NOW(), NOW()),
+(43, 'RT-PCR COVID Test',                5,  2020.00, 'active', NOW(), NOW(), NOW()),
 
-INSERT INTO referrers (
-  referrerId, firstName, lastName, birthday, contactNo, clinicName, clinicAddress,
-  status, dateAdded, createdAt, updatedAt
-) VALUES
-(1, 'Maria', 'Santos', '1975-03-12', '09171234567', 'Santos Family Clinic', '123 Mabini St, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(2, 'Joseph', 'Tan', '1980-07-25', '09281234567', 'Tan Medical Center', '45 Aguinaldo Hwy, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(3, 'Liza', 'Dela Cruz', '1985-11-02', '09391234567', 'Dela Cruz Pediatrics', '88 Bayanihan Rd, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(4, 'Ernesto', 'Reyes', '1972-05-18', '09451234567', 'Reyes Internal Medicine', '10 Kalayaan Ave, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(5, 'Camille', 'Mendoza', '1990-09-30', '09561234567', 'Mendoza OB-GYN Clinic', '77 Bonifacio St, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(6, 'Alvin', 'Garcia', '1983-01-22', '09671234567', 'Garcia Cardio Center', '33 Rizal Blvd, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(7, 'Teresa', 'Lim', '1978-06-14', '09781234567', 'Lim Diagnostic Clinic', '56 Tagaytay Rd, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(8, 'Daniel', 'Robles', '1987-12-05', '09891234567', 'Robles Family Practice', '21 Silang St, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(9, 'Angela', 'Chua', '1992-04-09', '09901234567', 'Chua Women\'s Health', '19 Dasmariñas Ave, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-(10, 'Roberto', 'Villanueva', '1969-08-27', '09181234567', 'Villanueva ENT Clinic', '5 Gen. Trias Rd, Cavite', 'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00');
+-- PRE-EMPLOYMENT PACKAGES (departmentId = 6)
+(44, 'Pre-Employment Package 1',         6,   410.00, 'active', NOW(), NOW(), NOW()),
+(45, 'Pre-Employment Package 2',         6,   510.00, 'active', NOW(), NOW(), NOW()),
+(46, 'Pre-Employment Package 3',         6,   610.00, 'active', NOW(), NOW(), NOW()),
+
+-- PRE-NATAL PACKAGES (departmentId = 7)
+(47, 'Pre-Natal Package 1',              7,   820.00, 'active', NOW(), NOW(), NOW()),
+(48, 'Pre-Natal Package 2',              7,  1100.00, 'active', NOW(), NOW(), NOW()),
+
+-- BLOOD CHEMISTRY PACKAGES (departmentId = 8)
+(49, 'Chem 5 Package',                   8,   620.00, 'active', NOW(), NOW(), NOW()),
+(50, 'Chem 6 Package',                   8,   860.00, 'active', NOW(), NOW(), NOW());
+
+-- =====================================================
+-- 3. REFERRALS (referrers)
+-- =====================================================
+INSERT IGNORE INTO `referrers` (`referrerId`, `firstName`, `lastName`, `birthday`, `contactNo`, `clinicName`, `clinicAddress`, `status`, `dateAdded`, `createdAt`, `updatedAt`)
+VALUES
+  (1, 'Maria',   'Santos',     '1975-03-12', '09171234567', 'Santos Family Clinic',      '123 Mabini St, Cavite',        'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (2, 'Joseph',  'Tan',        '1980-07-25', '09281234567', 'Tan Medical Center',        '45 Aguinaldo Hwy, Cavite',     'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (3, 'Liza',    'Dela Cruz',  '1985-11-02', '09391234567', 'Dela Cruz Pediatrics',      '88 Bayanihan Rd, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (4, 'Ernesto', 'Reyes',      '1972-05-18', '09451234567', 'Reyes Internal Medicine',   '10 Kalayaan Ave, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (5, 'Camille', 'Mendoza',    '1990-09-30', '09561234567', 'Mendoza OB-GYN Clinic',     '77 Bonifacio St, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (6, 'Alvin',   'Garcia',     '1983-01-22', '09671234567', 'Garcia Cardio Center',      '33 Rizal Blvd, Cavite',        'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (7, 'Teresa',  'Lim',        '1978-06-14', '09781234567', 'Lim Diagnostic Clinic',     '56 Tagaytay Rd, Cavite',       'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (8, 'Daniel',  'Robles',     '1987-12-05', '09891234567', 'Robles Family Practice',    '21 Silang St, Cavite',         'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (9, 'Angela',  'Chua',       '1992-04-09', '09901234567', 'Chua Women\'s Health',      '19 Dasmariñas Ave, Cavite',    'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (10, 'Roberto', 'Villanueva', '1969-08-27', '09181234567', 'Villanueva ENT Clinic',     '5 Gen. Trias Rd, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00');
+
+-- =====================================================
+-- 4. RBAC - ROLES
+-- =====================================================
+INSERT IGNORE INTO `Roles` (`roleId`, `roleName`, `displayName`, `description`, `isSystem`, `status`, `createdAt`, `updatedAt`)
+VALUES
+(1, 'admin',        'Administrator', 'Full system access with all permissions',                    TRUE,  'active', NOW(), NOW()),
+(2, 'receptionist', 'Receptionist',  'Standard user with transaction and basic operations access', TRUE,  'active', NOW(), NOW());
+
+-- =====================================================
+-- 5. RBAC - PERMISSIONS
+-- =====================================================
+INSERT IGNORE INTO `Permissions` (`permissionKey`, `displayName`, `description`, `category`, `createdAt`, `updatedAt`)
+VALUES
+-- Dashboard
+('dashboard.view',      'View Dashboard',            'Access to view the main dashboard',                             'Dashboard',          NOW(), NOW()),
+
+-- Transactions
+('transactions.view',   'View Transactions',         'View transaction records',                                      'Transactions',       NOW(), NOW()),
+('transactions.create', 'Create Transactions',       'Add new transactions',                                          'Transactions',       NOW(), NOW()),
+('transactions.edit',   'Edit Transactions',         'Modify existing transactions',                                  'Transactions',       NOW(), NOW()),
+('transactions.cancel', 'Cancel Transactions',       'Cancel pending transactions',                                   'Transactions',       NOW(), NOW()),
+('transactions.refund', 'Refund Transactions',       'Process transaction refunds',                                   'Transactions',       NOW(), NOW()),
+('transactions.export', 'Export Transactions',       'Export transaction data',                                        'Transactions',       NOW(), NOW()),
+
+-- Collectible Income
+('collectible.view',    'View Collectible Income',   'View collectible income records',                               'Collectible Income', NOW(), NOW()),
+('collectible.create',  'Add Collectible Income',    'Add new collectible income entries',                             'Collectible Income', NOW(), NOW()),
+('collectible.edit',    'Edit Collectible Income',   'Modify collectible income entries',                              'Collectible Income', NOW(), NOW()),
+
+-- Expenses
+('expenses.view',       'View Expenses',             'View expense records',                                          'Expenses',           NOW(), NOW()),
+('expenses.create',     'Add Expenses',              'Add new expense entries',                                        'Expenses',           NOW(), NOW()),
+('expenses.edit',       'Edit Expenses',             'Modify expense entries',                                         'Expenses',           NOW(), NOW()),
+('expenses.export',     'Export Expenses',           'Export expense data',                                            'Expenses',           NOW(), NOW()),
+
+-- Referrals
+('referrals.view',      'View Referrals',            'View referral records',                                         'Referrals',          NOW(), NOW()),
+('referrals.export',    'Export Referrals',          'Export referral data',                                           'Referrals',          NOW(), NOW()),
+
+-- Administration
+('accounts.manage',     'Manage User Accounts',      'View, create, edit, and archive user accounts',                 'Administration',     NOW(), NOW()),
+('referrals.manage',    'Manage Referrers',          'Add, edit, and archive referrers',                              'Administration',     NOW(), NOW()),
+('roles.manage',        'Manage Roles',              'Create, edit, and delete roles and assign permissions',          'Administration',     NOW(), NOW()),
+('activitylog.view',    'View Activity Logs',        'View system activity logs',                                     'Administration',     NOW(), NOW()),
+('departments.manage',  'Manage Departments',        'Create, edit, and delete departments',                          'Administration',     NOW(), NOW()),
+('tests.manage',        'Manage Tests',              'Create, edit, and delete tests',                                'Administration',     NOW(), NOW());
+
+-- =====================================================
+-- 6. RBAC - ASSIGN PERMISSIONS TO ROLES
+-- =====================================================
+
+-- Admin gets ALL permissions
+INSERT IGNORE INTO `RolePermissions` (`roleId`, `permissionId`, `createdAt`, `updatedAt`)
+SELECT 1, `permissionId`, NOW(), NOW()
+FROM `Permissions`;
+
+-- Receptionist gets standard permissions
+INSERT IGNORE INTO `RolePermissions` (`roleId`, `permissionId`, `createdAt`, `updatedAt`)
+SELECT 2, p.`permissionId`, NOW(), NOW()
+FROM `Permissions` p
+WHERE p.`permissionKey` IN (
+  'dashboard.view',
+  'transactions.view', 'transactions.create', 'transactions.edit', 'transactions.export',
+  'collectible.view', 'collectible.create', 'collectible.edit',
+  'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.export',
+  'referrals.view', 'referrals.export'
+);
+
+-- =====================================================
+-- 7. UPDATE USERS WITH roleId
+-- =====================================================
+UPDATE `Users` u
+INNER JOIN `Roles` r ON r.`roleName` = u.`role`
+SET u.`roleId` = r.`roleId`
+WHERE u.`roleId` IS NULL;
+
+-- Default any remaining users without a role to receptionist
+UPDATE `Users`
+SET `roleId` = 2
+WHERE `roleId` IS NULL;
+
+COMMIT;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+SELECT 'Mock Data Import Complete! (Departments, Tests, Referrers, Roles, Permissions, RolePermissions)' AS status;
