@@ -1,4 +1,4 @@
-const { ActivityLog, User } = require('../models');
+const { ActivityLog, User, Role } = require('../models');
 const Sequelize = require('sequelize');
 const { Op } = Sequelize;
 
@@ -61,7 +61,14 @@ const getActivityLogs = async (req, res) => {
         {
           model: User,
           attributes: ['userId', 'firstName', 'middleName', 'lastName', 'email', 'role'],
-          required: false // Use LEFT JOIN to include logs even if user is deleted
+          required: false, // Use LEFT JOIN to include logs even if user is deleted
+          include: [
+            {
+              model: Role,
+              attributes: ['roleId', 'roleName', 'displayName'],
+              required: false
+            }
+          ]
         }
       ],
       order: [[sort, order]],
@@ -75,11 +82,12 @@ const getActivityLogs = async (req, res) => {
       const plainLog = log.get({ plain: true });
       
       // Use User data if available, otherwise fall back to stored userInfo or "Deleted User"
+      // Use Role table (RBAC) for role name, fall back to old role column
       const userData = plainLog.User ? {
         id: plainLog.User.userId,
         name: `${plainLog.User.firstName} ${plainLog.User.middleName ? plainLog.User.middleName + ' ' : ''}${plainLog.User.lastName}`,
         email: plainLog.User.email,
-        role: plainLog.User.role
+        role: plainLog.User.Role ? plainLog.User.Role.displayName : (plainLog.User.role || 'Unknown')
       } : plainLog.userInfo ? plainLog.userInfo : {
         name: 'Deleted User',
         email: 'deleted@user.com',
