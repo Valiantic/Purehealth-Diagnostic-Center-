@@ -98,8 +98,28 @@ ON CONFLICT ("testId") DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('"tests"', 'testId'), COALESCE((SELECT MAX("testId") FROM "tests"), 1));
 
+
 -- =====================================================
--- 3. RBAC - ROLES
+-- 3. REFERRALS (referrers)
+-- =====================================================
+INSERT INTO "referrers" ("referrerId", "firstName", "lastName", "birthday", "contactNo", "clinicName", "clinicAddress", "status", "dateAdded", "createdAt", "updatedAt")
+VALUES
+  (1, 'Maria',   'Santos',     '1975-03-12', '09171234567', 'Santos Family Clinic',      '123 Mabini St, Cavite',        'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (2, 'Joseph',  'Tan',        '1980-07-25', '09281234567', 'Tan Medical Center',        '45 Aguinaldo Hwy, Cavite',     'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (3, 'Liza',    'Dela Cruz',  '1985-11-02', '09391234567', 'Dela Cruz Pediatrics',      '88 Bayanihan Rd, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (4, 'Ernesto', 'Reyes',      '1972-05-18', '09451234567', 'Reyes Internal Medicine',   '10 Kalayaan Ave, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (5, 'Camille', 'Mendoza',    '1990-09-30', '09561234567', 'Mendoza OB-GYN Clinic',     '77 Bonifacio St, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (6, 'Alvin',   'Garcia',     '1983-01-22', '09671234567', 'Garcia Cardio Center',      '33 Rizal Blvd, Cavite',        'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (7, 'Teresa',  'Lim',        '1978-06-14', '09781234567', 'Lim Diagnostic Clinic',     '56 Tagaytay Rd, Cavite',       'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (8, 'Daniel',  'Robles',     '1987-12-05', '09891234567', 'Robles Family Practice',    '21 Silang St, Cavite',         'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (9, 'Angela',  'Chua',       '1992-04-09', '09901234567', 'Chua Women''s Health',      '19 Dasmariñas Ave, Cavite',    'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (10, 'Roberto', 'Villanueva', '1969-08-27', '09181234567', 'Villanueva ENT Clinic',     '5 Gen. Trias Rd, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00')
+ON CONFLICT ("referrerId") DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('"referrers"', 'referrerId'), COALESCE((SELECT MAX("referrerId") FROM "referrers"), 1));
+
+-- =====================================================
+-- 4. RBAC - ROLES
 -- =====================================================
 INSERT INTO "Roles" ("roleId", "roleName", "displayName", "description", "isSystem", "status", "createdAt", "updatedAt")
 VALUES
