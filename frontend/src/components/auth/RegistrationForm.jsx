@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerUser, registerBackupPasskey } from '../../utils/webauthn';
+import { roleAPI } from '../../services/api';
 
 const RegistrationForm = () => {
   const navigate = useNavigate();
@@ -9,13 +10,38 @@ const RegistrationForm = () => {
     firstName: '',
     middleName: '',
     lastName: '',
-    role: 'receptionist' // Default role
+    roleId: '' // Will be set after roles are fetched
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [userId, setUserId] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  // Fetch all roles on mount
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await roleAPI.getAllRoles();
+        const activeRoles = (response.data.roles || response.data || [])
+          .filter(r => r.status === 'active');
+        setRoles(activeRoles);
+        // Default to receptionist role if available, otherwise first role
+        const defaultRole = activeRoles.find(r => r.roleName === 'receptionist') || activeRoles[0];
+        if (defaultRole) {
+          setFormData(prev => ({ ...prev, roleId: defaultRole.roleId }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch roles:', err);
+        setError('Failed to load roles. Please refresh the page.');
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,13 +76,17 @@ const RegistrationForm = () => {
       if (result.success) {
         setUserId(result.userId);
         
+        // Find the selected role name for display/redirect purposes
+        const selectedRole = roles.find(r => r.roleId === Number(formData.roleId));
+        
         // Save user data for later use
         setUserData({
           userId: result.userId,
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          role: formData.role
+          role: selectedRole?.roleName || 'receptionist',
+          roleId: formData.roleId
         });
         
         setStep(2);
@@ -209,13 +239,23 @@ const RegistrationForm = () => {
               <select
                 className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                 id="role"
-                name="role"
-                value={formData.role}
+                name="roleId"
+                value={formData.roleId}
                 onChange={handleChange}
                 required
+                disabled={rolesLoading}
               >
-                <option value="receptionist">Receptionist</option>
-                <option value="admin">Admin</option>
+                {rolesLoading ? (
+                  <option value="">Loading roles...</option>
+                ) : roles.length === 0 ? (
+                  <option value="">No roles available</option>
+                ) : (
+                  roles.map(role => (
+                    <option key={role.roleId} value={role.roleId}>
+                      {role.displayName || role.roleName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             
