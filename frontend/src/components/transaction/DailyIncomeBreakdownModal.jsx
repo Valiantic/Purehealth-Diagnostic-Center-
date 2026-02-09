@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download } from 'lucide-react';
+import { X, Download, Printer } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
 const DailyIncomeBreakdownModal = ({
@@ -26,6 +26,48 @@ const DailyIncomeBreakdownModal = ({
         } else {
             handleGenerateExcel();
         }
+    };
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('export-summary-print-area');
+        if (!printContent) return;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>${labels.title || 'Income Report'}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                    .print-header { text-align: center; margin-bottom: 10px; }
+                    .print-header h2 { font-size: 18px; color: #166534; }
+                    .print-header p { font-size: 13px; color: #166534; }
+                    .print-date { font-size: 12px; font-weight: bold; margin: 10px 0 15px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+                    th { background: #166534; color: white; padding: 6px 8px; text-align: left; font-size: 11px; }
+                    th.text-right { text-align: right; }
+                    td { padding: 5px 8px; border-bottom: 1px solid #ddd; }
+                    td.text-right { text-align: right; }
+                    .section-header { background: #166534; color: white; font-weight: bold; font-size: 12px; }
+                    .section-header td { padding: 8px; color: white; }
+                    .total-row { background: #dcfce7; font-weight: bold; }
+                    .total-row td { padding: 6px 8px; border-top: 2px solid #166534; }
+                    .section-title { background: #166534; color: white; text-align: center; padding: 8px; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+                    .sig-container { display: flex; justify-content: space-between; margin-top: 50px; padding: 0 30px; }
+                    .sig-block { text-align: center; flex: 1; }
+                    .sig-block .name { font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 4px; display: inline-block; min-width: 200px; }
+                    .sig-block .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 2px; }
+                    @media print { body { padding: 10px; } }
+                </style>
+            </head>
+            <body>
+                ${printContent.innerHTML}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
     };
 
     const handleGenerateExcel = async () => {
@@ -185,8 +227,8 @@ const DailyIncomeBreakdownModal = ({
             currentRowIdx++;
         };
 
-        // Revenue Items
-        addRow('Revenue', '', '', true, true);
+        // Department Revenue Items
+        addRow('Department Revenue', '', '', true, true);
         breakdownData.departmentRevenues.forEach(dept => {
             addRow(
                 dept.departmentName,
@@ -212,6 +254,24 @@ const DailyIncomeBreakdownModal = ({
             parseFloat(breakdownData.gcashIncome?.today || 0);
 
         addRow('Total Revenue', totalRevYesterday, totalRevToday, true);
+
+        // Test Revenue Section (if exists)
+        if (breakdownData.testRevenues && breakdownData.testRevenues.length > 0) {
+            currentRowIdx++; // Spacer
+            addRow('Test Revenue', '', '', true, true);
+
+            breakdownData.testRevenues.forEach(test => {
+                addRow(
+                    test.testName,
+                    parseFloat(test.yesterday || 0),
+                    parseFloat(test.today || 0)
+                );
+            });
+
+            const totalTestYesterday = breakdownData.testRevenues.reduce((sum, t) => sum + parseFloat(t.yesterday || 0), 0);
+            const totalTestToday = breakdownData.testRevenues.reduce((sum, t) => sum + parseFloat(t.today || 0), 0);
+            addRow('Total Test Revenue', totalTestYesterday, totalTestToday, true);
+        }
 
         // Expenses Section (if exists)
         if (breakdownData.departmentExpenses && breakdownData.departmentExpenses.length > 0) {
@@ -304,7 +364,16 @@ const DailyIncomeBreakdownModal = ({
                 </div>
 
                 {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50" id="export-summary-print-area">
+                    {/* Print-only header */}
+                    <div className="hidden print-header">
+                        <div className="text-center mb-3">
+                            <h2 className="text-lg font-bold text-green-900">Purehealth Diagnostic Center Inc.</h2>
+                            <p className="text-sm text-green-800">General Mariano Alvarez, Cavite Branch</p>
+                        </div>
+                        <p className="text-xs font-bold">Date: {new Date(selectedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+
                     {/* Transactions Table (First - if present) */}
                     {breakdownData.transactions && breakdownData.transactions.length > 0 && (
                         <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
@@ -348,12 +417,12 @@ const DailyIncomeBreakdownModal = ({
                     )}
 
                     {/* Report Bar */}
-                    <div className="bg-green-800 text-white text-center py-2 mb-0 font-semibold uppercase tracking-wide rounded-t-lg">
+                    <div className="bg-green-800 text-white text-center py-2 mb-0 font-semibold uppercase tracking-wide rounded-t-lg section-title">
                         {labels.title}
                     </div>
 
                     {/* Department Revenue Comparison */}
-                    <div className="mb-8 bg-white rounded-b-lg shadow-sm overflow-hidden">
+                    <div className="mb-4 bg-white rounded-b-lg shadow-sm overflow-hidden">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-green-700 text-white">
@@ -367,9 +436,9 @@ const DailyIncomeBreakdownModal = ({
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Revenue Section Header */}
-                                <tr className="bg-green-50 font-bold text-green-900">
-                                    <td colSpan="3" className="px-4 py-2 border-b border-green-200">Revenue</td>
+                                {/* Department Revenue Section Header */}
+                                <tr className="bg-green-800 text-white font-bold">
+                                    <td colSpan="3" className="px-4 py-2 border-b border-green-600">Department Revenue</td>
                                 </tr>
                                 {breakdownData.departmentRevenues.map((dept, index) => (
                                     <tr key={`rev-${index}`} className="bg-white hover:bg-gray-50">
@@ -402,11 +471,36 @@ const DailyIncomeBreakdownModal = ({
                                     </td>
                                 </tr>
 
+                                {/* Test Revenue Section */}
+                                {breakdownData.testRevenues && breakdownData.testRevenues.length > 0 && (
+                                    <>
+                                        <tr className="bg-green-800 text-white font-bold">
+                                            <td colSpan="3" className="px-4 py-2 border-b border-green-600">Test Revenue</td>
+                                        </tr>
+                                        {breakdownData.testRevenues.map((test, index) => (
+                                            <tr key={`test-${index}`} className="bg-white hover:bg-gray-50">
+                                                <td className="border-b border-gray-200 px-4 py-3 font-medium text-gray-700 pl-8">{test.testName}</td>
+                                                <td className="border-b border-gray-200 px-4 py-3 text-right text-gray-600">₱{parseFloat(test.yesterday || 0).toFixed(2)}</td>
+                                                <td className="border-b border-gray-200 px-4 py-3 text-right text-gray-800 font-medium">₱{parseFloat(test.today || 0).toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-green-100 font-bold text-green-900 border-t-2 border-green-200">
+                                            <td className="px-4 py-3">Total Test Revenue</td>
+                                            <td className="px-4 py-3 text-right">
+                                                ₱{breakdownData.testRevenues.reduce((sum, t) => sum + parseFloat(t.yesterday || 0), 0).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                ₱{breakdownData.testRevenues.reduce((sum, t) => sum + parseFloat(t.today || 0), 0).toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    </>
+                                )}
+
                                 {/* Expenses Section if Exists */}
                                 {breakdownData.departmentExpenses && breakdownData.departmentExpenses.length > 0 && (
                                     <>
-                                        <tr className="bg-green-50 font-bold text-green-900">
-                                            <td colSpan="3" className="px-4 py-2 border-b border-green-200 border-t-2 border-gray-100">Expenses</td>
+                                        <tr className="bg-green-800 text-white font-bold">
+                                            <td colSpan="3" className="px-4 py-2 border-b border-green-600">Expenses</td>
                                         </tr>
                                         {breakdownData.departmentExpenses.map((exp, index) => (
                                             <tr key={`exp-${index}`} className="bg-white hover:bg-gray-50">
@@ -427,26 +521,33 @@ const DailyIncomeBreakdownModal = ({
                     </div>
 
                     {/* Signature Section */}
-                    <div className="grid grid-cols-2 gap-8 mt-12 mb-4 px-8">
-                        <div className="text-center">
-                            <p className="font-bold text-gray-900 border-b border-gray-400 pb-2 mb-2">{formatName(user) || 'Unknown User'}</p>
-                            <p className="text-sm text-gray-600 uppercase tracking-widest font-medium">Checked by</p>
+                    <div className="sig-container grid grid-cols-2 gap-8 mt-12 mb-4 px-8">
+                        <div className="sig-block text-center">
+                            <p className="name font-bold text-gray-900 border-b border-gray-400 pb-2 mb-2">{formatName(user) || 'Unknown User'}</p>
+                            <p className="label text-sm text-gray-600 uppercase tracking-widest font-medium">Checked by</p>
                         </div>
-                        <div className="text-center">
-                            <p className="font-bold text-gray-900 border-b border-gray-400 pb-2 mb-2">{formatName(adminUser) || 'Admin'}</p>
-                            <p className="text-sm text-gray-600 uppercase tracking-widest font-medium">Approved by</p>
+                        <div className="sig-block text-center">
+                            <p className="name font-bold text-gray-900 border-b border-gray-400 pb-2 mb-2">{formatName(adminUser) || 'Admin'}</p>
+                            <p className="label text-sm text-gray-600 uppercase tracking-widest font-medium">Approved by</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Footer with Generate Report Button */}
-                <div className="border-t border-gray-200 px-6 py-4 bg-white rounded-b-lg">
+                {/* Footer with Generate Report (Print) Button */}
+                <div className="border-t border-gray-200 px-6 py-4 bg-white rounded-b-lg flex gap-3">
+                    <button
+                        onClick={handlePrint}
+                        className="flex-1 bg-green-800 text-white py-3 px-4 rounded-md font-bold text-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                    >
+                        <Printer size={24} />
+                        Generate Report
+                    </button>
                     <button
                         onClick={handleGenerateClick}
-                        className="w-full bg-green-800 text-white py-3 px-4 rounded-md font-bold text-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                        className="bg-gray-600 text-white py-3 px-4 rounded-md font-medium hover:bg-gray-500 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                        title="Download as Excel"
                     >
-                        <Download size={24} />
-                        Generate Report
+                        <Download size={20} />
                     </button>
                 </div>
             </div>

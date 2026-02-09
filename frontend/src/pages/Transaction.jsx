@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
-import { Download } from 'lucide-react';
+import { Download, CalendarRange, X } from 'lucide-react';
 import useAuth from '../hooks/auth/useAuth';
 import usePermissions from '../hooks/auth/usePermissions';
 import useProtectedAction from '../hooks/auth/useProtectedAction';
@@ -35,6 +35,13 @@ const NewTransaction = () => {
   const [pendingRefundModeToggle, setPendingRefundModeToggle] = useState(false);
   const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
   const [breakdownData, setBreakdownData] = useState(null);
+
+  // Date range state
+  const [dateRange, setDateRange] = useState(null); // { startDate: Date, endDate: Date } or null
+  const [showDateRangePanel, setShowDateRangePanel] = useState(false);
+  const [rangeStartInput, setRangeStartInput] = useState('');
+  const [rangeEndInput, setRangeEndInput] = useState('');
+  const dateRangePanelRef = useRef(null);
 
   // WebAuthn protected actions hook
   const {
@@ -114,7 +121,7 @@ const NewTransaction = () => {
     departmentTotals,
     departmentBalanceTotals,
     departmentRefundTotals
-  } = useTransactionData(selectedDate, expenseDate);
+  } = useTransactionData(selectedDate, expenseDate, discountCategories, dateRange);
 
   // Use the existing transaction management hook
   const {
@@ -259,10 +266,106 @@ const NewTransaction = () => {
     const newDate = new Date(e.target.value);
     if (!isNaN(newDate.getTime())) {
       setSelectedDate(newDate);
+      setDateRange(null); // Clear range when single date is selected
       setPendingRefundAmount(0);
       setTimeout(() => refetchTransactionData(), 0);
     }
   };
+
+  // Date Range helpers
+  const formatDateForInput = (d) => {
+    if (!d) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyDateRange = (start, end) => {
+    if (start && end && start <= end) {
+      setDateRange({ startDate: start, endDate: end });
+      setExpenseDate(end); // Set expense date to end of range
+      setShowDateRangePanel(false);
+      setPendingRefundAmount(0);
+      setCurrentPage(1);
+    }
+  };
+
+  const handleApplyCustomRange = () => {
+    if (rangeStartInput && rangeEndInput) {
+      const start = new Date(rangeStartInput + 'T00:00:00');
+      const end = new Date(rangeEndInput + 'T00:00:00');
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        applyDateRange(start, end);
+      }
+    }
+  };
+
+  const handlePresetRange = (preset) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let start, end;
+
+    switch (preset) {
+      case 'today':
+        start = new Date(today);
+        end = new Date(today);
+        break;
+      case 'yesterday': {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = yesterday;
+        end = yesterday;
+        break;
+      }
+      case 'last7':
+        start = new Date(today);
+        start.setDate(start.getDate() - 6);
+        end = new Date(today);
+        break;
+      case 'last30':
+        start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        end = new Date(today);
+        break;
+      case 'thisMonth':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(today);
+        break;
+      case 'lastMonth': {
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of prev month
+        break;
+      }
+      default:
+        return;
+    }
+
+    setRangeStartInput(formatDateForInput(start));
+    setRangeEndInput(formatDateForInput(end));
+    applyDateRange(start, end);
+  };
+
+  const clearDateRange = () => {
+    setDateRange(null);
+    setRangeStartInput('');
+    setRangeEndInput('');
+    setShowDateRangePanel(false);
+    // Refetch with single date mode
+    setTimeout(() => refetchTransactionData(), 0);
+  };
+
+  // Close date range panel when clicking outside
+  useEffect(() => {
+    if (!showDateRangePanel) return;
+    const handleClickOutside = (e) => {
+      if (dateRangePanelRef.current && !dateRangePanelRef.current.contains(e.target)) {
+        setShowDateRangePanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDateRangePanel]);
 
   const handleNewIncome = () => navigate('/add-transaction');
 
@@ -287,8 +390,9 @@ const NewTransaction = () => {
 
       const yesterdayTransactions = response.data?.data?.transactions || [];
 
-      // Calculate yesterday's department totals
+      // Calculate yesterday's department totals and test totals
       const yesterdayDepartmentTotals = {};
+      const yesterdayTestTotals = {};
       let yesterdayGCashTotal = 0;
 
       yesterdayTransactions.forEach(txn => {
@@ -296,18 +400,44 @@ const NewTransaction = () => {
           txn.TestDetails.forEach(test => {
             if (test.status !== 'refunded') {
               const deptId = test.departmentId;
+              const testName = test.testName || 'Unknown Test';
               // Amount logic: discountedPrice - balanceAmount
               const testPrice = parseFloat(test.discountedPrice) || 0;
               const balanceAmount = parseFloat(test.balanceAmount) || 0;
               const amount = testPrice - balanceAmount;
 
               yesterdayDepartmentTotals[deptId] = (yesterdayDepartmentTotals[deptId] || 0) + amount;
+              yesterdayTestTotals[testName] = (yesterdayTestTotals[testName] || 0) + amount;
 
               yesterdayGCashTotal += parseFloat(test.gCashAmount || 0);
             }
           });
         }
       });
+
+      // Calculate today's test totals
+      const todayTestTotals = {};
+      filteredTransactions.forEach(txn => {
+        if (txn.status !== 'cancelled' && txn.originalTransaction?.TestDetails) {
+          txn.originalTransaction.TestDetails.forEach(test => {
+            if (test.status !== 'refunded') {
+              const testName = test.testName || 'Unknown Test';
+              const testPrice = parseFloat(test.discountedPrice) || 0;
+              const balanceAmount = parseFloat(test.balanceAmount) || 0;
+              const amount = testPrice - balanceAmount;
+              todayTestTotals[testName] = (todayTestTotals[testName] || 0) + amount;
+            }
+          });
+        }
+      });
+
+      // Build test revenues array from combined test names
+      const allTestNames = [...new Set([...Object.keys(yesterdayTestTotals), ...Object.keys(todayTestTotals)])];
+      const testRevenues = allTestNames.map(testName => ({
+        testName,
+        yesterday: yesterdayTestTotals[testName] || 0,
+        today: todayTestTotals[testName] || 0
+      })).sort((a, b) => a.testName.localeCompare(b.testName));
 
       // Prepare data for modal
       const departmentRevenues = departments
@@ -339,6 +469,7 @@ const NewTransaction = () => {
 
       setBreakdownData({
         departmentRevenues,
+        testRevenues,
         transactions: transactionsList,
         additionalIncome: { yesterday: 0, today: 0 },
         gcashIncome: { yesterday: yesterdayGCashTotal, today: totalGCash }
@@ -355,7 +486,7 @@ const NewTransaction = () => {
   useEffect(() => {
     setSearchTerm('');
     setCurrentPage(1);
-  }, [selectedDate]);
+  }, [selectedDate, dateRange]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -560,13 +691,124 @@ const NewTransaction = () => {
         <div className="bg-white rounded-lg shadow p-3 md:p-6 mb-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3 md:mb-0">Transactions</h1>
-            <div className="flex items-center space-x-2">
-              <span className="text-gray-600 text-sm md:text-base">Showing data for:</span>
-              <DateSelector
-                date={selectedDate}
-                onDateChange={handleDateChange}
-                inputRef={incomeDateInputRef}
-              />
+            <div className="flex items-center space-x-2 relative">
+              {dateRange ? (
+                /* Date Range Active Badge */
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 text-sm md:text-base">Showing data for:</span>
+                  <div className="flex items-center bg-green-50 border border-green-600 rounded-md px-3 py-1.5 text-green-700 font-bold text-xs md:text-sm">
+                    <CalendarRange className="h-4 w-4 mr-2 text-green-800" />
+                    <span>
+                      {dateRange.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {' — '}
+                      {dateRange.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <button
+                      onClick={clearDateRange}
+                      className="ml-2 text-green-600 hover:text-red-500 transition-colors"
+                      title="Clear date range"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Normal single-date picker */
+                <>
+                  <span className="text-gray-600 text-sm md:text-base">Showing data for:</span>
+                  <DateSelector
+                    date={selectedDate}
+                    onDateChange={handleDateChange}
+                    inputRef={incomeDateInputRef}
+                  />
+                </>
+              )}
+
+              {/* Date Range Toggle Button */}
+              <button
+                onClick={() => {
+                  setShowDateRangePanel(!showDateRangePanel);
+                  if (!showDateRangePanel) {
+                    // Pre-fill inputs from current range or today
+                    setRangeStartInput(dateRange ? formatDateForInput(dateRange.startDate) : formatDateForInput(selectedDate));
+                    setRangeEndInput(dateRange ? formatDateForInput(dateRange.endDate) : formatDateForInput(selectedDate));
+                  }
+                }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs md:text-sm font-semibold transition-colors border ${
+                  showDateRangePanel || dateRange
+                    ? 'bg-green-600 text-white border-green-600 hover:bg-green-700'
+                    : 'bg-white text-green-700 border-green-600 hover:bg-green-50'
+                }`}
+                title="Select date range"
+              >
+                <CalendarRange className="h-4 w-4" />
+                <span className="hidden md:inline">Date Range</span>
+              </button>
+
+              {/* Date Range Dropdown Panel */}
+              {showDateRangePanel && (
+                <div
+                  ref={dateRangePanelRef}
+                  className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50 w-80"
+                >
+                  <h3 className="text-sm font-bold text-gray-700 mb-3">Select Date Range</h3>
+
+                  {/* Preset Buttons */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {[
+                      { label: 'Today', value: 'today' },
+                      { label: 'Yesterday', value: 'yesterday' },
+                      { label: 'Last 7 Days', value: 'last7' },
+                      { label: 'Last 30 Days', value: 'last30' },
+                      { label: 'This Month', value: 'thisMonth' },
+                      { label: 'Last Month', value: 'lastMonth' },
+                    ].map(preset => (
+                      <button
+                        key={preset.value}
+                        onClick={() => handlePresetRange(preset.value)}
+                        className="px-2 py-1.5 text-xs font-medium rounded-md border border-green-200 text-green-700 hover:bg-green-50 hover:border-green-400 transition-colors"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom Range Inputs */}
+                  <div className="border-t border-gray-200 pt-3">
+                    <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wide">Custom Range</p>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 mb-1 block">Start</label>
+                        <input
+                          type="date"
+                          value={rangeStartInput}
+                          onChange={(e) => setRangeStartInput(e.target.value)}
+                          max={formatDateForInput(new Date())}
+                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                        />
+                      </div>
+                      <span className="text-gray-400 mt-5">→</span>
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 mb-1 block">End</label>
+                        <input
+                          type="date"
+                          value={rangeEndInput}
+                          onChange={(e) => setRangeEndInput(e.target.value)}
+                          max={formatDateForInput(new Date())}
+                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleApplyCustomRange}
+                      disabled={!rangeStartInput || !rangeEndInput || rangeStartInput > rangeEndInput}
+                      className="w-full py-2 bg-green-600 text-white rounded-md text-sm font-bold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      Apply Range
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

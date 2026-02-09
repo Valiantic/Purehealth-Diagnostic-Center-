@@ -84,6 +84,7 @@ const DashboardContent = () => {
   const dailyIncomeChartRef = useRef(null);
   const expensesCategoryBarRef = useRef(null);
   const monthlyNetProfitChartRef = useRef(null);
+  const profitLossScrollRef = useRef(null);
 
   // Chart instances
   const chartInstancesRef = useRef({
@@ -234,6 +235,80 @@ const DashboardContent = () => {
     currentMonth,
     currentYear
   ]);
+
+  // Drag-to-scroll for Monthly Profit and Loss chart
+  useEffect(() => {
+    const container = profitLossScrollRef.current;
+    if (!container) return;
+
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    const handleMouseDown = (e) => {
+      isDown = true;
+      container.style.cursor = 'grabbing';
+      startX = e.pageX - container.offsetLeft;
+      scrollLeft = container.scrollLeft;
+    };
+    const handleMouseLeave = () => { isDown = false; container.style.cursor = 'grab'; };
+    const handleMouseUp = () => { isDown = false; container.style.cursor = 'grab'; };
+    const handleMouseMove = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - container.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      container.scrollLeft = scrollLeft - walk;
+    };
+
+    // Touch events for mobile
+    let touchStartX;
+    let touchScrollLeft;
+    const handleTouchStart = (e) => {
+      touchStartX = e.touches[0].pageX;
+      touchScrollLeft = container.scrollLeft;
+    };
+    const handleTouchMove = (e) => {
+      const x = e.touches[0].pageX;
+      const walk = (x - touchStartX) * 1.5;
+      container.scrollLeft = touchScrollLeft - walk;
+    };
+
+    container.addEventListener('mousedown', handleMouseDown);
+    container.addEventListener('mouseleave', handleMouseLeave);
+    container.addEventListener('mouseup', handleMouseUp);
+    container.addEventListener('mousemove', handleMouseMove);
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDown);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+      container.removeEventListener('mouseup', handleMouseUp);
+      container.removeEventListener('mousemove', handleMouseMove);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
+  // Auto-scroll the profit/loss chart to show current year on load
+  useEffect(() => {
+    const container = profitLossScrollRef.current;
+    if (!container || loading.monthlyProfit) return;
+
+    // Small delay to let the chart render first
+    const timer = setTimeout(() => {
+      // Scroll to show current year (right half of the 24-month chart)
+      // Each month group is roughly (totalWidth / 24) wide
+      const innerWidth = container.scrollWidth;
+      const visibleWidth = container.clientWidth;
+      // Start at month 12 (index of current year start) - show a bit of previous year
+      const scrollTarget = (innerWidth / 24) * 10; // Scroll to ~Oct of prev year so current Jan is visible
+      container.scrollLeft = scrollTarget;
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [loading.monthlyProfit, monthlyProfitData]);
 
   if (isAuthenticating) {
     return null;
@@ -524,9 +599,20 @@ const DashboardContent = () => {
               )}
             </div>
           </div>
-          {/* Chart Container with horizontal scroll on mobile */}
-          <div className="overflow-x-auto">
-            <div className="min-w-[768px] h-64">
+          {/* Drag hint */}
+          <div className="flex items-center gap-1 text-xs text-gray-400 mb-2 select-none">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18m-6 4l4-4m0 0l-4-4" />
+            </svg>
+            <span>Drag to scroll &mdash; swipe left to see previous months</span>
+          </div>
+          {/* Chart Container with horizontal drag-to-scroll for 24 months */}
+          <div
+            ref={profitLossScrollRef}
+            className="overflow-x-auto cursor-grab select-none"
+            style={{ scrollBehavior: 'auto' }}
+          >
+            <div className="min-w-[1400px] h-64">
               {loading.monthlyProfit ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-gray-500">Loading chart...</div>

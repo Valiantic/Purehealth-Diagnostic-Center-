@@ -233,9 +233,63 @@ export const transformExpensesByDepartment = (expensesData) => {
 };
 
 // Transform monthly profit data for Chart.js bar chart
+// Accepts either an array (legacy) or { currentYear, previousYear, combined } object
 export const transformMonthlyProfitData = (monthlyData) => {
+  const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // Handle new combined format: { currentYear, previousYear, combined }
+  if (monthlyData && typeof monthlyData === 'object' && !Array.isArray(monthlyData) && monthlyData.combined) {
+    const { currentYear, previousYear, combined } = monthlyData;
+    
+    // Build 24 labels: "Jan 'YY" format
+    const labels = [];
+    const revenueData = [];
+    const expensesData = [];
+    const profitData = [];
+    const lossData = [];
+    
+    // Previous year (12 months)
+    for (let m = 1; m <= 12; m++) {
+      const shortYear = String(previousYear).slice(-2);
+      labels.push(`${shortMonthNames[m - 1]} '${shortYear}`);
+      const item = combined.find(d => d.month === m && d.year === previousYear);
+      const revenue = item ? parseFloat(item.revenue) || 0 : 0;
+      const expenses = item ? parseFloat(item.expenses) || 0 : 0;
+      const profit = item ? parseFloat(item.profit) || 0 : 0;
+      revenueData.push(revenue);
+      expensesData.push(expenses);
+      profitData.push(profit > 0 ? profit : 0);
+      lossData.push(profit < 0 ? Math.abs(profit) : 0);
+    }
+    
+    // Current year (12 months)
+    for (let m = 1; m <= 12; m++) {
+      const shortYear = String(currentYear).slice(-2);
+      labels.push(`${shortMonthNames[m - 1]} '${shortYear}`);
+      const item = combined.find(d => d.month === m && d.year === currentYear);
+      const revenue = item ? parseFloat(item.revenue) || 0 : 0;
+      const expenses = item ? parseFloat(item.expenses) || 0 : 0;
+      const profit = item ? parseFloat(item.profit) || 0 : 0;
+      revenueData.push(revenue);
+      expensesData.push(expenses);
+      profitData.push(profit > 0 ? profit : 0);
+      lossData.push(profit < 0 ? Math.abs(profit) : 0);
+    }
+    
+    return {
+      labels,
+      currentYearStartIndex: 12, // Index where current year starts (for auto-scroll)
+      datasets: [
+        { label: 'Revenue', data: revenueData, backgroundColor: '#84cc16', borderWidth: 0, borderRadius: 4, barThickness: 15 },
+        { label: 'Expenses', data: expensesData, backgroundColor: '#15803d', borderWidth: 0, borderRadius: 4, barThickness: 15 },
+        { label: 'Profit', data: profitData, backgroundColor: '#a3e635', borderWidth: 0, borderRadius: 4, barThickness: 15 },
+        { label: 'Loss', data: lossData, backgroundColor: '#ea580c', borderWidth: 0, borderRadius: 4, barThickness: 15 }
+      ]
+    };
+  }
+
+  // Legacy array format fallback
   if (!Array.isArray(monthlyData) || monthlyData.length === 0) {
-    // Return default 12-month structure
     const defaultMonths = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -244,43 +298,14 @@ export const transformMonthlyProfitData = (monthlyData) => {
     return {
       labels: defaultMonths,
       datasets: [
-        {
-          label: 'Revenue',
-          data: new Array(12).fill(0),
-          backgroundColor: '#84cc16', // Light green/lime
-          borderWidth: 0,
-          borderRadius: 4,
-          barThickness: 15
-        },
-        {
-          label: 'Expenses',
-          data: new Array(12).fill(0),
-          backgroundColor: '#15803d', // Dark green
-          borderWidth: 0,
-          borderRadius: 4,
-          barThickness: 15
-        },
-        {
-          label: 'Profit',
-          data: new Array(12).fill(0),
-          backgroundColor: '#84cc16', // Lime green
-          borderWidth: 0,
-          borderRadius: 4,
-          barThickness: 15
-        },
-        {
-          label: 'Loss',
-          data: new Array(12).fill(0),
-          backgroundColor: '#dc2626', // Red/orange for loss
-          borderWidth: 0,
-          borderRadius: 4,
-          barThickness: 15
-        }
+        { label: 'Revenue', data: new Array(12).fill(0), backgroundColor: '#84cc16', borderWidth: 0, borderRadius: 4, barThickness: 15 },
+        { label: 'Expenses', data: new Array(12).fill(0), backgroundColor: '#15803d', borderWidth: 0, borderRadius: 4, barThickness: 15 },
+        { label: 'Profit', data: new Array(12).fill(0), backgroundColor: '#84cc16', borderWidth: 0, borderRadius: 4, barThickness: 15 },
+        { label: 'Loss', data: new Array(12).fill(0), backgroundColor: '#dc2626', borderWidth: 0, borderRadius: 4, barThickness: 15 }
       ]
     };
   }
 
-  // Ensure we have all 12 months
   const allMonths = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -288,7 +313,6 @@ export const transformMonthlyProfitData = (monthlyData) => {
 
   const labels = allMonths;
 
-  // Extract data for each month
   const revenueData = allMonths.map((_, index) => {
     const monthData = monthlyData.find(item => item.month === index + 1);
     return monthData ? parseFloat(monthData.revenue) || 0 : 0;

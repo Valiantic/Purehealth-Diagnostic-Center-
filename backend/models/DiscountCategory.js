@@ -10,7 +10,6 @@ module.exports = (sequelize) => {
     categoryName: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
       comment: 'Name of the discount category (e.g., Senior Citizen, PWD, Student)'
     },
     percentage: {
@@ -48,7 +47,14 @@ module.exports = (sequelize) => {
     tableName: 'discount_categories',
     timestamps: true,
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    indexes: [
+      {
+        name: 'unique_category_name',
+        unique: true,
+        fields: ['categoryName']
+      }
+    ]
   });
 
   return DiscountCategory;

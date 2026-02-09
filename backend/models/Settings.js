@@ -10,7 +10,6 @@ module.exports = (sequelize) => {
     settingKey: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
       comment: 'Unique key for the setting (e.g., referral_fee_percentage)'
     },
     settingValue: {
@@ -38,7 +37,14 @@ module.exports = (sequelize) => {
     tableName: 'settings',
     timestamps: true,
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    indexes: [
+      {
+        name: 'unique_setting_key',
+        unique: true,
+        fields: ['settingKey']
+      }
+    ]
   });
 
   return Settings;
