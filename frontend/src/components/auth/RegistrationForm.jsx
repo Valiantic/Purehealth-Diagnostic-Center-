@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { registerUser, registerBackupPasskey } from '../../utils/webauthn';
 import { roleAPI } from '../../services/api';
 
@@ -10,7 +11,7 @@ const RegistrationForm = () => {
     firstName: '',
     middleName: '',
     lastName: '',
-    roleId: '' // Will be set after roles are fetched
+    roleId: null // Will be set after roles are loaded
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,6 +43,22 @@ const RegistrationForm = () => {
     };
     fetchRoles();
   }, []);
+
+  // Fetch available roles from the API
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const response = await roleAPI.getAllRoles();
+      return response.data;
+    },
+    onSuccess: (data) => {
+      // Set default role to receptionist if available
+      const receptionistRole = data?.roles?.find(r => r.roleName === 'receptionist');
+      if (receptionistRole && !formData.roleId) {
+        setFormData(prev => ({ ...prev, roleId: receptionistRole.roleId }));
+      }
+    }
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -76,8 +93,8 @@ const RegistrationForm = () => {
       if (result.success) {
         setUserId(result.userId);
         
-        // Find the selected role name for display/redirect purposes
-        const selectedRole = roles.find(r => r.roleId === Number(formData.roleId));
+        // Get the selected role's display name for redirect logic
+        const selectedRole = rolesData?.roles?.find(r => r.roleId === formData.roleId);
         
         // Save user data for later use
         setUserData({
@@ -85,8 +102,8 @@ const RegistrationForm = () => {
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          role: selectedRole?.roleName || 'receptionist',
-          roleId: formData.roleId
+          roleId: formData.roleId,
+          role: selectedRole?.roleName || 'receptionist'
         });
         
         setStep(2);
@@ -233,29 +250,24 @@ const RegistrationForm = () => {
             </div>
             
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="role">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="roleId">
                 Role
               </label>
               <select
                 className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                id="role"
+                id="roleId"
                 name="roleId"
-                value={formData.roleId}
-                onChange={handleChange}
+                value={formData.roleId || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, roleId: parseInt(e.target.value) || null }))}
                 required
                 disabled={rolesLoading}
               >
-                {rolesLoading ? (
-                  <option value="">Loading roles...</option>
-                ) : roles.length === 0 ? (
-                  <option value="">No roles available</option>
-                ) : (
-                  roles.map(role => (
-                    <option key={role.roleId} value={role.roleId}>
-                      {role.displayName || role.roleName}
-                    </option>
-                  ))
-                )}
+                <option value="">Select Role</option>
+                {rolesData?.roles?.map((role) => (
+                  <option key={role.roleId} value={role.roleId}>
+                    {role.displayName}
+                  </option>
+                ))}
               </select>
             </div>
             

@@ -17,13 +17,11 @@ module.exports = (sequelize) => {
     },
     action: {
       type: DataTypes.STRING,
-      allowNull: false,
-      index: true // Add index for faster searches
+      allowNull: false
     },
     resourceType: {
       type: DataTypes.STRING,
-      allowNull: false,
-      index: true
+      allowNull: false
     },
     resourceId: {
       type: DataTypes.INTEGER,
