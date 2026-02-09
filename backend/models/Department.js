@@ -10,8 +10,7 @@ module.exports = (sequelize) => {
     },
     departmentName: {
       type: DataTypes.STRING,
-      allowNull: false,
-      unique: true
+      allowNull: false
     },
     testQuantity: {
       type: DataTypes.INTEGER,
@@ -34,7 +33,14 @@ module.exports = (sequelize) => {
     tableName: 'Departments',
     timestamps: true,
     underscored: false,
-    id: 'departmentId'
+    id: 'departmentId',
+    indexes: [
+      {
+        name: 'unique_department_name',
+        unique: true,
+        fields: ['departmentName']
+      }
+    ]
   });
 
   Department.addHook('beforeCreate', (instance, options) => {

@@ -6,8 +6,18 @@ import { isTestRefunded } from '../../utils/transactionUtils';
 /**
  * Custom hook to handle data fetching and basic processing for the Transaction page
  */
-export const useTransactionData = (selectedDate, expenseDate, discountCategories = []) => {
+export const useTransactionData = (selectedDate, expenseDate, discountCategories = [], dateRange = null) => {
   const queryClient = useQueryClient();
+
+  // Helper: format date to YYYY-MM-DD string
+  const formatDateStr = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const isRangeMode = dateRange && dateRange.startDate && dateRange.endDate;
 
   // Transactions data query
   const {
@@ -16,14 +26,21 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     isError: isTransactionsError,
     error: transactionsError,
   } = useQuery({
-    queryKey: ['transactions', selectedDate],
+    queryKey: isRangeMode
+      ? ['transactions', 'range', formatDateStr(dateRange.startDate), formatDateStr(dateRange.endDate)]
+      : ['transactions', selectedDate],
     queryFn: async () => {
-      // Format date using local timezone components to avoid UTC conversion
-      const year = selectedDate.getFullYear();
-      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const day = String(selectedDate.getDate()).padStart(2, '0');
-      const dateString = `${year}-${month}-${day}`;
+      if (isRangeMode) {
+        const response = await transactionAPI.getAllTransactions({
+          page: 1,
+          limit: 5000,
+          startDate: formatDateStr(dateRange.startDate),
+          endDate: formatDateStr(dateRange.endDate)
+        });
+        return response.data;
+      }
 
+      const dateString = formatDateStr(selectedDate);
       const response = await transactionAPI.getAllTransactions({
         page: 1,
         limit: 50,
@@ -65,14 +82,19 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     data: refundsData = { data: { departmentRefunds: [], totalRefund: 0 } },
     isLoading: isLoadingRefunds,
   } = useQuery({
-    queryKey: ['refunds', selectedDate],
+    queryKey: isRangeMode
+      ? ['refunds', 'range', formatDateStr(dateRange.startDate), formatDateStr(dateRange.endDate)]
+      : ['refunds', selectedDate],
     queryFn: async () => {
-      // Format date using local timezone components to avoid UTC conversion
-      const year = selectedDate.getFullYear();
-      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const day = String(selectedDate.getDate()).padStart(2, '0');
-      const dateString = `${year}-${month}-${day}`;
+      if (isRangeMode) {
+        const response = await revenueAPI.getRefundsByDepartment({
+          startDate: formatDateStr(dateRange.startDate),
+          endDate: formatDateStr(dateRange.endDate)
+        });
+        return response.data;
+      }
 
+      const dateString = formatDateStr(selectedDate);
       const response = await revenueAPI.getRefundsByDepartment({
         date: dateString
       });
@@ -88,15 +110,20 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     isError: isExpensesError,
     error: expensesError,
   } = useQuery({
-    queryKey: ['expenses', expenseDate],
+    queryKey: isRangeMode
+      ? ['expenses', 'range', formatDateStr(dateRange.startDate), formatDateStr(dateRange.endDate)]
+      : ['expenses', expenseDate],
     queryFn: async () => {
       try {
-        // Format date using local timezone components to avoid UTC conversion
-        const year = expenseDate.getFullYear();
-        const month = String(expenseDate.getMonth() + 1).padStart(2, '0');
-        const day = String(expenseDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
+        if (isRangeMode) {
+          const response = await expenseAPI.getExpenses({
+            startDate: formatDateStr(dateRange.startDate),
+            endDate: formatDateStr(dateRange.endDate)
+          });
+          return response;
+        }
 
+        const dateStr = formatDateStr(expenseDate);
         const response = await expenseAPI.getExpenses({ date: dateStr });
         return response;
       } catch (error) {
@@ -144,10 +171,10 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       rawExpenses = [];
     }
 
-    const year = expenseDate.getFullYear();
-    const month = String(expenseDate.getMonth() + 1).padStart(2, '0');
-    const day = String(expenseDate.getDate()).padStart(2, '0');
-    const selectedDateStr = `${year}-${month}-${day}`;
+    // In range mode, backend already filtered by date range — skip client-side filtering
+    if (isRangeMode) return rawExpenses;
+
+    const selectedDateStr = formatDateStr(expenseDate);
 
     const filteredByDate = rawExpenses.filter(expense => {
       if (!expense) return false;
@@ -157,12 +184,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
 
       try {
         const expDate = new Date(expenseDateStr);
-        const expYear = expDate.getFullYear();
-        const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
-        const expDay = String(expDate.getDate()).padStart(2, '0');
-
-        const expDateStr = `${expYear}-${expMonth}-${expDay}`;
-
+        const expDateStr = formatDateStr(expDate);
         return expDateStr === selectedDateStr;
       } catch (e) {
         console.error('Error comparing dates:', e);
@@ -192,6 +214,9 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     // Process transactions into the format needed for display
     const processedTransactions = transactions
       .filter((transaction) => {
+        // In range mode, the backend already filtered — skip client-side date filtering
+        if (isRangeMode) return true;
+
         // Use transactionDate for filtering (matches backend query)
         const dateField = transaction.transactionDate || transaction.createdAt;
         if (!dateField) return true;
@@ -274,7 +299,7 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
       }) : processedTransactions;
 
     return filteredTransactions;
-  }, [selectedDate, discountCategories]); // Re-create when discountCategories changes
+  }, [selectedDate, discountCategories, isRangeMode]); // Re-create when discountCategories or range changes
 
   // Calculate department totals from transactions
   const calculateDepartmentTotals = (filteredTransactions) => {
@@ -402,14 +427,25 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
 
   // Refetch functions
   const refetchTransactionData = () => {
-    queryClient.refetchQueries({
-      queryKey: ['transactions', selectedDate],
-      exact: true
-    });
-    queryClient.refetchQueries({
-      queryKey: ['refunds', selectedDate],
-      exact: true
-    });
+    if (isRangeMode) {
+      queryClient.refetchQueries({
+        queryKey: ['transactions', 'range', formatDateStr(dateRange.startDate), formatDateStr(dateRange.endDate)],
+        exact: true
+      });
+      queryClient.refetchQueries({
+        queryKey: ['refunds', 'range', formatDateStr(dateRange.startDate), formatDateStr(dateRange.endDate)],
+        exact: true
+      });
+    } else {
+      queryClient.refetchQueries({
+        queryKey: ['transactions', selectedDate],
+        exact: true
+      });
+      queryClient.refetchQueries({
+        queryKey: ['refunds', selectedDate],
+        exact: true
+      });
+    }
   };
 
   const refetchExpenseData = (date) => {

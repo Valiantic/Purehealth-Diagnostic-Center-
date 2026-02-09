@@ -9,8 +9,7 @@ module.exports = (sequelize) => {
         },
        name: {
             type: DataTypes.STRING,
-            allowNull: false,
-            unique: true
+            allowNull: false
         },
         status: {
             type: DataTypes.ENUM('active', 'inactive'),
@@ -23,7 +22,8 @@ module.exports = (sequelize) => {
         freezeTableName: true,
         indexes: [
             {
-                name: 'idx_category_name',
+                name: 'unique_category_name',
+                unique: true,
                 fields: ['name']
             },
             {

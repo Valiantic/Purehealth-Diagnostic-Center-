@@ -1,16 +1,21 @@
 -- =============================================================================
--- PUREHEALTH DIAGNOSTIC CENTER - POSTGRESQL MOCK DATA
+-- PUREHEALTH DIAGNOSTIC CENTER - MYSQL MOCK DATA
 -- =============================================================================
--- SCOPE: Departments, Tests (real data), Roles, Permissions, RolePermissions
--- NO transactions, referrers, expenses, or other unrelated data.
+-- SCOPE: Departments, Tests (real data), Referrers, Roles, Permissions, RolePermissions
+-- NO transactions, expenses, or other unrelated data.
 -- =============================================================================
 
-BEGIN;
+-- FIX: Error Code 1046 - No database selected
+USE `devpurehealthdb`;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+START TRANSACTION;
 
 -- =====================================================
 -- 1. DEPARTMENTS
 -- =====================================================
-INSERT INTO "Departments" ("departmentId", "departmentName", "testQuantity", "status", "createdAt", "updatedAt")
+INSERT IGNORE INTO `Departments` (`departmentId`, `departmentName`, `testQuantity`, `status`, `createdAt`, `updatedAt`)
 VALUES
   (1, 'Laboratory',              20, 'active', NOW(), NOW()),
   (2, 'Ultrasound',              10, 'active', NOW(), NOW()),
@@ -19,17 +24,14 @@ VALUES
   (5, 'COVID Tests',              3, 'active', NOW(), NOW()),
   (6, 'Pre-Employment Packages',  3, 'active', NOW(), NOW()),
   (7, 'Pre-Natal Packages',       2, 'active', NOW(), NOW()),
-  (8, 'Blood Chemistry Packages', 2, 'active', NOW(), NOW())
-ON CONFLICT ("departmentId") DO NOTHING;
-
-SELECT setval(pg_get_serial_sequence('"Departments"', 'departmentId'), COALESCE((SELECT MAX("departmentId") FROM "Departments"), 1));
+  (8, 'Blood Chemistry Packages', 2, 'active', NOW(), NOW());
 
 -- =====================================================
 -- 2. TESTS (real data with correct prices)
 -- =====================================================
-INSERT INTO "tests" ("testId", "testName", "departmentId", "price", "status", "dateCreated", "createdAt", "updatedAt")
-VALUES
 -- LABORATORY (departmentId = 1)
+INSERT IGNORE INTO `tests` (`testId`, `testName`, `departmentId`, `price`, `status`, `dateCreated`, `createdAt`, `updatedAt`)
+VALUES
 ( 1, 'CBC + Platelet Count',        1,   260.00, 'active', NOW(), NOW(), NOW()),
 ( 2, 'Blood Typing with RH Typing', 1,   320.00, 'active', NOW(), NOW(), NOW()),
 ( 3, 'ESR',                         1,   130.00, 'active', NOW(), NOW(), NOW()),
@@ -93,16 +95,12 @@ VALUES
 
 -- BLOOD CHEMISTRY PACKAGES (departmentId = 8)
 (49, 'Chem 5 Package',                   8,   620.00, 'active', NOW(), NOW(), NOW()),
-(50, 'Chem 6 Package',                   8,   860.00, 'active', NOW(), NOW(), NOW())
-ON CONFLICT ("testId") DO NOTHING;
-
-SELECT setval(pg_get_serial_sequence('"tests"', 'testId'), COALESCE((SELECT MAX("testId") FROM "tests"), 1));
-
+(50, 'Chem 6 Package',                   8,   860.00, 'active', NOW(), NOW(), NOW());
 
 -- =====================================================
 -- 3. REFERRALS (referrers)
 -- =====================================================
-INSERT INTO "referrers" ("referrerId", "firstName", "lastName", "birthday", "contactNo", "clinicName", "clinicAddress", "status", "dateAdded", "createdAt", "updatedAt")
+INSERT IGNORE INTO `referrers` (`referrerId`, `firstName`, `lastName`, `birthday`, `contactNo`, `clinicName`, `clinicAddress`, `status`, `dateAdded`, `createdAt`, `updatedAt`)
 VALUES
   (1, 'Maria',   'Santos',     '1975-03-12', '09171234567', 'Santos Family Clinic',      '123 Mabini St, Cavite',        'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
   (2, 'Joseph',  'Tan',        '1980-07-25', '09281234567', 'Tan Medical Center',        '45 Aguinaldo Hwy, Cavite',     'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
@@ -112,27 +110,21 @@ VALUES
   (6, 'Alvin',   'Garcia',     '1983-01-22', '09671234567', 'Garcia Cardio Center',      '33 Rizal Blvd, Cavite',        'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
   (7, 'Teresa',  'Lim',        '1978-06-14', '09781234567', 'Lim Diagnostic Clinic',     '56 Tagaytay Rd, Cavite',       'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
   (8, 'Daniel',  'Robles',     '1987-12-05', '09891234567', 'Robles Family Practice',    '21 Silang St, Cavite',         'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-  (9, 'Angela',  'Chua',       '1992-04-09', '09901234567', 'Chua Women''s Health',      '19 Dasmariñas Ave, Cavite',    'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
-  (10, 'Roberto', 'Villanueva', '1969-08-27', '09181234567', 'Villanueva ENT Clinic',     '5 Gen. Trias Rd, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00')
-ON CONFLICT ("referrerId") DO NOTHING;
-
-SELECT setval(pg_get_serial_sequence('"referrers"', 'referrerId'), COALESCE((SELECT MAX("referrerId") FROM "referrers"), 1));
+  (9, 'Angela',  'Chua',       '1992-04-09', '09901234567', 'Chua Women\'s Health',      '19 Dasmariñas Ave, Cavite',    'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00'),
+  (10, 'Roberto', 'Villanueva', '1969-08-27', '09181234567', 'Villanueva ENT Clinic',     '5 Gen. Trias Rd, Cavite',      'active', '2025-09-28 22:20:00', '2025-09-28 22:20:00', '2025-09-28 22:20:00');
 
 -- =====================================================
 -- 4. RBAC - ROLES
 -- =====================================================
-INSERT INTO "Roles" ("roleId", "roleName", "displayName", "description", "isSystem", "status", "createdAt", "updatedAt")
+INSERT IGNORE INTO `Roles` (`roleId`, `roleName`, `displayName`, `description`, `isSystem`, `status`, `createdAt`, `updatedAt`)
 VALUES
 (1, 'admin',        'Administrator', 'Full system access with all permissions',                    TRUE,  'active', NOW(), NOW()),
-(2, 'receptionist', 'Receptionist',  'Standard user with transaction and basic operations access', TRUE,  'active', NOW(), NOW())
-ON CONFLICT ("roleId") DO NOTHING;
-
-SELECT setval(pg_get_serial_sequence('"Roles"', 'roleId'), COALESCE((SELECT MAX("roleId") FROM "Roles"), 1));
+(2, 'receptionist', 'Receptionist',  'Standard user with transaction and basic operations access', TRUE,  'active', NOW(), NOW());
 
 -- =====================================================
--- 4. RBAC - PERMISSIONS
+-- 5. RBAC - PERMISSIONS
 -- =====================================================
-INSERT INTO "Permissions" ("permissionKey", "displayName", "description", "category", "createdAt", "updatedAt")
+INSERT IGNORE INTO `Permissions` (`permissionKey`, `displayName`, `description`, `category`, `createdAt`, `updatedAt`)
 VALUES
 -- Dashboard
 ('dashboard.view',      'View Dashboard',            'Access to view the main dashboard',                             'Dashboard',          NOW(), NOW()),
@@ -166,46 +158,44 @@ VALUES
 ('roles.manage',        'Manage Roles',              'Create, edit, and delete roles and assign permissions',          'Administration',     NOW(), NOW()),
 ('activitylog.view',    'View Activity Logs',        'View system activity logs',                                     'Administration',     NOW(), NOW()),
 ('departments.manage',  'Manage Departments',        'Create, edit, and delete departments',                          'Administration',     NOW(), NOW()),
-('tests.manage',        'Manage Tests',              'Create, edit, and delete tests',                                'Administration',     NOW(), NOW())
-ON CONFLICT ("permissionKey") DO NOTHING;
+('tests.manage',        'Manage Tests',              'Create, edit, and delete tests',                                'Administration',     NOW(), NOW());
 
 -- =====================================================
--- 5. RBAC - ASSIGN PERMISSIONS TO ROLES
+-- 6. RBAC - ASSIGN PERMISSIONS TO ROLES
 -- =====================================================
 
 -- Admin gets ALL permissions
-INSERT INTO "RolePermissions" ("roleId", "permissionId", "createdAt", "updatedAt")
-SELECT 1, "permissionId", NOW(), NOW()
-FROM "Permissions"
-ON CONFLICT ("roleId", "permissionId") DO NOTHING;
+INSERT IGNORE INTO `RolePermissions` (`roleId`, `permissionId`, `createdAt`, `updatedAt`)
+SELECT 1, `permissionId`, NOW(), NOW()
+FROM `Permissions`;
 
 -- Receptionist gets standard permissions
-INSERT INTO "RolePermissions" ("roleId", "permissionId", "createdAt", "updatedAt")
-SELECT 2, p."permissionId", NOW(), NOW()
-FROM "Permissions" p
-WHERE p."permissionKey" IN (
+INSERT IGNORE INTO `RolePermissions` (`roleId`, `permissionId`, `createdAt`, `updatedAt`)
+SELECT 2, p.`permissionId`, NOW(), NOW()
+FROM `Permissions` p
+WHERE p.`permissionKey` IN (
   'dashboard.view',
   'transactions.view', 'transactions.create', 'transactions.edit', 'transactions.export',
   'collectible.view', 'collectible.create', 'collectible.edit',
   'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.export',
   'referrals.view', 'referrals.export'
-)
-ON CONFLICT ("roleId", "permissionId") DO NOTHING;
+);
 
 -- =====================================================
--- 6. UPDATE USERS WITH roleId
+-- 7. UPDATE USERS WITH roleId
 -- =====================================================
-UPDATE "Users" u
-SET "roleId" = r."roleId"
-FROM "Roles" r
-WHERE r."roleName" = u."role"
-  AND u."roleId" IS NULL;
+UPDATE `Users` u
+INNER JOIN `Roles` r ON r.`roleName` = u.`role`
+SET u.`roleId` = r.`roleId`
+WHERE u.`roleId` IS NULL;
 
 -- Default any remaining users without a role to receptionist
-UPDATE "Users"
-SET "roleId" = 2
-WHERE "roleId" IS NULL;
+UPDATE `Users`
+SET `roleId` = 2
+WHERE `roleId` IS NULL;
 
 COMMIT;
 
-SELECT 'Mock Data Import Complete! (Departments, Tests, Roles, Permissions, RolePermissions)' AS status;
+SET FOREIGN_KEY_CHECKS = 1;
+
+SELECT 'Mock Data Import Complete! (Departments, Tests, Referrers, Roles, Permissions, RolePermissions)' AS status;

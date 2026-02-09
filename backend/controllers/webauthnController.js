@@ -124,6 +124,7 @@ async function tempRegistrationVerify(req, res) {
       // Determine the role to assign
       let roleName = 'receptionist';
       let roleId = null;
+      let roleDisplayName = 'Receptionist';
       
       // If roleId is provided, look up the role
       if (userData.roleId) {
@@ -131,12 +132,22 @@ async function tempRegistrationVerify(req, res) {
         if (role) {
           roleName = role.roleName;
           roleId = role.roleId;
+          roleDisplayName = role.displayName || roleName;
+        }
+      } else if (userData.role) {
+        // Fallback: look up by role name string
+        const role = await Role.findOne({ where: { roleName: userData.role } });
+        if (role) {
+          roleName = role.roleName;
+          roleId = role.roleId;
+          roleDisplayName = role.displayName || roleName;
         }
       } else {
         // Default to receptionist role
         const defaultRole = await Role.findOne({ where: { roleName: 'receptionist' } });
         if (defaultRole) {
           roleId = defaultRole.roleId;
+          roleDisplayName = defaultRole.displayName || 'Receptionist';
         }
       }
       
@@ -173,7 +184,7 @@ async function tempRegistrationVerify(req, res) {
         action: 'CREATE_ACCOUNT',
         resourceType: 'USER',
         resourceId: user.userId,
-        details: `New user account created for ${user.email}`,
+        details: `New user account created: ${user.email} (${user.firstName} ${user.lastName}) with role: ${roleDisplayName}`,
         ipAddress: req.ip
       });
       
