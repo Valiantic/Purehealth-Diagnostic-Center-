@@ -5,11 +5,11 @@ const { Op } = require('sequelize');
 exports.getMonthlyExpenses = async (req, res) => {
   try {
     const { month, year, departmentId } = req.query;
-    
+
     if (!month || !year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Month and year parameters are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year parameters are required'
       });
     }
 
@@ -17,9 +17,9 @@ exports.getMonthlyExpenses = async (req, res) => {
     const yearInt = parseInt(year);
 
     if (isNaN(monthInt) || isNaN(yearInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid month or year format' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid month or year format'
       });
     }
 
@@ -57,7 +57,7 @@ exports.getMonthlyExpenses = async (req, res) => {
           ]
         }
       ],
-      order: [['date', 'DESC']] 
+      order: [['date', 'DESC']]
     });
 
     // Group expenses by date and department
@@ -72,10 +72,10 @@ exports.getMonthlyExpenses = async (req, res) => {
           dateKey = dateObj.toISOString().split('T')[0];
         } catch (e) {
           console.error('Error parsing date:', e);
-          dateKey = String(expense.date); 
+          dateKey = String(expense.date);
         }
       }
-      
+
       // Special handling for rebates - use category name instead of department
       let departmentKey;
       if (!expense.Department && expense.ExpenseItems.some(item => item.Category?.name === 'Rebates')) {
@@ -92,7 +92,7 @@ exports.getMonthlyExpenses = async (req, res) => {
           departments: {}
         };
       }
-      
+
       if (!dailyExpenses[dateKey].departments[departmentKey]) {
         dailyExpenses[dateKey].departments[departmentKey] = {
           name: departmentKey,
@@ -103,10 +103,14 @@ exports.getMonthlyExpenses = async (req, res) => {
 
       let expenseTotal = 0;
       expense.ExpenseItems.forEach(item => {
+<<<<<<< Updated upstream
         if (item.status !== 'refunded' && item.status !== 'paid' && item.status !== 'cancelled') {
+=======
+        if (item.status !== 'reimbursed' && item.status !== 'paid') {
+>>>>>>> Stashed changes
           const itemAmount = parseFloat(item.amount || 0);
           expenseTotal += itemAmount;
-          
+
           dailyExpenses[dateKey].departments[departmentKey].items.push({
             id: item.expenseItemId,
             paidTo: item.paidTo,
@@ -122,7 +126,7 @@ exports.getMonthlyExpenses = async (req, res) => {
       dailyExpenses[dateKey].totalAmount += expenseTotal;
     });
 
-    const dailyExpensesArray = Object.values(dailyExpenses).sort((a, b) => 
+    const dailyExpensesArray = Object.values(dailyExpenses).sort((a, b) =>
       new Date(a.date) - new Date(b.date)
     );
 
@@ -153,11 +157,11 @@ exports.getMonthlyExpenses = async (req, res) => {
 exports.getMonthlyExpensesSummary = async (req, res) => {
   try {
     const { month, year, departmentId } = req.query;
-    
+
     if (!month || !year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Month and year parameters are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year parameters are required'
       });
     }
 
@@ -166,7 +170,7 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
 
     // Calculate start and end dates for the given month
     const startDate = new Date(yearInt, monthInt - 1, 1);
-    const endDate = new Date(yearInt, monthInt, 0); 
+    const endDate = new Date(yearInt, monthInt, 0);
     endDate.setHours(23, 59, 59, 999);
 
     const whereClause = {
@@ -192,7 +196,11 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
           model: ExpenseItem,
           where: {
             status: {
+<<<<<<< Updated upstream
               [Op.notIn]: ['refunded', 'paid', 'cancelled']
+=======
+              [Op.notIn]: ['reimbursed', 'paid']
+>>>>>>> Stashed changes
             }
           },
           required: false,
@@ -213,7 +221,7 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
 
     expenses.forEach(expense => {
       const deptId = expense.departmentId;
-      
+
       // Special handling for rebates - use category name instead of department
       let deptName;
       if (!expense.Department && expense.ExpenseItems.some(item => item.Category?.name === 'Rebates')) {
@@ -221,7 +229,7 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
       } else {
         deptName = expense.Department?.departmentName || 'Other';
       }
-      
+
       if (!departmentTotals[deptId]) {
         departmentTotals[deptId] = {
           name: deptName,
