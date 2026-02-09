@@ -109,16 +109,33 @@ const useDashboardData = () => {
     }
   }, [currentMonth, currentYear, setLoading, setError, setExpensesByDepartment]);
 
-  // Fetch monthly profit data
+  // Fetch monthly profit data (current year + previous year for scrollable chart)
   const fetchMonthlyProfitData = useCallback(async () => {
     try {
       setLoading('monthlyProfit', true);
-      const response = await dashboardAPI.getMonthlyProfit(currentYear);
+      const previousYear = currentYear - 1;
       
-      if (response.data.success) {
-        setMonthlyProfitData(response.data.data);
+      // Fetch both years in parallel
+      const [currentResponse, previousResponse] = await Promise.all([
+        dashboardAPI.getMonthlyProfit(currentYear),
+        dashboardAPI.getMonthlyProfit(previousYear)
+      ]);
+      
+      if (currentResponse.data.success) {
+        // Tag each month's data with its year and combine
+        const previousData = previousResponse.data.success
+          ? previousResponse.data.data.map(m => ({ ...m, year: previousYear }))
+          : [];
+        const currentData = currentResponse.data.data.map(m => ({ ...m, year: currentYear }));
+        
+        // Combined: previous year months first, then current year
+        setMonthlyProfitData({
+          currentYear: currentYear,
+          previousYear: previousYear,
+          combined: [...previousData, ...currentData]
+        });
       } else {
-        throw new Error(response.data.message || 'Failed to fetch monthly profit data');
+        throw new Error(currentResponse.data.message || 'Failed to fetch monthly profit data');
       }
     } catch (error) {
       if (error.name !== 'CanceledError') {
