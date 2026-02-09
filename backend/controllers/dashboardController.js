@@ -37,7 +37,7 @@ const dashboardController = {
         raw: true
       });
 
-      // Get monthly expenses excluding paid and refunded expense items
+      // Get monthly expenses excluding paid, refunded and cancelled expense items
       const monthlyExpenses = await ExpenseItem.sum('amount', {
         include: [
           {
@@ -58,7 +58,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded']
+            [Op.notIn]: ['paid', 'refunded', 'cancelled']
           }
         }
       });
@@ -282,7 +282,7 @@ const dashboardController = {
     try {
       const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
 
-      // First, let's check if we have any active expense items (exclude paid and refunded)
+      // First, let's check if we have any active expense items (exclude paid, refunded and cancelled)
       const totalExpenses = await ExpenseItem.count({
         include: [
           {
@@ -303,7 +303,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded']
+            [Op.notIn]: ['paid', 'refunded', 'cancelled']
           }
         }
       });
@@ -343,7 +343,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded']
+            [Op.notIn]: ['paid', 'refunded', 'cancelled']
           }
         },
         group: [
@@ -438,7 +438,7 @@ const dashboardController = {
           raw: true
         });
 
-        // Get expenses for this month (exclude paid and refunded expense items)
+        // Get expenses for this month (exclude paid, refunded and cancelled expense items)
         const expenses = await ExpenseItem.sum('amount', {
           include: [
             {
@@ -459,7 +459,7 @@ const dashboardController = {
           ],
           where: {
             status: {
-              [Op.notIn]: ['paid', 'refunded']
+              [Op.notIn]: ['paid', 'refunded', 'cancelled']
             }
           }
         });

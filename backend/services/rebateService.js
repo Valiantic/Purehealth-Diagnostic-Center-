@@ -41,18 +41,21 @@ class RebateService {
    * @param {Object} transaction - The transaction object
    * @param {Array} testDetails - Array of test details
    */
-  static async calculateAndRecordRebate(transaction, testDetails) {
+  static async calculateAndRecordRebate(transaction, testDetails, externalTransaction = null) {
     if (!transaction.referrerId || transaction.referrerId === null) {
       return; // No referrer, no rebate
     }
 
-    const t = await sequelize.transaction();
+    const useExternalTransaction = !!externalTransaction;
+    const t = externalTransaction || await sequelize.transaction();
 
     try {
       // Get referrer information
       const referrer = await Referrer.findByPk(transaction.referrerId);
       if (!referrer) {
-        await t.rollback();
+        if (!useExternalTransaction) {
+          await t.rollback();
+        }
         return;
       }
 
@@ -122,9 +125,13 @@ class RebateService {
         console.log('Department breakdown:', departmentRebates);
       }
 
-      await t.commit();
+      if (!useExternalTransaction) {
+        await t.commit();
+      }
     } catch (error) {
-      await t.rollback();
+      if (!useExternalTransaction) {
+        await t.rollback();
+      }
       console.error('Error calculating rebate:', error);
       throw error;
     }

@@ -122,8 +122,11 @@ const Expenses = () => {
   const dateRange = getDateRange();
 
   const monthFilteredExpenses = filteredExpenses.filter((expense) => {
-    const expenseDate = new Date(expense.createdAt || expense.date);
-    return expenseDate >= dateRange.start && expenseDate <= dateRange.end;
+    // Use expense.date (DATEONLY) to avoid timezone conversion issues
+    // e.g. createdAt '2026-01-31 16:00:00' UTC becomes Feb 1 in UTC+8
+    const expDate = expense.date || expense.createdAt;
+    const parsedDate = new Date(expDate);
+    return parsedDate >= dateRange.start && parsedDate <= dateRange.end;
   });
 
   // Pagination logic
@@ -168,10 +171,19 @@ const Expenses = () => {
     return pages;
   };
 
-  // Calculate total expense from month-filtered data
-  const totalExpense = monthFilteredExpenses.reduce((sum, expense) => {
-    return sum + (parseFloat(expense.totalAmount) || 0);
-  }, 0);
+  // Calculate total expense from month-filtered data (exclude cancelled expenses)
+  const totalExpense = monthFilteredExpenses
+    .filter(expense => expense.status !== 'cancelled')
+    .reduce((sum, expense) => {
+      // If expense has items, sum only active/pending items (exclude cancelled/paid)
+      if (expense.ExpenseItems && expense.ExpenseItems.length > 0) {
+        const activeItemsTotal = expense.ExpenseItems
+          .filter(item => item.status !== 'cancelled' && item.status !== 'paid')
+          .reduce((itemSum, item) => itemSum + (parseFloat(item.amount) || 0), 0);
+        return sum + activeItemsTotal;
+      }
+      return sum + (parseFloat(expense.totalAmount) || 0);
+    }, 0);
 
   // Calculate reimbursed total
   const reimbursedTotal = monthFilteredExpenses.reduce((sum, expense) => {
