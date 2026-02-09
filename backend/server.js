@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { sequelize } = require('./models');
 const socketManager = require('./utils/socketManager');
@@ -33,10 +34,27 @@ const PORT = process.env.PORT || 5000;
 socketManager.init(server);
 
 // Configure CORS more explicitly
+const allowedOrigins = [
+  'https://purehealth-diagnostic-center.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.CORS_ORIGIN === origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // Middleware
@@ -45,9 +63,42 @@ app.use(express.json());
 // Security headers
 app.use(helmet());
 
+// Trust proxy (required for rate limiting behind load balancers like Render)
+app.set('trust proxy', 1);
+
+// Rate limiting - General API limiter
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Limit each IP to 200 requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limiting for auth routes (login, register, webauthn)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 auth requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many authentication attempts, please try again after 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiting to all requests
+app.use(generalLimiter);
+
+// Handle preflight requests
+app.options('*', cors());
+
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/webauthn', webauthnRoutes);
+app.use('/api/users', authLimiter, userRoutes);
+app.use('/api/webauthn', authLimiter, webauthnRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/tests', testRoutes);
@@ -80,11 +131,26 @@ app.use((err, req, res, next) => {
 });
 
 // Sync database and start server
-sequelize.sync({ alter: process.env.NODE_ENV === 'development' })
+// FORCE_DB_SYNC=true will sync models regardless of environment
+const shouldSync = process.env.FORCE_DB_SYNC === 'true' || process.env.NODE_ENV === 'development';
+const syncOptions = process.env.NODE_ENV === 'development' ? { alter: true } : { alter: false };
+
+sequelize.authenticate()
+  .then(() => {
+    console.log('Database connection established successfully.');
+    // Sync if in development or FORCE_DB_SYNC is true
+    if (shouldSync) {
+      console.log('Syncing database models...');
+      return sequelize.sync(syncOptions);
+    }
+    console.log('Skipping database sync (use migrations or set FORCE_DB_SYNC=true)');
+    return Promise.resolve();
+  })
   .then(() => {
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Socket.IO enabled for real-time updates`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
     });
   })
   .catch(err => {
