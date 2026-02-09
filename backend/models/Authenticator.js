@@ -17,7 +17,29 @@ const Authenticator = sequelize.define('Authenticator', {
   },
   credentialPublicKey: {
     type: DataTypes.BLOB,
-    allowNull: false
+    allowNull: false,
+    get() {
+      const value = this.getDataValue('credentialPublicKey');
+      // Ensure it's always returned as Buffer
+      if (Buffer.isBuffer(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        // If stored as hex string (PostgreSQL BYTEA format), convert to Buffer
+        return Buffer.from(value, 'hex');
+      }
+      return value;
+    },
+    set(value) {
+      // Store as Buffer
+      if (Buffer.isBuffer(value)) {
+        this.setDataValue('credentialPublicKey', value);
+      } else if (typeof value === 'string') {
+        this.setDataValue('credentialPublicKey', Buffer.from(value, 'base64'));
+      } else {
+        this.setDataValue('credentialPublicKey', value);
+      }
+    }
   },
   counter: {
     type: DataTypes.INTEGER,
@@ -34,15 +56,9 @@ const Authenticator = sequelize.define('Authenticator', {
     defaultValue: false
   },
   transports: {
-    type: DataTypes.TEXT,
+    type: DataTypes.JSONB,
     allowNull: true,
-    get() {
-      const value = this.getDataValue('transports');
-      return value ? JSON.parse(value) : null;
-    },
-    set(value) {
-      this.setDataValue('transports', value ? JSON.stringify(value) : null);
-    }
+    defaultValue: null
   },
   isPrimary: {
     type: DataTypes.BOOLEAN,

@@ -285,29 +285,29 @@ exports.searchReferrer = async (req, res) => {
                 
                 // Birthday search with LIKE operator - use date format similar to toLocaleDateString
                 sequelize.where(
-                    fn('DATE_FORMAT', col('birthday'), '%c/%e/%Y'),
+                    fn('TO_CHAR', col('birthday'), 'FMMM/FMDD/YYYY'),
                     { [Op.like]: `%${search}%` }
                 ),
                 sequelize.where(
-                    fn('DATE_FORMAT', col('birthday'), '%m/%d/%Y'),
+                    fn('TO_CHAR', col('birthday'), 'MM/DD/YYYY'),
                     { [Op.like]: `%${search}%` }
                 ),
                 sequelize.where(
-                    fn('DATE_FORMAT', col('birthday'), '%Y-%m-%d'),
+                    fn('TO_CHAR', col('birthday'), 'YYYY-MM-DD'),
                     { [Op.like]: `%${search}%` }
                 ),
                 
                 // CreatedAt search with LIKE operator - match frontend display format
                 sequelize.where(
-                    fn('DATE_FORMAT', col('createdAt'), '%c/%e/%Y'),
+                    fn('TO_CHAR', col('createdAt'), 'FMMM/FMDD/YYYY'),
                     { [Op.like]: `%${search}%` }
                 ),
                 sequelize.where(
-                    fn('DATE_FORMAT', col('createdAt'), '%m/%d/%Y'),
+                    fn('TO_CHAR', col('createdAt'), 'MM/DD/YYYY'),
                     { [Op.like]: `%${search}%` }
                 ),
                 sequelize.where(
-                    fn('DATE_FORMAT', col('createdAt'), '%Y-%m-%d'),
+                    fn('TO_CHAR', col('createdAt'), 'YYYY-MM-DD'),
                     { [Op.like]: `%${search}%` }
                 )
             ];
@@ -319,32 +319,32 @@ exports.searchReferrer = async (req, res) => {
                     // Day of month search
                     whereClause[Op.or].push(
                         sequelize.where(
-                            fn('DAY', col('birthday')),
+                            fn('EXTRACT', literal(`DAY FROM "birthday"`)),
                             numSearch
                         ),
                         sequelize.where(
-                            fn('MONTH', col('birthday')),
+                            fn('EXTRACT', literal(`MONTH FROM "birthday"`)),
                             numSearch
                         ),
                         sequelize.where(
-                            fn('DAY', col('createdAt')),
+                            fn('EXTRACT', literal(`DAY FROM "createdAt"`)),
                             numSearch
                         ),
                         sequelize.where(
-                            fn('MONTH', col('createdAt')),
+                            fn('EXTRACT', literal(`MONTH FROM "createdAt"`)),
                             numSearch
                         )
                     );
-                    
+
                     // Year search
                     if (numSearch > 1000) {
                         whereClause[Op.or].push(
                             sequelize.where(
-                                fn('YEAR', col('birthday')),
+                                fn('EXTRACT', literal(`YEAR FROM "birthday"`)),
                                 numSearch
                             ),
                             sequelize.where(
-                                fn('YEAR', col('createdAt')),
+                                fn('EXTRACT', literal(`YEAR FROM "createdAt"`)),
                                 numSearch
                             )
                         );

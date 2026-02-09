@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { registerUser, registerBackupPasskey } from '../../utils/webauthn';
@@ -18,6 +18,31 @@ const RegistrationForm = () => {
   const [step, setStep] = useState(1);
   const [userId, setUserId] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  // Fetch all roles on mount
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await roleAPI.getAllRoles();
+        const activeRoles = (response.data.roles || response.data || [])
+          .filter(r => r.status === 'active');
+        setRoles(activeRoles);
+        // Default to receptionist role if available, otherwise first role
+        const defaultRole = activeRoles.find(r => r.roleName === 'receptionist') || activeRoles[0];
+        if (defaultRole) {
+          setFormData(prev => ({ ...prev, roleId: defaultRole.roleId }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch roles:', err);
+        setError('Failed to load roles. Please refresh the page.');
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   // Fetch available roles from the API
   const { data: rolesData, isLoading: rolesLoading } = useQuery({
@@ -108,21 +133,21 @@ const RegistrationForm = () => {
   const handleBackupRegistration = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       const result = await registerBackupPasskey(userId);
-      
+
       if (result.success) {
         // Store user data in localStorage
         if (userData) {
           localStorage.setItem('user', JSON.stringify(userData));
         }
-        
+
         // Redirect based on role: receptionist -> dashboard, admin -> view-accounts
         const redirectPath = userData?.role === 'receptionist' ? '/dashboard' : '/view-accounts';
-        navigate(redirectPath, { 
-          state: { 
-            success: true, 
+        navigate(redirectPath, {
+          state: {
+            success: true,
             message: 'Account successfully created!'
           }
         });
@@ -137,6 +162,20 @@ const RegistrationForm = () => {
     }
   };
 
+  const handleSkipBackup = () => {
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    const redirectPath = userData?.role === 'receptionist' ? '/dashboard' : '/view-accounts';
+    navigate(redirectPath, {
+      state: {
+        success: true,
+        message: 'Account successfully created!'
+      }
+    });
+  };
+
   const goToLogin = () => {
     navigate('/login');
   };
@@ -148,7 +187,8 @@ const RegistrationForm = () => {
           <form onSubmit={handleSubmit}>
             <div className='text-center mb-6'>
               <h3 className="text-xl font-bold text-green-700 text-4xl">Create an Account</h3>
-              <h6 className="text-green-700 mt-4 text-sm">NOTE: This is for Development Stage Account Creation!</h6>
+              <h6 className="text-green-700 mt-4 text-sm">"Welcome! You are now creating an account as an <strong>IT Expert</strong>. Please note that our Revenue Management System employs FIDO2 WebAuthn for security purposes. This ensures robust protection of financial data, 
+                which is critical to the integrity of our capstone study."</h6>
             </div>
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
@@ -291,6 +331,14 @@ const RegistrationForm = () => {
                 disabled={loading}
               >
                 {loading ? 'Setting up...' : 'Set up Backup Passkey'}
+              </button>
+
+              <button
+                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                onClick={handleSkipBackup}
+                disabled={loading}
+              >
+                Skip for now
               </button>
             </div>
           </div>

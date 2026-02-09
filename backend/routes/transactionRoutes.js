@@ -11,6 +11,9 @@ router.get('/', transactionController.getAllTransactions);
 // Route to check if MC# exists - MUST come before /:id route
 router.get('/check-mcno', transactionController.checkMcNoExists);
 
+// Route to get next available MC# - MUST come before /:id route
+router.get('/next-mcno', transactionController.getNextMcNo);
+
 // Search transactions - MUST come before /:id route
 router.get('/search', transactionController.searchTransactions);
 
