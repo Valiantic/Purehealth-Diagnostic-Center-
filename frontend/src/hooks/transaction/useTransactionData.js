@@ -409,14 +409,16 @@ export const useTransactionData = (selectedDate, expenseDate, discountCategories
     });
   };
 
-  // Calculate total expense
+  // Calculate total expense (exclude cancelled and paid items)
   const calculateTotalExpense = (filteredExpenses) => {
     return filteredExpenses.reduce((sum, expense) => {
       if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems) && expense.ExpenseItems.length > 0) {
-        const itemsTotal = expense.ExpenseItems.reduce((itemSum, item) => {
-          const itemAmount = parseFloat(item.amount || 0);
-          return itemSum + (isNaN(itemAmount) ? 0 : itemAmount);
-        }, 0);
+        const itemsTotal = expense.ExpenseItems
+          .filter(item => item.status !== 'cancelled' && item.status !== 'paid')
+          .reduce((itemSum, item) => {
+            const itemAmount = parseFloat(item.amount || 0);
+            return itemSum + (isNaN(itemAmount) ? 0 : itemAmount);
+          }, 0);
         return sum + itemsTotal;
       } else {
         const amount = parseFloat(expense.amount || expense.expenseAmount || 0);

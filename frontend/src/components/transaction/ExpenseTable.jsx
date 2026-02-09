@@ -62,10 +62,10 @@ const ExpenseTable = ({
   const activeTotalExpense = filteredExpenses.reduce((total, expense) => {
     if (expense.ExpenseItems && Array.isArray(expense.ExpenseItems)) {
       return total + expense.ExpenseItems
-        .filter(item => item.status !== 'paid')
+        .filter(item => item.status !== 'paid' && item.status !== 'cancelled')
         .reduce((itemTotal, item) => itemTotal + parseFloat(item.amount || 0), 0);
     }
-    return expense.status !== 'paid' ? total + parseFloat(expense.amount || 0) : total;
+    return (expense.status !== 'paid' && expense.status !== 'cancelled') ? total + parseFloat(expense.amount || 0) : total;
   }, 0);
 
   return (

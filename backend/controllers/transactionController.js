@@ -253,9 +253,11 @@ exports.createTransaction = async (req, res) => {
     // Calculate rebates for this transaction (after all test details are created)
     if (transaction.referrerId) {
       try {
-        await RebateService.calculateAndRecordRebate(transaction, testDetails);
+        await RebateService.calculateAndRecordRebate(transaction, testDetails, t);
       } catch (rebateError) {
         console.error('Error calculating rebates:', rebateError);
+        // Re-throw so the entire transaction rolls back if rebate creation fails
+        throw rebateError;
       }
     }
 
