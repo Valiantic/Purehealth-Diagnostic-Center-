@@ -6,8 +6,9 @@
 -- 1. Transactions: Add missing referralFeePercentage column
 -- 2. DepartmentRevenues: Add missing status and metadata columns
 -- 3. ExpenseItems: Fix status CHECK constraint (add 'reimbursed', 'cancelled')
--- 4. CollectibleIncomeItems: Create missing table
--- 5. Reset all SERIAL sequences to match existing data (prevents duplicate PK)
+-- 4. ReferrerRebates: Add 'cancelled' to status enum
+-- 5. CollectibleIncomeItems: Create missing table
+-- 6. Reset all SERIAL sequences to match existing data (prevents duplicate PK)
 -- =============================================================================
 
 -- 1. Add referralFeePercentage column to Transactions
@@ -29,7 +30,10 @@ ALTER TABLE "ExpenseItems" ADD CONSTRAINT "ExpenseItems_status_check"
 -- Update any existing 'refunded' values to 'reimbursed'
 UPDATE "ExpenseItems" SET status = 'reimbursed' WHERE status = 'refunded';
 
--- 4. Create missing CollectibleIncomeItems table
+-- 4. Add 'cancelled' to ReferrerRebates status enum (needed for transaction cancellation)
+ALTER TYPE "enum_ReferrerRebates_status" ADD VALUE IF NOT EXISTS 'cancelled';
+
+-- 5. Create missing CollectibleIncomeItems table
 CREATE TABLE IF NOT EXISTS "CollectibleIncomeItems" (
   "itemId" SERIAL PRIMARY KEY,
   "companyId" INTEGER NOT NULL,
@@ -41,7 +45,7 @@ CREATE TABLE IF NOT EXISTS "CollectibleIncomeItems" (
   FOREIGN KEY ("companyId") REFERENCES "CollectibleIncome"("companyId") ON DELETE CASCADE
 );
 
--- 5. Reset all SERIAL sequences to match existing data
+-- 6. Reset all SERIAL sequences to match existing data
 -- When rows are inserted with explicit IDs (e.g. via migrations/SQL), the
 -- PostgreSQL sequence doesn't advance. The next INSERT with DEFAULT then
 -- generates a value that already exists, causing "duplicate key" errors.
