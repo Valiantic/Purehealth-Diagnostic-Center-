@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { registerUser, registerBackupPasskey } from '../../utils/webauthn';
@@ -18,31 +18,6 @@ const RegistrationForm = () => {
   const [step, setStep] = useState(1);
   const [userId, setUserId] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [roles, setRoles] = useState([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
-
-  // Fetch all roles on mount
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const response = await roleAPI.getAllRoles();
-        const activeRoles = (response.data.roles || response.data || [])
-          .filter(r => r.status === 'active');
-        setRoles(activeRoles);
-        // Default to receptionist role if available, otherwise first role
-        const defaultRole = activeRoles.find(r => r.roleName === 'receptionist') || activeRoles[0];
-        if (defaultRole) {
-          setFormData(prev => ({ ...prev, roleId: defaultRole.roleId }));
-        }
-      } catch (err) {
-        console.error('Failed to fetch roles:', err);
-        setError('Failed to load roles. Please refresh the page.');
-      } finally {
-        setRolesLoading(false);
-      }
-    };
-    fetchRoles();
-  }, []);
 
   // Fetch available roles from the API
   const { data: rolesData, isLoading: rolesLoading } = useQuery({
@@ -70,32 +45,32 @@ const RegistrationForm = () => {
       setError('Email, first name, and last name are required');
       return false;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       const result = await registerUser(formData);
-      
+
       if (result.success) {
         setUserId(result.userId);
-        
+
         // Get the selected role's display name for redirect logic
         const selectedRole = rolesData?.roles?.find(r => r.roleId === formData.roleId);
-        
+
         // Save user data for later use
         setUserData({
           userId: result.userId,
@@ -105,17 +80,17 @@ const RegistrationForm = () => {
           roleId: formData.roleId,
           role: selectedRole?.roleName || 'receptionist'
         });
-        
+
         setStep(2);
       } else {
         setError(result.message);
       }
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       // Check for various WebAuthn cancellation errors
       if (
-        error.name === 'AbortError' || 
+        error.name === 'AbortError' ||
         error.message?.includes('The operation either timed out or was not allowed') ||
         error.message?.includes('The user attempted to register') ||
         error.message?.includes('user canceled') ||
@@ -187,7 +162,7 @@ const RegistrationForm = () => {
           <form onSubmit={handleSubmit}>
             <div className='text-center mb-6'>
               <h3 className="text-xl font-bold text-green-700 text-4xl">Create an Account</h3>
-              <h6 className="text-green-700 mt-4 text-sm">"Welcome! You are now creating an account as an <strong>IT Expert</strong>. Please note that our Revenue Management System employs FIDO2 WebAuthn for security purposes. This ensures robust protection of financial data, 
+              <h6 className="text-green-700 mt-4 text-sm">"Welcome! You are now creating an account as an <strong>IT Expert</strong>. Please note that our Revenue Management System employs FIDO2 WebAuthn for security purposes. This ensures robust protection of financial data,
                 which is critical to the integrity of our capstone study."</h6>
             </div>
             <div className="mb-4">
@@ -195,7 +170,7 @@ const RegistrationForm = () => {
                 Email Address
               </label>
               <input
-                 className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
+                className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
                 id="email"
                 type="email"
                 name="email"
@@ -204,13 +179,13 @@ const RegistrationForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="firstName">
                 First Name
               </label>
               <input
-                 className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
+                className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
                 id="firstName"
                 type="text"
                 name="firstName"
@@ -219,13 +194,13 @@ const RegistrationForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="middleName">
                 Middle Name
               </label>
               <input
-                 className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
+                className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
                 id="middleName"
                 type="text"
                 name="middleName"
@@ -233,13 +208,13 @@ const RegistrationForm = () => {
                 onChange={handleChange}
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="lastName">
                 Last Name
               </label>
               <input
-                  className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
+                className="w-full px-1.5 sm:px-3 md:px-4 py-1.5 sm:py-2.5 md:py-1 text-[10px] sm:text-sm md:text-lg rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-500 placeholder:text-[10px] sm:placeholder:text-sm"
                 id="lastName"
                 type="text"
                 name="lastName"
@@ -248,7 +223,7 @@ const RegistrationForm = () => {
                 required
               />
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="roleId">
                 Role
@@ -270,11 +245,11 @@ const RegistrationForm = () => {
                 ))}
               </select>
             </div>
-            
+
             {error && (
               <div className="mb-4 text-red-500 text-sm">{error}</div>
             )}
-            
+
             <div className="flex items-center justify-center mb-4">
               <button
                 className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
@@ -284,7 +259,7 @@ const RegistrationForm = () => {
                 {loading ? 'Processing...' : 'Create Account with FIDO2 WebAuthn'}
               </button>
             </div>
-            
+
             <div className="text-center">
               <p className="text-sm">
                 Already have an account?{' '}
@@ -299,12 +274,12 @@ const RegistrationForm = () => {
             </div>
           </form>
         )}
-        
+
         {step === 2 && (
           <div className="text-center">
             <h3 className="text-xl font-bold text-green-700 text-4xl">Set Up Backup Passkey</h3>
             <p className="mb-4 mt-5 text-green-700 text-sm font-semibold">Secure your account with a backup security key</p>
-            
+
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 text-left">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -319,11 +294,11 @@ const RegistrationForm = () => {
                 </div>
               </div>
             </div>
-            
+
             {error && (
               <div className="mb-4 text-red-500 text-sm">{error}</div>
             )}
-            
+
             <div className="flex flex-col space-y-4">
               <button
                 className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"

@@ -20,8 +20,7 @@ module.exports = (sequelize) => {
     settingType: {
       type: DataTypes.ENUM('text', 'number', 'json', 'boolean'),
       allowNull: false,
-      defaultValue: 'text',
-      comment: 'Type of the setting value'
+      defaultValue: 'text'
     },
     description: {
       type: DataTypes.TEXT,
