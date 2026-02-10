@@ -340,11 +340,11 @@ exports.getAllTransactions = async (req, res) => {
         [Op.between]: [startDate, endDate]
       };
     } else if (req.query.month && req.query.year) {
-      // Filter by specific month and year
+      // Filter by specific month and year (PostgreSQL EXTRACT syntax)
       whereClause.transactionDate = {
         [Op.and]: [
-          sequelize.where(sequelize.fn('MONTH', sequelize.col('transactionDate')), req.query.month),
-          sequelize.where(sequelize.fn('YEAR', sequelize.col('transactionDate')), req.query.year)
+          sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "transactionDate"`)), req.query.month),
+          sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "transactionDate"`)), req.query.year)
         ]
       };
     }
