@@ -16,14 +16,14 @@ class RebateService {
 
       if (setting && setting.settingValue) {
         const percentage = parseFloat(setting.settingValue);
-        return percentage / 100; // Convert percentage to decimal (e.g., 20 -> 0.20)
+        return percentage / 100; // Convert percentage to decimal (e.g., 12 -> 0.12)
       }
 
-      // Default to 20% if not found
-      return 0.20;
+      // Default to 12% if not found (matches migration seed value)
+      return 0.12;
     } catch (error) {
       console.error('Error fetching referral fee percentage:', error);
-      return 0.20; // Default fallback
+      return 0.12; // Default fallback
     }
   }
 
@@ -204,7 +204,7 @@ class RebateService {
           totalAmount: parseFloat(expense.totalAmount) + rebateAmount
         }, { transaction });
       }
-      
+
       // Log activity for referrer rebate expense item creation
       const { ActivityLog } = require('../models');
       await ActivityLog.create({
@@ -212,8 +212,8 @@ class RebateService {
         action: itemCreated ? 'CREATE' : 'UPDATE',
         resourceType: 'REFERRER_REBATE',
         resourceId: expenseItem.expenseItemId,
-        details: itemCreated 
-          ? `Created referrer rebate for Dr. ${referrer.lastName} - ₱${parseFloat(rebateAmount).toFixed(2)}` 
+        details: itemCreated
+          ? `Created referrer rebate for Dr. ${referrer.lastName} - ₱${parseFloat(rebateAmount).toFixed(2)}`
           : `Updated referrer rebate for Dr. ${referrer.lastName} - added ₱${parseFloat(rebateAmount).toFixed(2)} (Total: ₱${parseFloat(expenseItem.amount).toFixed(2)})`,
         userInfo: {
           id: userId

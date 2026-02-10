@@ -6,14 +6,14 @@ const socketManager = require('../utils/socketManager');
 // Create a new expense with multiple expense items
 const createExpense = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { firstName, lastName, departmentId, date, expenses, userId } = req.body;
-    const selectedDate = new Date(date + 'T00:00:00.000Z'); 
-    
-    const totalAmount = expenses.reduce((sum, item) => 
+    const selectedDate = new Date(date + 'T00:00:00.000Z');
+
+    const totalAmount = expenses.reduce((sum, item) =>
       sum + parseFloat(parseFloat(item.amount).toFixed(2)), 0).toFixed(2);
-    
+
     // Create expense record
     const expense = await Expense.create({
       firstName,
@@ -22,12 +22,12 @@ const createExpense = async (req, res) => {
       date,
       totalAmount,
       userId,
-      createdAt: selectedDate, 
-      updatedAt: selectedDate  
+      createdAt: selectedDate,
+      updatedAt: selectedDate
     }, { transaction });
-    
-     const expenseItems = await Promise.all(
-      expenses.map(item => 
+
+    const expenseItems = await Promise.all(
+      expenses.map(item =>
         ExpenseItem.create({
           expenseId: expense.expenseId,
           paidTo: item.paidTo,
@@ -35,12 +35,12 @@ const createExpense = async (req, res) => {
           categoryId: item.categoryId || null,
           amount: parseFloat(parseFloat(item.amount).toFixed(2)),
           status: item.status || 'pending',
-          createdAt: selectedDate, 
-          updatedAt: selectedDate  
+          createdAt: selectedDate,
+          updatedAt: selectedDate
         }, { transaction })
       )
     );
-    
+
     // Log activity for expense record
     await ActivityLog.create({
       userId,
@@ -52,10 +52,10 @@ const createExpense = async (req, res) => {
         id: userId
       }
     }, { transaction });
-    
+
     // Log activity for each expense item created
     await Promise.all(
-      expenseItems.map(item => 
+      expenseItems.map(item =>
         ActivityLog.create({
           userId,
           action: 'CREATE',
@@ -68,12 +68,12 @@ const createExpense = async (req, res) => {
         }, { transaction })
       )
     );
-    
+
     await transaction.commit();
-    
+
     // Emit socket event for real-time dashboard update
     socketManager.emitExpenseUpdate(expense);
-    
+
     res.status(201).json({
       success: true,
       message: 'Expense created successfully',
@@ -96,19 +96,33 @@ const createExpense = async (req, res) => {
 // Get expenses with pagination and filtering
 const getExpenses = async (req, res) => {
   try {
-    const { page = 1, limit = 10, departmentId, startDate, endDate } = req.query;
-    
+    const { page = 1, limit = 10, departmentId, startDate, endDate, date, month, year } = req.query;
+
     const offset = (page - 1) * limit;
-    
+
     let whereClause = {};
-    
+
     // Add department filter if provided
     if (departmentId) {
       whereClause.departmentId = departmentId;
     }
-    
+
+    // Filter by exact date (DATEONLY column) — used by Expenses.jsx
+    if (date) {
+      whereClause.date = date; // DATEONLY match (YYYY-MM-DD)
+    }
+    // Filter by month and year using the date (DATEONLY) column
+    else if (month && year) {
+      const monthInt = parseInt(month);
+      const yearInt = parseInt(year);
+      const monthStart = new Date(yearInt, monthInt - 1, 1).toISOString().split('T')[0];
+      const monthEnd = new Date(yearInt, monthInt, 0).toISOString().split('T')[0];
+      whereClause.date = {
+        [Op.between]: [monthStart, monthEnd]
+      };
+    }
     // Add date range filter if provided
-    if (startDate && endDate) {
+    else if (startDate && endDate) {
       whereClause.date = {
         [Op.between]: [startDate, endDate]
       };
@@ -121,7 +135,7 @@ const getExpenses = async (req, res) => {
         [Op.lte]: endDate
       };
     }
-    
+
     const expenses = await Expense.findAndCountAll({
       where: whereClause,
       include: [
@@ -139,7 +153,7 @@ const getExpenses = async (req, res) => {
             {
               model: Category,
               attributes: ['categoryId', 'name'],
-              required: false 
+              required: false
             }
           ]
         }
@@ -148,7 +162,7 @@ const getExpenses = async (req, res) => {
       offset: parseInt(offset),
       order: [['date', 'DESC']]
     });
-    
+
     res.json({
       success: true,
       data: expenses.rows,
@@ -169,11 +183,11 @@ const getExpenses = async (req, res) => {
 // Update an existing expense
 const updateExpense = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
     const { firstName, lastName, departmentId, date, ExpenseItems, userId } = req.body;
-        
+
     const existingExpense = await Expense.findByPk(id);
     if (!existingExpense) {
       return res.status(404).json({
@@ -181,7 +195,7 @@ const updateExpense = async (req, res) => {
         message: 'Expense not found'
       });
     }
-    
+
     let formattedDate;
     try {
       if (date) {
@@ -200,16 +214,16 @@ const updateExpense = async (req, res) => {
       }
     } catch (error) {
       console.error("Error processing date:", error);
-      formattedDate = new Date(); 
+      formattedDate = new Date();
     }
-    
+
     const totalAmount = ExpenseItems.reduce(
-      (sum, item) => sum + parseFloat(parseFloat(item.amount || 0).toFixed(2)), 
+      (sum, item) => sum + parseFloat(parseFloat(item.amount || 0).toFixed(2)),
       0
     ).toFixed(2);
-    
+
     const formattedTotalAmount = parseFloat(totalAmount);
-    
+
     await existingExpense.update({
       firstName,
       lastName,
@@ -217,23 +231,23 @@ const updateExpense = async (req, res) => {
       date: formattedDate,
       totalAmount: formattedTotalAmount,
       userId,
-      createdAt: formattedDate, 
-      updatedAt: formattedDate 
+      createdAt: formattedDate,
+      updatedAt: formattedDate
     }, { transaction });
-    
+
     await ExpenseItem.destroy({
       where: { expenseId: id },
       transaction
     });
-    
-   // Create new expense items
+
+    // Create new expense items
     await Promise.all(
       ExpenseItems.map(item => {
         const formattedAmount = parseFloat(parseFloat(item.amount || 0).toFixed(2));
-        const validStatus = ['pending', 'reimbursed', 'paid', 'cancelled'].includes(item.status) 
-          ? item.status 
+        const validStatus = ['pending', 'reimbursed', 'paid', 'cancelled'].includes(item.status)
+          ? item.status
           : 'pending';
-        
+
         return ExpenseItem.create({
           expenseId: id,
           paidTo: item.paidTo || '',
@@ -241,16 +255,16 @@ const updateExpense = async (req, res) => {
           categoryId: item.categoryId || null,
           amount: formattedAmount,
           status: validStatus,
-          createdAt: formattedDate, 
+          createdAt: formattedDate,
           updatedAt: formattedDate,
           ...(item.id && !String(item.id).startsWith('temp-') ? { id: item.id } : {})
         }, { transaction });
       })
     );
-    
+
     // Log activity with formatted amount
     const activityDetails = `Updated expense record for ${firstName} ${lastName} with total amount ${formattedTotalAmount.toFixed(2)}`;
-    
+
     await ActivityLog.create({
       userId,
       action: 'UPDATE',
@@ -261,9 +275,9 @@ const updateExpense = async (req, res) => {
         id: userId
       }
     }, { transaction });
-    
+
     await transaction.commit();
-    
+
     // Fetch the updated expense with its items
     const updatedExpense = await Expense.findByPk(id, {
       include: [
@@ -287,12 +301,15 @@ const updateExpense = async (req, res) => {
         }
       ]
     });
-    
+
     res.json({
       success: true,
       message: 'Expense updated successfully',
       data: updatedExpense
     });
+
+    // Emit socket event for real-time dashboard update after response
+    socketManager.emitExpenseUpdate(updatedExpense);
   } catch (error) {
     await transaction.rollback();
     console.error('Error updating expense:', error);
@@ -308,7 +325,7 @@ const updateExpense = async (req, res) => {
 const getExpenseById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const expense = await Expense.findByPk(id, {
       include: [
         {
@@ -331,14 +348,14 @@ const getExpenseById = async (req, res) => {
         }
       ]
     });
-    
+
     if (!expense) {
       return res.status(404).json({
         success: false,
         message: 'Expense not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: expense
@@ -359,7 +376,7 @@ const getAllCategories = async (req, res) => {
     const categories = await Category.findAll({
       order: [['name', 'ASC']]
     });
-    
+
     res.json({
       success: true,
       data: categories
@@ -378,16 +395,16 @@ const getAllCategories = async (req, res) => {
 const getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const category = await Category.findByPk(id);
-    
+
     if (!category) {
       return res.status(404).json({
         success: false,
         message: 'Category not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: category
@@ -406,32 +423,32 @@ const getCategoryById = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name, userId } = req.body;
-    
+
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Category name is required'
       });
     }
-    
+
     // Check if category already exists
     const existingCategory = await Category.findOne({
       where: { name: name.trim() }
     });
-    
+
     if (existingCategory) {
       return res.status(409).json({
         success: false,
         message: 'Category already exists'
       });
     }
-    
+
     const category = await Category.create({
       name: name.trim()
     });
 
     await ActivityLog.create({
-      userId: userId || 1, 
+      userId: userId || 1,
       action: 'CREATE',
       resourceType: 'CATEGORY',
       resourceId: category.categoryId,
@@ -461,28 +478,28 @@ const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, status, userId } = req.body;
-    
+
     const category = await Category.findByPk(id);
-    
+
     if (!category) {
       return res.status(404).json({
         success: false,
         message: 'Category not found'
       });
     }
-    
+
     const originalName = category.name;
     const originalStatus = category.status;
-    
+
     // Check if name is unique (if changing name)
     if (name && name.trim() !== category.name) {
       const existingCategory = await Category.findOne({
-        where: { 
+        where: {
           name: name.trim(),
           categoryId: { [Op.ne]: id }
         }
       });
-      
+
       if (existingCategory) {
         return res.status(409).json({
           success: false,
@@ -490,7 +507,7 @@ const updateCategory = async (req, res) => {
         });
       }
     }
-    
+
     await category.update({
       ...(name && { name: name.trim() }),
       ...(status && { status })
@@ -504,14 +521,14 @@ const updateCategory = async (req, res) => {
     if (status && status !== originalStatus) {
       changes.push(`status: "${originalStatus}" → "${status}"`);
     }
-    
-    const activityDetails = changes.length > 0 
+
+    const activityDetails = changes.length > 0
       ? `Updated expense category "${originalName}": ${changes.join(', ')}`
       : `Updated expense category "${originalName}"`;
-    
+
     // Log activity
     await ActivityLog.create({
-      userId: userId || 1, 
+      userId: userId || 1,
       action: 'UPDATE',
       resourceType: 'CATEGORY',
       resourceId: id,
@@ -520,7 +537,7 @@ const updateCategory = async (req, res) => {
         id: userId || 1
       }
     });
-    
+
     res.json({
       success: true,
       message: 'Category updated successfully',
