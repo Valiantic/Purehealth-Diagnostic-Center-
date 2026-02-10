@@ -35,7 +35,7 @@ const Expenses = () => {
     queryKey: ['expenses', expenseDate],
     queryFn: async () => {
       const formattedDate = expenseDate.toISOString().split('T')[0];
-      const response = await expenseAPI.getExpenses({ date: formattedDate });
+      const response = await expenseAPI.getExpenses({ date: formattedDate, limit: 1000 });
       return response.data;
     },
     enabled: !!expenseDate,

@@ -117,7 +117,7 @@ exports.createTransaction = async (req, res) => {
         // This ensures only one transaction can read and increment the counter at a time
         const highestMcTransaction = await Transaction.findOne({
           attributes: ['mcNo'],
-          order: [sequelize.literal('CAST(mcNo AS UNSIGNED) DESC')],
+          order: [sequelize.literal('CAST("mcNo" AS INTEGER) DESC')],
           lock: t.LOCK.UPDATE, // Row-level lock
           transaction: t
         });
@@ -191,7 +191,7 @@ exports.createTransaction = async (req, res) => {
           // Generate a new MC number by querying again with lock
           const retryHighest = await Transaction.findOne({
             attributes: ['mcNo'],
-            order: [[sequelize.literal('CAST(mcNo AS UNSIGNED)'), 'DESC']],
+            order: [[sequelize.literal('CAST("mcNo" AS INTEGER)'), 'DESC']],
             lock: t.LOCK.UPDATE,
             transaction: t
           });
