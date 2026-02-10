@@ -42,10 +42,12 @@ export const exportReferralsToExcel = async (
     // Set column widths
     worksheet.getColumn(1).width = 12; // OR#
     worksheet.getColumn(2).width = 20; // Patient Name
-    // Department columns
-    for (let i = 3; i <= totalColumns; i++) {
-      worksheet.getColumn(i).width = 15;
-    }
+    // Department columns - width based on department name length to prevent text overflow
+    renderableDepartments.forEach((dept, index) => {
+      const nameLength = dept.departmentName.length;
+      // Minimum 15, or name length + 4 for padding, whichever is larger
+      worksheet.getColumn(3 + index).width = Math.max(15, nameLength + 4);
+    });
 
     // Process each referrer
     filteredReferrers.forEach((referrer) => {
