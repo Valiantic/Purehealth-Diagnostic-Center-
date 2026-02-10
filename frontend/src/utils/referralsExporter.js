@@ -45,8 +45,8 @@ export const exportReferralsToExcel = async (
     // Department columns - width based on department name length to prevent text overflow
     renderableDepartments.forEach((dept, index) => {
       const nameLength = dept.departmentName.length;
-      // Minimum 15, or name length + 4 for padding, whichever is larger
-      worksheet.getColumn(3 + index).width = Math.max(15, nameLength + 4);
+      // Use ~1.3x name length to account for bold font being wider, minimum 18
+      worksheet.getColumn(3 + index).width = Math.max(18, Math.ceil(nameLength * 1.3));
     });
 
     // Process each referrer
