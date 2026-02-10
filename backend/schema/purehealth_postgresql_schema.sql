@@ -117,6 +117,7 @@ CREATE TABLE Transactions (
   totalBalanceAmount DECIMAL(10, 2) DEFAULT 0.00,
   status VARCHAR(255) NOT NULL DEFAULT 'active',
   userId INTEGER NOT NULL,
+  referralFeePercentage DECIMAL(5, 2) NOT NULL DEFAULT 20.00,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (referrerId) REFERENCES Referrers(referrerId) ON DELETE SET NULL,
@@ -154,6 +155,8 @@ CREATE TABLE DepartmentRevenues (
   testDetailId VARCHAR(5) NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
   revenueDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(255) NOT NULL DEFAULT 'active',
+  metadata JSONB DEFAULT '{}',
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (departmentId) REFERENCES Department(departmentId) ON DELETE RESTRICT,
@@ -195,7 +198,7 @@ CREATE TABLE ExpenseItems (
   categoryId INTEGER,
   purpose VARCHAR(255) NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
-  status VARCHAR(50) CHECK (status IN ('pending','paid','refunded')) DEFAULT 'pending',
+  status VARCHAR(50) CHECK (status IN ('pending','paid','reimbursed','cancelled')) DEFAULT 'pending',
   createdAt TIMESTAMP NOT NULL,
   updatedAt TIMESTAMP NOT NULL,
   FOREIGN KEY (expenseId) REFERENCES Expenses(expenseId) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -214,4 +217,15 @@ CREATE TABLE CollectibleIncome (
   dateConducted TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   createdAt TIMESTAMP NOT NULL,
   updatedAt TIMESTAMP NOT NULL
+);
+
+CREATE TABLE CollectibleIncomeItems (
+  itemId SERIAL PRIMARY KEY,
+  companyId INTEGER NOT NULL,
+  testName VARCHAR(255) NOT NULL,
+  unitPrice DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  createdAt TIMESTAMP NOT NULL,
+  updatedAt TIMESTAMP NOT NULL,
+  FOREIGN KEY (companyId) REFERENCES CollectibleIncome(companyId) ON DELETE CASCADE
 );

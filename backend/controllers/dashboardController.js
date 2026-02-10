@@ -240,19 +240,19 @@ const dashboardController = {
         raw: true
       });
 
-      // Create maps for quick lookup
+      // Create maps for quick lookup (use Number keys since EXTRACT returns numeric in PostgreSQL)
       const transactionMap = new Map();
       const collectibleMap = new Map();
 
       dailyData.forEach(item => {
-        transactionMap.set(item.day, {
+        transactionMap.set(Number(item.day), {
           amount: parseFloat(item.totalAmount) || 0,
           dayName: item.dayName
         });
       });
 
       dailyCollectibleData.forEach(item => {
-        collectibleMap.set(item.day, {
+        collectibleMap.set(Number(item.day), {
           amount: parseFloat(item.totalCollectible) || 0,
           dayName: item.dayName
         });
