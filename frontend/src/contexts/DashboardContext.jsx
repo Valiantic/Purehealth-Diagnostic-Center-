@@ -8,12 +8,14 @@ const initialState = {
   netProfit: 0,
   transactionCount: 0,
   transactionComparison: null,
-  
+  referralFeePercentage: '12',
+  rebateExpenseTotal: 0,
+
   // Previous month data for comparison
   previousMonthRevenue: 0,
   previousMonthExpenses: 0,
   previousNetProfit: 0,
-  
+
   // Comparison indicators
   revenueComparison: {
     direction: 'neutral', // 'up', 'down', 'neutral'
@@ -27,12 +29,12 @@ const initialState = {
     direction: 'neutral',
     percentage: 0
   },
-  
+
   // Chart data
   dailyIncomeData: [],
   expensesByDepartment: [],
   monthlyProfitData: [],
-  
+
   // Loading states
   loading: {
     monthlyData: true,
@@ -40,7 +42,7 @@ const initialState = {
     expensesByDepartment: true,
     monthlyProfit: true
   },
-  
+
   // Error states
   errors: {
     monthlyData: null,
@@ -48,7 +50,7 @@ const initialState = {
     expensesByDepartment: null,
     monthlyProfit: null
   },
-  
+
   // Current period
   currentMonth: new Date().getMonth() + 1,
   currentYear: new Date().getFullYear()
@@ -66,7 +68,7 @@ const actionTypes = {
   SET_PERIOD: 'SET_PERIOD',
   CLEAR_ERRORS: 'CLEAR_ERRORS',
   UPDATE_COMPARISONS: 'UPDATE_COMPARISONS'
-  ,SET_TRANSACTION_DATA: 'SET_TRANSACTION_DATA'
+  , SET_TRANSACTION_DATA: 'SET_TRANSACTION_DATA'
 };
 
 // Helper function to calculate comparison
@@ -76,9 +78,9 @@ const calculateComparison = (current, previous) => {
     if (current < 0) return { direction: 'down', percentage: 100 };
     return { direction: 'neutral', percentage: 0 };
   }
-  
+
   const percentageChange = ((current - previous) / Math.abs(previous)) * 100;
-  
+
   if (percentageChange > 0) {
     return { direction: 'up', percentage: percentageChange };
   } else if (percentageChange < 0) {
@@ -99,7 +101,7 @@ const dashboardReducer = (state, action) => {
           [action.payload.key]: action.payload.value
         }
       };
-      
+
     case actionTypes.SET_ERROR:
       return {
         ...state,
@@ -112,7 +114,7 @@ const dashboardReducer = (state, action) => {
           [action.payload.key]: false
         }
       };
-      
+
     case actionTypes.SET_MONTHLY_DATA:
       return {
         ...state,
@@ -121,6 +123,8 @@ const dashboardReducer = (state, action) => {
         netProfit: action.payload.netProfit,
         transactionCount: typeof action.payload.transactionCount === 'number' ? action.payload.transactionCount : 0,
         transactionComparison: action.payload.transactionComparison || null,
+        referralFeePercentage: action.payload.referralFeePercentage || state.referralFeePercentage,
+        rebateExpenseTotal: typeof action.payload.rebateExpenseTotal === 'number' ? action.payload.rebateExpenseTotal : 0,
         loading: {
           ...state.loading,
           monthlyData: false
@@ -136,7 +140,7 @@ const dashboardReducer = (state, action) => {
         transactionCount: typeof action.payload.transactionCount === 'number' ? action.payload.transactionCount : 0,
         transactionComparison: action.payload.transactionComparison || null
       };
-      
+
     case actionTypes.SET_PREVIOUS_MONTH_DATA:
       return {
         ...state,
@@ -144,7 +148,7 @@ const dashboardReducer = (state, action) => {
         previousMonthExpenses: action.payload.monthlyExpenses,
         previousNetProfit: action.payload.netProfit
       };
-      
+
     case actionTypes.UPDATE_COMPARISONS:
       return {
         ...state,
@@ -152,7 +156,7 @@ const dashboardReducer = (state, action) => {
         expensesComparison: calculateComparison(state.monthlyExpenses, state.previousMonthExpenses),
         netProfitComparison: calculateComparison(state.netProfit, state.previousNetProfit)
       };
-      
+
     case actionTypes.SET_DAILY_INCOME_DATA:
       return {
         ...state,
@@ -166,7 +170,7 @@ const dashboardReducer = (state, action) => {
           dailyIncome: null
         }
       };
-      
+
     case actionTypes.SET_EXPENSES_BY_DEPARTMENT:
       return {
         ...state,
@@ -180,7 +184,7 @@ const dashboardReducer = (state, action) => {
           expensesByDepartment: null
         }
       };
-      
+
     case actionTypes.SET_MONTHLY_PROFIT_DATA:
       return {
         ...state,
@@ -194,14 +198,14 @@ const dashboardReducer = (state, action) => {
           monthlyProfit: null
         }
       };
-      
+
     case actionTypes.SET_PERIOD:
       return {
         ...state,
         currentMonth: action.payload.month,
         currentYear: action.payload.year
       };
-      
+
     case actionTypes.CLEAR_ERRORS:
       return {
         ...state,
@@ -212,7 +216,7 @@ const dashboardReducer = (state, action) => {
           monthlyProfit: null
         }
       };
-      
+
     default:
       return state;
   }
@@ -228,52 +232,52 @@ export const DashboardProvider = ({ children }) => {
   const value = {
     // State
     ...state,
-    
+
     // Actions
     setLoading: (key, value) => dispatch({
       type: actionTypes.SET_LOADING,
       payload: { key, value }
     }),
-    
+
     setError: (key, error) => dispatch({
       type: actionTypes.SET_ERROR,
       payload: { key, error }
     }),
-    
+
     setMonthlyData: (data) => dispatch({
       type: actionTypes.SET_MONTHLY_DATA,
       payload: data
     }),
-    
+
     setPreviousMonthData: (data) => dispatch({
       type: actionTypes.SET_PREVIOUS_MONTH_DATA,
       payload: data
     }),
-    
+
     updateComparisons: () => dispatch({
       type: actionTypes.UPDATE_COMPARISONS
     }),
-    
+
     setDailyIncomeData: (data) => dispatch({
       type: actionTypes.SET_DAILY_INCOME_DATA,
       payload: data
     }),
-    
+
     setExpensesByDepartment: (data) => dispatch({
       type: actionTypes.SET_EXPENSES_BY_DEPARTMENT,
       payload: data
     }),
-    
+
     setMonthlyProfitData: (data) => dispatch({
       type: actionTypes.SET_MONTHLY_PROFIT_DATA,
       payload: data
     }),
-    
+
     setPeriod: (month, year) => dispatch({
       type: actionTypes.SET_PERIOD,
       payload: { month, year }
     }),
-    
+
     clearErrors: () => dispatch({
       type: actionTypes.CLEAR_ERRORS
     })
