@@ -23,14 +23,15 @@ exports.getMonthlyExpenses = async (req, res) => {
       });
     }
 
-    // Calculate start and end dates for the given month
-    const startDate = new Date(yearInt, monthInt - 1, 1);
-    const endDate = new Date(yearInt, monthInt, 0);
-    endDate.setHours(23, 59, 59, 999);
+    // Use string dates for DATEONLY column to avoid timezone conversion issues
+    // new Date() objects get converted to UTC by Sequelize, shifting dates in UTC+8
+    const lastDay = new Date(yearInt, monthInt, 0).getDate();
+    const startDateStr = `${yearInt}-${String(monthInt).padStart(2, '0')}-01`;
+    const endDateStr = `${yearInt}-${String(monthInt).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const whereClause = {
       date: {
-        [Op.between]: [startDate, endDate]
+        [Op.between]: [startDateStr, endDateStr]
       }
     };
 
@@ -164,14 +165,14 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
     const monthInt = parseInt(month);
     const yearInt = parseInt(year);
 
-    // Calculate start and end dates for the given month
-    const startDate = new Date(yearInt, monthInt - 1, 1);
-    const endDate = new Date(yearInt, monthInt, 0);
-    endDate.setHours(23, 59, 59, 999);
+    // Use string dates for DATEONLY column to avoid timezone conversion issues
+    const lastDay = new Date(yearInt, monthInt, 0).getDate();
+    const startDateStr = `${yearInt}-${String(monthInt).padStart(2, '0')}-01`;
+    const endDateStr = `${yearInt}-${String(monthInt).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const whereClause = {
       date: {
-        [Op.between]: [startDate, endDate]
+        [Op.between]: [startDateStr, endDateStr]
       }
     };
 

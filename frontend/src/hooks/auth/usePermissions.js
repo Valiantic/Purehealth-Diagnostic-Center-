@@ -21,7 +21,7 @@ const usePermissions = () => {
             setLoading(true);
             return;
         }
-        
+
         if (!user?.userId) {
             setPermissions([]);
             setRoleInfo(null);
@@ -37,28 +37,29 @@ const usePermissions = () => {
 
             if (response.data?.success) {
                 const apiPermissions = response.data.permissions || [];
-                
-                // If API returns empty permissions but user has a role, use fallback permissions
-                // This handles cases where RBAC tables are not fully set up
-                if (apiPermissions.length === 0) {
-                    const fallbackPermissions = getFallbackPermissions(user.role);
-                    setPermissions(fallbackPermissions);
-                    setRoleInfo({
-                        roleId: response.data.roleId,
-                        roleName: response.data.roleName || user.role,
-                        roleDisplayName: response.data.roleDisplayName || (user.role === 'admin' ? 'Administrator' : 'Receptionist')
-                    });
-                } else {
+                const hasRoleAssigned = !!response.data.roleId;
+
+                // If the user has a role assigned via RBAC, use the API permissions directly
+                // Even if empty - this means the role intentionally has no permissions
+                if (hasRoleAssigned) {
                     setPermissions(apiPermissions);
                     setRoleInfo({
                         roleId: response.data.roleId,
                         roleName: response.data.roleName,
                         roleDisplayName: response.data.roleDisplayName
                     });
+                } else {
+                    // User has no roleId (legacy user pre-RBAC) — use fallback permissions
+                    const fallbackPermissions = getFallbackPermissions(user.role);
+                    setPermissions(fallbackPermissions);
+                    setRoleInfo({
+                        roleId: null,
+                        roleName: user.role,
+                        roleDisplayName: user.role === 'admin' ? 'Administrator' : 'Receptionist'
+                    });
                 }
             } else {
-                // Fallback for users without roleId (legacy support)
-                // Admin gets all permissions, receptionist gets standard permissions
+                // API returned non-success — use fallback for backward compatibility
                 const fallbackPermissions = getFallbackPermissions(user.role);
                 setPermissions(fallbackPermissions);
                 setRoleInfo({
@@ -69,7 +70,7 @@ const usePermissions = () => {
             }
         } catch (err) {
             console.error('Error fetching permissions:', err);
-            // Fallback on error
+            // On network/API error, use fallback to prevent lockout
             const fallbackPermissions = getFallbackPermissions(user.role);
             setPermissions(fallbackPermissions);
             setRoleInfo({
