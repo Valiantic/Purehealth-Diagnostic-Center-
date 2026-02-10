@@ -39,9 +39,8 @@ const usePermissions = () => {
                 const apiPermissions = response.data.permissions || [];
                 const hasRoleAssigned = !!response.data.roleId;
 
-                // If the user has a role assigned via RBAC, use the API permissions directly
-                // Even if empty - this means the role intentionally has no permissions
-                if (hasRoleAssigned) {
+                if (hasRoleAssigned && apiPermissions.length > 0) {
+                    // User has a role with permissions configured via RBAC — use them
                     setPermissions(apiPermissions);
                     setRoleInfo({
                         roleId: response.data.roleId,
@@ -49,13 +48,17 @@ const usePermissions = () => {
                         roleDisplayName: response.data.roleDisplayName
                     });
                 } else {
-                    // User has no roleId (legacy user pre-RBAC) — use fallback permissions
-                    const fallbackPermissions = getFallbackPermissions(user.role);
+                    // Either no roleId (legacy user) or role has no permissions configured yet
+                    // Use fallback permissions to prevent lockout for new users
+                    const fallbackPermissions = getFallbackPermissions(
+                        response.data.roleName || user.role
+                    );
                     setPermissions(fallbackPermissions);
                     setRoleInfo({
-                        roleId: null,
-                        roleName: user.role,
-                        roleDisplayName: user.role === 'admin' ? 'Administrator' : 'Receptionist'
+                        roleId: response.data.roleId || null,
+                        roleName: response.data.roleName || user.role,
+                        roleDisplayName: response.data.roleDisplayName ||
+                            (user.role === 'admin' ? 'Administrator' : 'Receptionist')
                     });
                 }
             } else {

@@ -97,8 +97,17 @@ app.use(generalLimiter);
 app.options('*', cors());
 
 // Routes
-app.use('/api/users', authLimiter, userRoutes);
-app.use('/api/webauthn', authLimiter, webauthnRoutes);
+// Auth-specific routes with strict rate limiting (registration, login, webauthn challenge/verify)
+// Only apply authLimiter to actual authentication endpoints, not user profile or passkey management
+app.use('/api/users/register', authLimiter);
+app.use('/api/users/find', authLimiter);
+app.use('/api/users/verify-admin', authLimiter);
+app.use('/api/webauthn/registration', authLimiter);
+app.use('/api/webauthn/authentication', authLimiter);
+
+// All user and webauthn routes (general rate limiting already applied globally)
+app.use('/api/users', userRoutes);
+app.use('/api/webauthn', webauthnRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/tests', testRoutes);
