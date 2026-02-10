@@ -107,18 +107,6 @@ const getExpenses = async (req, res) => {
       whereClause.departmentId = departmentId;
     }
 
-<<<<<<< Updated upstream
-    // Filter by exact date (DATEONLY column) — used by Expenses.jsx
-    if (date) {
-      whereClause.date = date; // DATEONLY match (YYYY-MM-DD)
-    }
-    // Filter by month and year using the date (DATEONLY) column
-    else if (month && year) {
-      const monthInt = parseInt(month);
-      const yearInt = parseInt(year);
-      const monthStart = new Date(yearInt, monthInt - 1, 1).toISOString().split('T')[0];
-      const monthEnd = new Date(yearInt, monthInt, 0).toISOString().split('T')[0];
-=======
     // When `date` is passed (e.g. '2026-02-10'), return all expenses for that month
     // The frontend Expenses page passes a date and then filters by month client-side
     if (date) {
@@ -128,14 +116,10 @@ const getExpenses = async (req, res) => {
       const lastDay = new Date(y, m, 0).getDate();
       const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
       const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
->>>>>>> Stashed changes
       whereClause.date = {
         [Op.between]: [monthStart, monthEnd]
       };
     }
-<<<<<<< Updated upstream
-    // Add date range filter if provided
-=======
     // Filter by explicit month and year
     else if (month && year) {
       const monthInt = parseInt(month);
@@ -148,7 +132,6 @@ const getExpenses = async (req, res) => {
       };
     }
     // Add date range filter if provided (string dates for DATEONLY safety)
->>>>>>> Stashed changes
     else if (startDate && endDate) {
       whereClause.date = {
         [Op.between]: [startDate, endDate]
