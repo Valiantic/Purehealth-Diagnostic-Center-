@@ -26,7 +26,9 @@ const useDashboardData = () => {
     expensesComparison,
     netProfitComparison,
     transactionCount,
-    transactionComparison
+    transactionComparison,
+    referralFeePercentage,
+    rebateExpenseTotal
   } = useDashboardContext();
 
   const abortControllerRef = useRef(null);
@@ -38,17 +40,17 @@ const useDashboardData = () => {
   const fetchMonthlyData = useCallback(async () => {
     try {
       setLoading('monthlyData', true);
-      
+
       // Fetch current month data
       const response = await dashboardAPI.getMonthlyData(currentMonth, currentYear);
-      
+
       if (response.data.success) {
         setMonthlyData(response.data.data);
-        
+
         // Fetch previous month data for comparison
         const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
         const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-        
+
         try {
           const previousResponse = await dashboardAPI.getMonthlyData(previousMonth, previousYear);
           if (previousResponse.data.success) {
@@ -76,7 +78,7 @@ const useDashboardData = () => {
     try {
       setLoading('dailyIncome', true);
       const response = await dashboardAPI.getDailyIncome(currentMonth, currentYear);
-      
+
       if (response.data.success) {
         setDailyIncomeData(response.data.data);
       } else {
@@ -95,7 +97,7 @@ const useDashboardData = () => {
     try {
       setLoading('expensesByDepartment', true);
       const response = await dashboardAPI.getExpensesByDepartment(currentMonth, currentYear);
-            
+
       if (response.data.success) {
         setExpensesByDepartment(response.data.data);
       } else {
@@ -114,20 +116,20 @@ const useDashboardData = () => {
     try {
       setLoading('monthlyProfit', true);
       const previousYear = currentYear - 1;
-      
+
       // Fetch both years in parallel
       const [currentResponse, previousResponse] = await Promise.all([
         dashboardAPI.getMonthlyProfit(currentYear),
         dashboardAPI.getMonthlyProfit(previousYear)
       ]);
-      
+
       if (currentResponse.data.success) {
         // Tag each month's data with its year and combine
         const previousData = previousResponse.data.success
           ? previousResponse.data.data.map(m => ({ ...m, year: previousYear }))
           : [];
         const currentData = currentResponse.data.data.map(m => ({ ...m, year: currentYear }));
-        
+
         // Combined: previous year months first, then current year
         setMonthlyProfitData({
           currentYear: currentYear,
@@ -151,22 +153,22 @@ const useDashboardData = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     // Create new abort controller
     abortControllerRef.current = new AbortController();
 
     try {
       await fetchMonthlyData();
       await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
-      
+
       await fetchDailyIncomeData();
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       await fetchExpensesByDepartment();
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       await fetchMonthlyProfitData();
-      
+
     } catch (error) {
       if (error.name !== 'CanceledError') {
         console.error('Error fetching dashboard data:', error);
@@ -188,7 +190,7 @@ const useDashboardData = () => {
           fetchMonthlyData();
           break;
         case 'dailyIncome':
-          fetchDailyIncomeData();``
+          fetchDailyIncomeData(); ``
           break;
         case 'expensesByDepartment':
           fetchExpensesByDepartment();
@@ -207,9 +209,9 @@ const useDashboardData = () => {
   // Initial data fetch and period change handling with debounce
   useEffect(() => {
     const lastFetched = lastFetchedPeriodRef.current;
-    const shouldFetch = isInitialLoadRef.current || 
-                       lastFetched.month !== currentMonth || 
-                       lastFetched.year !== currentYear;
+    const shouldFetch = isInitialLoadRef.current ||
+      lastFetched.month !== currentMonth ||
+      lastFetched.year !== currentYear;
 
     // Clear any existing timeout
     if (refreshTimeoutRef.current) {
@@ -253,22 +255,24 @@ const useDashboardData = () => {
     monthlyProfitData,
     transactionCount,
     transactionComparison,
-    
+    referralFeePercentage,
+    rebateExpenseTotal,
+
     // Comparison data
     revenueComparison,
     expensesComparison,
     netProfitComparison,
-    
+
     // States
     loading,
     errors,
     isLoading,
     hasErrors,
-    
+
     // Actions
     refreshData,
     fetchAllData,
-    
+
     // Period
     currentMonth,
     currentYear

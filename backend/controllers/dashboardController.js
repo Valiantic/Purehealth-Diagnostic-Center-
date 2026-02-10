@@ -58,7 +58,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded', 'cancelled']
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
           }
         }
       });
@@ -124,6 +124,38 @@ const dashboardController = {
       const totalMonthlyExpenses = parseFloat(monthlyExpenses || 0);
       const netProfit = totalRevenue - totalMonthlyExpenses;
 
+      // Get referral fee percentage from settings for dashboard display
+      const referralFeePercentage = await RebateService.getReferralFeePercentageDisplay();
+
+      // Get rebate expense total for this month (referral fee deductions)
+      const rebateExpenseTotal = await ExpenseItem.sum('amount', {
+        include: [
+          {
+            model: Expense,
+            where: {
+              date: {
+                [Op.and]: [
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`MONTH FROM "Expense"."date"`)), month),
+                  sequelize.where(sequelize.fn('EXTRACT', sequelize.literal(`YEAR FROM "Expense"."date"`)), year)
+                ]
+              },
+              firstName: 'Pure',
+              lastName: 'Health',
+              departmentId: null
+            },
+            attributes: []
+          }
+        ],
+        where: {
+          status: {
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
+          },
+          purpose: {
+            [Op.like]: 'Referrer Rebate - %'
+          }
+        }
+      });
+
       res.json({
         success: true,
         data: {
@@ -134,6 +166,8 @@ const dashboardController = {
           netProfit: netProfit,
           transactionCount,
           transactionComparison,
+          referralFeePercentage: referralFeePercentage,
+          rebateExpenseTotal: parseFloat(rebateExpenseTotal || 0),
           month: month,
           year: year
         }
@@ -303,7 +337,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded', 'cancelled']
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
           }
         }
       });
@@ -343,7 +377,7 @@ const dashboardController = {
         ],
         where: {
           status: {
-            [Op.notIn]: ['paid', 'refunded', 'cancelled']
+            [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
           }
         },
         group: [
@@ -459,7 +493,7 @@ const dashboardController = {
           ],
           where: {
             status: {
-              [Op.notIn]: ['paid', 'refunded', 'cancelled']
+              [Op.notIn]: ['paid', 'reimbursed', 'cancelled']
             }
           }
         });

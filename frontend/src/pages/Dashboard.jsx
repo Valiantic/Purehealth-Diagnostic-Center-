@@ -48,6 +48,8 @@ const DashboardContent = () => {
     netProfitComparison,
     transactionCount,
     transactionComparison,
+    referralFeePercentage,
+    rebateExpenseTotal,
   } = useDashboardData(selectedDate);
 
   // Handle date change
@@ -399,6 +401,12 @@ const DashboardContent = () => {
                       <span className="text-gray-400">--</span>
                     )}
                   </div>
+                  {!loading.monthlyData && rebateExpenseTotal > 0 && (
+                    <div className="flex items-center text-xs text-amber-600 mt-1" title={`Referral rebates are calculated at ${referralFeePercentage}% of department totals for referred patients`}>
+                      <span className="font-medium">Includes referral fees: {formatCurrency(rebateExpenseTotal)}</span>
+                      <span className="ml-1 text-gray-400">({referralFeePercentage}%)</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -103,11 +103,7 @@ exports.getMonthlyExpenses = async (req, res) => {
 
       let expenseTotal = 0;
       expense.ExpenseItems.forEach(item => {
-<<<<<<< Updated upstream
-        if (item.status !== 'refunded' && item.status !== 'paid' && item.status !== 'cancelled') {
-=======
-        if (item.status !== 'reimbursed' && item.status !== 'paid') {
->>>>>>> Stashed changes
+        if (item.status !== 'reimbursed' && item.status !== 'paid' && item.status !== 'cancelled') {
           const itemAmount = parseFloat(item.amount || 0);
           expenseTotal += itemAmount;
 
@@ -196,11 +192,7 @@ exports.getMonthlyExpensesSummary = async (req, res) => {
           model: ExpenseItem,
           where: {
             status: {
-<<<<<<< Updated upstream
-              [Op.notIn]: ['refunded', 'paid', 'cancelled']
-=======
-              [Op.notIn]: ['reimbursed', 'paid']
->>>>>>> Stashed changes
+              [Op.notIn]: ['reimbursed', 'paid', 'cancelled']
             }
           },
           required: false,
