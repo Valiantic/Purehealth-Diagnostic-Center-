@@ -42,9 +42,9 @@ function App() {
           <Route path="manage-expenses" element={<ProtectedRoute component={Expenses} requiredPermission="expenses.view" />} />
           <Route path="add-expenses" element={<ProtectedRoute component={AddExpenses} requiredPermission="expenses.create" />} />
           <Route path="referrals" element={<ProtectedRoute component={Referrals} requiredPermission="referrals.view" />} />
-          <Route path="monthly-income" element={<ProtectedRoute component={MonthlyIncome} />} />
-          <Route path="monthly-expenses" element={<ProtectedRoute component={MonthlyExpenses} />} />
-          
+          <Route path="monthly-income" element={<ProtectedRoute component={MonthlyIncome} requiredPermission="dashboard.view" />} />
+          <Route path="monthly-expenses" element={<ProtectedRoute component={MonthlyExpenses} requiredPermission="expenses.view" />} />
+
           {/* Settings and Account Management */}
           <Route path="settings" element={<ProtectedRoute component={Settings} />} />
           <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} requiredPermission="accounts.manage" />} />
