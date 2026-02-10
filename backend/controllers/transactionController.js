@@ -153,6 +153,8 @@ exports.createTransaction = async (req, res) => {
 
     while (retryCount < maxRetries) {
       try {
+        // Use SAVEPOINT so duplicate key errors don't abort the entire PostgreSQL transaction
+        await sequelize.query('SAVEPOINT create_transaction_savepoint', { transaction: t });
         transaction = await Transaction.create({
           mcNo: generatedMcNo,
           firstName,
@@ -173,16 +175,20 @@ exports.createTransaction = async (req, res) => {
           referralFeePercentage: referralFeePercentage
         }, { transaction: t });
 
+        await sequelize.query('RELEASE SAVEPOINT create_transaction_savepoint', { transaction: t });
         console.log(`Created transaction with ID: ${transaction.transactionId}`);
         break; // Success, exit retry loop
 
       } catch (createError) {
-        // Check if error is due to duplicate mcNo
+        // Check if error is due to duplicate mcNo or transactionId
         if (createError.name === 'SequelizeUniqueConstraintError' ||
-          (createError.parent && createError.parent.code === 'ER_DUP_ENTRY')) {
+          (createError.parent && (createError.parent.code === 'ER_DUP_ENTRY' || createError.parent.code === '23505'))) {
+
+          // Rollback to savepoint so the transaction can continue
+          await sequelize.query('ROLLBACK TO SAVEPOINT create_transaction_savepoint', { transaction: t });
 
           retryCount++;
-          console.log(`Duplicate mcNo detected (${generatedMcNo}), retrying... (attempt ${retryCount}/${maxRetries})`);
+          console.log(`Duplicate key detected (${generatedMcNo}), retrying... (attempt ${retryCount}/${maxRetries})`);
 
           if (retryCount >= maxRetries) {
             throw new Error('Failed to generate unique MC number after multiple attempts');
@@ -201,7 +207,8 @@ exports.createTransaction = async (req, res) => {
           console.log(`Generated new mcNo: ${generatedMcNo}`);
 
         } else {
-          // Different error, rethrow
+          // Different error, rollback savepoint and rethrow
+          await sequelize.query('ROLLBACK TO SAVEPOINT create_transaction_savepoint', { transaction: t });
           throw createError;
         }
       }
@@ -231,7 +238,9 @@ exports.createTransaction = async (req, res) => {
         testDetails.push(testDetail);
 
         // Try to create department revenue record if possible
+        // Use SAVEPOINT so a failure here doesn't abort the entire PostgreSQL transaction
         try {
+          await sequelize.query('SAVEPOINT revenue_savepoint', { transaction: t });
           await DepartmentRevenue.create({
             departmentId: item.departmentId,
             transactionId: transaction.transactionId,
@@ -239,9 +248,11 @@ exports.createTransaction = async (req, res) => {
             amount: parseFloat(item.discountedPrice) || 0,
             revenueDate: new Date()
           }, { transaction: t });
+          await sequelize.query('RELEASE SAVEPOINT revenue_savepoint', { transaction: t });
         } catch (revenueError) {
           console.error('Error creating revenue record:', revenueError.message);
-          // Continue without failing the whole transaction
+          // Rollback to savepoint so the transaction can continue
+          await sequelize.query('ROLLBACK TO SAVEPOINT revenue_savepoint', { transaction: t });
         }
       } catch (itemError) {
         console.error(`Error creating test detail:`, itemError);
