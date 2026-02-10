@@ -57,3 +57,6 @@ SELECT setval('"ExpenseItems_expenseItemId_seq"', COALESCE((SELECT MAX("expenseI
 SELECT setval('"DepartmentRevenues_revenueId_seq"', COALESCE((SELECT MAX("revenueId") FROM "DepartmentRevenues"), 0) + 1, false);
 SELECT setval('"CollectibleIncome_companyId_seq"', COALESCE((SELECT MAX("companyId")  FROM "CollectibleIncome"), 0) + 1, false);
 SELECT setval('"ActivityLogs_logId_seq"',   COALESCE((SELECT MAX("logId")          FROM "ActivityLogs"), 0) + 1, false);
+SELECT setval('"ReferrerRebates_rebateId_seq"', COALESCE((SELECT MAX("rebateId")   FROM "ReferrerRebates"), 0) + 1, false);
+SELECT setval('"CollectibleIncomeItems_itemId_seq"', COALESCE((SELECT MAX("itemId") FROM "CollectibleIncomeItems"), 0) + 1, false);
+SELECT setval('"Authenticators_id_seq"',    COALESCE((SELECT MAX("id")             FROM "Authenticators"), 0) + 1, false);
