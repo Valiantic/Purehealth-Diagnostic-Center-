@@ -360,12 +360,12 @@ const dashboardController = {
       // Calculate total for percentages
       const total = expensesByDept.reduce((sum, item) => sum + parseFloat(item.totalAmount || 0), 0);
 
-      const chartData = expensesByDept.map(item => {
-
-        // Check if this expense item has a category (like rebates)
+      // Build display names and merge entries with the same name
+      // (e.g. two "Equipments" from different departments should be combined)
+      const mergedMap = {};
+      expensesByDept.forEach(item => {
         const categoryName = item['Category.name'] || item['Category->name'];
 
-        // Special handling for rebates - if category is "Rebates", use that as the display name
         let displayName;
         if (categoryName === 'Rebates') {
           displayName = 'Rebates';
@@ -379,12 +379,18 @@ const dashboardController = {
             'Other';
         }
 
-        return {
-          department: displayName,
-          amount: parseFloat(item.totalAmount || 0),
-          percentage: total > 0 ? parseFloat(((parseFloat(item.totalAmount || 0) / total) * 100).toFixed(2)) : 0
-        };
+        if (mergedMap[displayName]) {
+          mergedMap[displayName] += parseFloat(item.totalAmount || 0);
+        } else {
+          mergedMap[displayName] = parseFloat(item.totalAmount || 0);
+        }
       });
+
+      const chartData = Object.entries(mergedMap).map(([name, amount]) => ({
+        department: name,
+        amount,
+        percentage: total > 0 ? parseFloat(((amount / total) * 100).toFixed(2)) : 0
+      }));
 
       res.json({
         success: true,
