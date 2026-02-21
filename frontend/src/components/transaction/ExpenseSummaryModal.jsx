@@ -180,11 +180,11 @@ const ExpenseSummaryModal = ({
             <table className='w-full border-collapse text-sm'>
               <thead className="sticky top-0 bg-gray-100 border-b-2 border-gray-300">
                 <tr>
-                  <th className='text-left py-2 px-4 font-semibold text-gray-700'>Paid to</th>
-                  <th className='text-left py-2 px-4 font-semibold text-gray-700'>Purpose</th>
-                  <th className='text-left py-2 px-4 font-semibold text-gray-700'>Category</th>
-                  <th className='text-left py-2 px-4 font-semibold text-gray-700'>Status</th>
-                  <th className='text-right py-2 px-4 font-semibold text-gray-700'>Amount</th>
+                  <th className='text-left py-2 px-4 font-semibold text-gray-700 uppercase tracking-wide'>Paid to</th>
+                  <th className='text-left py-2 px-4 font-semibold text-gray-700 uppercase tracking-wide'>Purpose</th>
+                  <th className='text-left py-2 px-4 font-semibold text-gray-700 uppercase tracking-wide'>Category</th>
+                  <th className='text-center py-2 px-4 font-semibold text-gray-700 uppercase tracking-wide'>Status</th>
+                  <th className='text-right py-2 px-4 font-semibold text-gray-700 uppercase tracking-wide'>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -251,10 +251,10 @@ const ExpenseSummaryModal = ({
                           </select>
                         ) : (
                           <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${expense.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              expense.status === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
-                                expense.status === 'paid' ? 'bg-green-100 text-green-800' :
-                                  expense.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                    'bg-gray-100 text-gray-800'
+                            expense.status === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
+                              expense.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                expense.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
                             }`}>
                             {expense.status ? expense.status.charAt(0).toUpperCase() + expense.status.slice(1) : 'Pending'}
                           </span>

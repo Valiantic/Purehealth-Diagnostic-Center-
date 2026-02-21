@@ -3,19 +3,20 @@ import ExcelJS from 'exceljs';
 export const exportDepartmentManagementToExcel = async (departments, searchTerm, filterOption) => {
   try {
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Test Departments List Report');
 
     // Create title based on filters
     let titleText = 'Test Departments List Report';
     if (searchTerm && filterOption !== 'default') {
-      const filterText = filterOption === 'highest' ? 'Highest Tests' : 
-                        filterOption === 'lowest' ? 'Lowest Tests' : 'Default Order';
+      const filterText = filterOption === 'highest' ? 'Highest Tests' :
+        filterOption === 'lowest' ? 'Lowest Tests' : 'Default Order';
       titleText = `Test Departments List Report - Search: "${searchTerm}" - Filter: ${filterText}`;
     } else if (searchTerm) {
       titleText = `Test Departments List Report - Search: "${searchTerm}"`;
     } else if (filterOption !== 'default') {
-      const filterText = filterOption === 'highest' ? 'Highest Tests' : 
-                        filterOption === 'lowest' ? 'Lowest Tests' : 'Default Order';
+      const filterText = filterOption === 'highest' ? 'Highest Tests' :
+        filterOption === 'lowest' ? 'Lowest Tests' : 'Default Order';
       titleText = `Test Departments List Report - Filter: ${filterText}`;
     }
 
@@ -23,7 +24,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     worksheet.mergeCells(1, 1, 2, 4);
     const titleCell = worksheet.getCell(1, 1);
     titleCell.value = titleText;
-    titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.border = {
@@ -42,11 +43,11 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     // Add headers
     const headerRow = 3;
     const headers = ['Department Name', 'Test Quantity', 'Date Created', 'Status'];
-    
+
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(headerRow, index + 1);
       cell.value = header;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -73,7 +74,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = data;
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.font = { italic: true, color: { argb: 'FF6B7280' } };
+        cell.font = { name: 'Arial', italic: true, color: { argb: 'FF6B7280' } };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF166534' } },
           left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -93,22 +94,24 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
         rowData.forEach((data, index) => {
           const cell = worksheet.getCell(currentRow, index + 1);
           cell.value = data;
-          cell.alignment = { 
+          cell.alignment = {
             horizontal: index === 0 ? 'left' : 'center', // Left align department name
-            vertical: 'middle' 
+            vertical: 'middle'
           };
-          
+
           // Special formatting for status column
           if (index === 3) {
             if (dept.status === 'active') {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // Light green
-              cell.font = { color: { argb: 'FF166534' } }; // Green text
+              cell.font = { name: 'Arial', size: 11, color: { argb: 'FF166534' } };
+              // Green text
             } else {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFECACA' } }; // Light red
-              cell.font = { color: { argb: 'FFDC2626' } }; // Red text
+              cell.font = { name: 'Arial', size: 11, color: { argb: 'FFDC2626' } };
+              // Red text
             }
           }
-          
+
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF166534' } },
             left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -127,7 +130,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     worksheet.mergeCells(currentRow, 1, currentRow, 2);
     const summaryTitleCell = worksheet.getCell(currentRow, 1);
     summaryTitleCell.value = 'Summary';
-    summaryTitleCell.font = { bold: true, size: 12, color: { argb: 'FF166534' } };
+    summaryTitleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF166534' } };
     summaryTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
     currentRow += 1;
@@ -135,7 +138,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     // Total departments count
     const totalCell1 = worksheet.getCell(currentRow, 1);
     totalCell1.value = 'Total Departments:';
-    totalCell1.font = { bold: true };
+    totalCell1.font = { name: 'Arial', size: 11, bold: true };
     totalCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const totalCell2 = worksheet.getCell(currentRow, 2);
@@ -148,7 +151,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     const activeDepts = departments.filter(dept => dept.status === 'active').length;
     const activeCell1 = worksheet.getCell(currentRow, 1);
     activeCell1.value = 'Active Departments:';
-    activeCell1.font = { bold: true };
+    activeCell1.font = { name: 'Arial', size: 11, bold: true };
     activeCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const activeCell2 = worksheet.getCell(currentRow, 2);
@@ -161,7 +164,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     const archivedDepts = departments.filter(dept => dept.status !== 'active').length;
     const archivedCell1 = worksheet.getCell(currentRow, 1);
     archivedCell1.value = 'Archived Departments:';
-    archivedCell1.font = { bold: true };
+    archivedCell1.font = { name: 'Arial', size: 11, bold: true };
     archivedCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const archivedCell2 = worksheet.getCell(currentRow, 2);
@@ -174,7 +177,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     const totalTests = departments.reduce((sum, dept) => sum + (dept.testQuantity || 0), 0);
     const testsCell1 = worksheet.getCell(currentRow, 1);
     testsCell1.value = 'Total Tests:';
-    testsCell1.font = { bold: true };
+    testsCell1.font = { name: 'Arial', size: 11, bold: true };
     testsCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const testsCell2 = worksheet.getCell(currentRow, 2);
@@ -186,7 +189,7 @@ export const exportDepartmentManagementToExcel = async (departments, searchTerm,
     // Export timestamp
     const timestampCell1 = worksheet.getCell(currentRow, 1);
     timestampCell1.value = 'Exported on:';
-    timestampCell1.font = { bold: true };
+    timestampCell1.font = { name: 'Arial', size: 11, bold: true };
     timestampCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const timestampCell2 = worksheet.getCell(currentRow, 2);

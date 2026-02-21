@@ -563,23 +563,23 @@ const Referrals = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">OR#</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">OR#</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Client Name</th>
                         {renderableDepartments.length > 0 ? renderableDepartments.map(department => (
                           <th
                             key={`header-${department.departmentId}`}
-                            className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[100px]"
+                            className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[100px]"
                             title={`Department ID: ${department.departmentId}`}
                           >
                             {department.departmentName || 'Department'}
                           </th>
                         )) : (
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                             No Departments Found
                           </th>
                         )}
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -592,9 +592,9 @@ const Referrals = () => {
 
                             return (
                               <tr key={transaction.transactionId} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm text-gray-700">{transaction.mcNo}</td>
-                                <td className="px-4 py-3 text-sm text-gray-700">{formattedTransactionDate}</td>
-                                <td className="px-4 py-3 text-sm text-gray-700">
+                                <td className="px-4 py-3 text-sm text-center text-gray-700">{transaction.mcNo}</td>
+                                <td className="px-4 py-3 text-sm text-center text-gray-700">{formattedTransactionDate}</td>
+                                <td className="px-4 py-3 text-sm text-left text-gray-700">
                                   {transaction.firstName} {transaction.lastName}
                                 </td>
                                 {renderableDepartments.map(department => {
@@ -609,7 +609,7 @@ const Referrals = () => {
                                   return (
                                     <td
                                       key={`${transaction.transactionId}-${deptId}`}
-                                      className="px-4 py-3 text-sm text-center text-gray-700"
+                                      className="px-4 py-3 text-sm text-right text-gray-700"
                                     >
                                       {testsForDepartment.length > 0 ? (
                                         <span className="font-medium">
@@ -621,7 +621,7 @@ const Referrals = () => {
                                     </td>
                                   );
                                 })}
-                                <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900">
+                                <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
                                   {(() => {
                                     const testsForTransaction = transaction.TestDetails || [];
                                     const totalAmount = testsForTransaction.reduce(
@@ -662,13 +662,13 @@ const Referrals = () => {
                                 return (
                                   <td
                                     key={`total-${deptId}`}
-                                    className="px-4 py-3 text-sm text-center text-green-800"
+                                    className="px-4 py-3 text-sm text-right text-green-800"
                                   >
                                     {deptTotal > 0 ? deptTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                   </td>
                                 );
                               })}
-                              <td className="px-4 py-3 text-sm text-center text-green-800">
+                              <td className="px-4 py-3 text-sm text-right text-green-800">
                                 {Object.values(testDetailTotals).reduce((sum, amt) => sum + parseFloat(amt || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </>
@@ -705,13 +705,13 @@ const Referrals = () => {
                                 return (
                                   <td
                                     key={`rebate-${deptId}`}
-                                    className="px-4 py-3 text-sm text-center text-green-800"
+                                    className="px-4 py-3 text-sm text-right text-green-800"
                                   >
                                     {deptRebate > 0 ? deptRebate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                   </td>
                                 );
                               })}
-                              <td className="px-4 py-3 text-sm text-center text-green-800 font-bold">
+                              <td className="px-4 py-3 text-sm text-right text-green-800 font-bold">
                                 {(() => {
                                   const totalRebate = (allReferrerTransactions[referrer.referrerId] || []).reduce((sum, trans) => {
                                     const tests = trans.TestDetails || [];

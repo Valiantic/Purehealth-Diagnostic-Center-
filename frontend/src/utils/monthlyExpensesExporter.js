@@ -3,13 +3,14 @@ import ExcelJS from 'exceljs';
 export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData, currentMonth, getExpenseItemsByDepartment, getExpenseItemsWithNoDepartment, calculateDepartmentTotal, calculateOtherExpensesTotal, getRebateExpenseItems, calculateRebateExpensesTotal) => {
   try {
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Monthly Expenses Report');
 
     // Add title - merge across 4 columns (A to D) and occupy row 2 space
     worksheet.mergeCells(1, 1, 2, 4);
     const titleCell = worksheet.getCell(1, 1);
     titleCell.value = `Monthly Expenses Report - ${currentMonth}`;
-    titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.border = {
@@ -39,7 +40,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
     departmentsList.forEach((department) => {
       const departmentItems = getExpenseItemsByDepartment(department.departmentId || department.id);
       const departmentTotal = calculateDepartmentTotal(department.departmentId || department.id);
-      
+
       // Only process department if it has expenses
       if (departmentItems.length === 0) {
         return;
@@ -49,7 +50,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       worksheet.mergeCells(currentRow, 1, currentRow, 4);
       const deptTitleCell = worksheet.getCell(currentRow, 1);
       deptTitleCell.value = `${department.departmentName} Department`;
-      deptTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      deptTitleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
       deptTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
       deptTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       deptTitleCell.border = {
@@ -65,7 +66,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       headers.forEach((header, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = header;
-        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -81,8 +82,8 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       departmentItems.forEach((item) => {
         const rowData = [
           formatDate(item.date),
-          item.paidTo || '-',
-          item.categoryName || '-',
+          item.paidTo || 'N/A',
+          item.categoryName || 'N/A',
           formatCurrency(item.amount)
         ];
 
@@ -105,7 +106,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       totalData.forEach((data, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = data;
-        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -126,7 +127,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       worksheet.mergeCells(currentRow, 1, currentRow, 4);
       const rebateTitleCell = worksheet.getCell(currentRow, 1);
       rebateTitleCell.value = 'Rebates';
-      rebateTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      rebateTitleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
       rebateTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
       rebateTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       rebateTitleCell.border = {
@@ -142,7 +143,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       headers.forEach((header, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = header;
-        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -158,8 +159,8 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       rebateExpensesItems.forEach((item) => {
         const rowData = [
           formatDate(item.date),
-          item.paidTo || '-',
-          item.categoryName || '-',
+          item.paidTo || 'N/A',
+          item.categoryName || 'N/A',
           formatCurrency(item.amount)
         ];
 
@@ -183,7 +184,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       totalData.forEach((data, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = data;
-        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -204,7 +205,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       worksheet.mergeCells(currentRow, 1, currentRow, 4);
       const otherTitleCell = worksheet.getCell(currentRow, 1);
       otherTitleCell.value = 'Other Expenses (No Department)';
-      otherTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      otherTitleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
       otherTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6B7280' } }; // Gray color
       otherTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       otherTitleCell.border = {
@@ -220,7 +221,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       headers.forEach((header, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = header;
-        cell.font = { bold: true, color: { argb: 'FF6B7280' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF6B7280' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; // Light gray
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -236,8 +237,8 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       otherExpensesItems.forEach((item) => {
         const rowData = [
           formatDate(item.date),
-          item.paidTo || '-',
-          item.categoryName || '-',
+          item.paidTo || 'N/A',
+          item.categoryName || 'N/A',
           formatCurrency(item.amount)
         ];
 
@@ -261,7 +262,7 @@ export const exportMonthlyExpensesToExcel = async (departmentsList, monthlyData,
       totalData.forEach((data, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = data;
-        cell.font = { bold: true, color: { argb: 'FF6B7280' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF6B7280' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {

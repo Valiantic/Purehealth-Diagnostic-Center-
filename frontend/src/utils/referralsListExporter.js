@@ -1,12 +1,13 @@
 import ExcelJS from 'exceljs';
 
 export const exportReferralsListToExcel = async (
-  referrers, 
-  searchQuery = '', 
+  referrers,
+  searchQuery = '',
   sortDirection = 'asc'
 ) => {
   try {
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Referrals List Report');
 
     // Set column widths
@@ -34,14 +35,15 @@ export const exportReferralsListToExcel = async (
     worksheet.mergeCells('A1:F2');
     const titleCell = worksheet.getCell('A1');
     titleCell.value = titleText;
-    titleCell.font = { 
-      bold: true, 
-      size: 16, 
-      color: { argb: 'FF166534' } 
+    titleCell.font = {
+      name: 'Arial',
+      bold: true,
+      size: 16,
+      color: { argb: 'FF166534' }
     };
-    titleCell.alignment = { 
-      horizontal: 'center', 
-      vertical: 'middle' 
+    titleCell.alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
     };
     titleCell.fill = {
       type: 'pattern',
@@ -60,7 +62,7 @@ export const exportReferralsListToExcel = async (
     // Headers
     const headers = [
       'Doctor Name',
-      'Clinic Name', 
+      'Clinic Name',
       'Address',
       'Birth Date',
       'Date Created',
@@ -70,13 +72,15 @@ export const exportReferralsListToExcel = async (
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = header;
-      cell.font = { 
-        bold: true, 
-        color: { argb: 'FFFFFFFF' } 
+      cell.font = {
+        name: 'Arial',
+        size: 11,
+        bold: true,
+        color: { argb: 'FFFFFFFF' }
       };
-      cell.alignment = { 
-        horizontal: 'center', 
-        vertical: 'middle' 
+      cell.alignment = {
+        horizontal: 'center',
+        vertical: 'middle'
       };
       cell.fill = {
         type: 'pattern',
@@ -109,7 +113,7 @@ export const exportReferralsListToExcel = async (
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = data;
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.font = { italic: true, color: { argb: 'FF6B7280' } };
+        cell.font = { name: 'Arial', italic: true, color: { argb: 'FF6B7280' } };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF166534' } },
           left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -131,25 +135,25 @@ export const exportReferralsListToExcel = async (
         rowData.forEach((data, index) => {
           const cell = worksheet.getCell(currentRow, index + 1);
           cell.value = data;
-          
+
           // Alignment
           if (index === 0) { // Doctor Name - left aligned
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
           } else { // Others - center aligned
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           }
-          
+
           // Status styling
           if (index === 5) { // Status column
             if (referrer.status?.toLowerCase() === 'active') {
-              cell.font = { color: { argb: 'FF166534' }, bold: true };
+              cell.font = { name: 'Arial', size: 11, color: { argb: 'FF166534' }, bold: true };
               cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
                 fgColor: { argb: 'FFF0FDF4' }
               };
             } else {
-              cell.font = { color: { argb: 'FFDC2626' }, bold: true };
+              cell.font = { name: 'Arial', size: 11, color: { argb: 'FFDC2626' }, bold: true };
               cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
@@ -157,7 +161,7 @@ export const exportReferralsListToExcel = async (
               };
             }
           }
-          
+
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF166534' } },
             left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -177,7 +181,7 @@ export const exportReferralsListToExcel = async (
     worksheet.mergeCells(currentRow, 1, currentRow, 2);
     const summaryTitleCell = worksheet.getCell(currentRow, 1);
     summaryTitleCell.value = 'Summary';
-    summaryTitleCell.font = { bold: true, size: 12, color: { argb: 'FF166534' } };
+    summaryTitleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF166534' } };
     summaryTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
     currentRow += 1;
@@ -185,7 +189,7 @@ export const exportReferralsListToExcel = async (
     // Total referrers count
     const totalCell1 = worksheet.getCell(currentRow, 1);
     totalCell1.value = 'Total Referrers:';
-    totalCell1.font = { bold: true };
+    totalCell1.font = { name: 'Arial', size: 11, bold: true };
     totalCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const totalCell2 = worksheet.getCell(currentRow, 2);
@@ -198,7 +202,7 @@ export const exportReferralsListToExcel = async (
     const activeReferrers = referrers.filter(referrer => referrer.status?.toLowerCase() === 'active').length;
     const activeCell1 = worksheet.getCell(currentRow, 1);
     activeCell1.value = 'Active Referrers:';
-    activeCell1.font = { bold: true };
+    activeCell1.font = { name: 'Arial', size: 11, bold: true };
     activeCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const activeCell2 = worksheet.getCell(currentRow, 2);
@@ -211,7 +215,7 @@ export const exportReferralsListToExcel = async (
     const archivedReferrers = referrers.filter(referrer => referrer.status?.toLowerCase() !== 'active').length;
     const archivedCell1 = worksheet.getCell(currentRow, 1);
     archivedCell1.value = 'Archived Referrers:';
-    archivedCell1.font = { bold: true };
+    archivedCell1.font = { name: 'Arial', size: 11, bold: true };
     archivedCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const archivedCell2 = worksheet.getCell(currentRow, 2);
@@ -224,7 +228,7 @@ export const exportReferralsListToExcel = async (
     const referrersWithClinics = referrers.filter(referrer => referrer.clinicName && referrer.clinicName.trim() !== '').length;
     const clinicsCell1 = worksheet.getCell(currentRow, 1);
     clinicsCell1.value = 'Referrers with Clinics:';
-    clinicsCell1.font = { bold: true };
+    clinicsCell1.font = { name: 'Arial', size: 11, bold: true };
     clinicsCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const clinicsCell2 = worksheet.getCell(currentRow, 2);
@@ -236,7 +240,7 @@ export const exportReferralsListToExcel = async (
     // Export timestamp
     const timestampCell1 = worksheet.getCell(currentRow, 1);
     timestampCell1.value = 'Exported on:';
-    timestampCell1.font = { bold: true };
+    timestampCell1.font = { name: 'Arial', size: 11, bold: true };
     timestampCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const timestampCell2 = worksheet.getCell(currentRow, 2);
@@ -251,16 +255,16 @@ export const exportReferralsListToExcel = async (
       if (sortDirection !== 'asc') parts.push('sorted_ZA');
       filename += `_${parts.join('_')}`;
     }
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
     filename += `_${timestamp}.xlsx`;
 
     // Generate buffer and download
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     });
-    
+
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

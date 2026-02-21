@@ -8,6 +8,7 @@ export const exportExpenseToExcel = async (
   try {
     // Create a new workbook
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Expense Report');
 
     // Set worksheet properties
@@ -23,7 +24,7 @@ export const exportExpenseToExcel = async (
     const titleRow = worksheet.addRow(['']);
     const titleCell = titleRow.getCell(1);
     titleCell.value = 'PUREHEALTH DIAGNOSTIC CENTER';
-    titleCell.font = { bold: true, size: 18, color: { argb: '000000' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 18, color: { argb: '000000' } };
     titleCell.alignment = { horizontal: 'center' };
     titleCell.fill = {
       type: 'pattern',
@@ -36,7 +37,7 @@ export const exportExpenseToExcel = async (
     const dateRow = worksheet.addRow(['']);
     const dateCell = dateRow.getCell(1);
     dateCell.value = `Expense Report - ${selectedDate.toLocaleDateString()}`;
-    dateCell.font = { bold: true, size: 14, color: { argb: '000000' } };
+    dateCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: '000000' } };
     dateCell.alignment = { horizontal: 'center' };
     dateCell.fill = {
       type: 'pattern',
@@ -53,7 +54,7 @@ export const exportExpenseToExcel = async (
     for (let i = 0; i < headers.length; i++) {
       const cell = headerRow.getCell(i + 1);
       cell.value = headers[i];
-      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFF' } };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -65,14 +66,14 @@ export const exportExpenseToExcel = async (
 
     // Add expense data
     const activeExpenses = filteredExpenses.filter(expense => expense.status !== 'cancelled');
-    
+
     activeExpenses.forEach((expense) => {
       // Check if expense has multiple ExpenseItems
       if (expense.ExpenseItems && expense.ExpenseItems.length > 0) {
         // Export each expense item as a separate row
         expense.ExpenseItems.forEach((item) => {
           const rowData = new Array(headers.length).fill('');
-          
+
           // Map data according to correct header order: Payee Name, Purpose, Category, Department, Amount
           rowData[0] = `${expense.firstName || ''} ${expense.lastName || ''}`.trim() || 'N/A'; // Payee Name
           rowData[1] = item.purpose || 'N/A'; // Purpose
@@ -86,7 +87,7 @@ export const exportExpenseToExcel = async (
             dataRow.getCell(i + 1).value = rowData[i];
           }
           dataRow.commit();
-          
+
           // Format amount column (last column)
           if (typeof rowData[4] === 'number') {
             dataRow.getCell(5).numFmt = '#,##0.00';
@@ -95,7 +96,7 @@ export const exportExpenseToExcel = async (
       } else {
         // Single expense item or no items
         const rowData = new Array(headers.length).fill('');
-        
+
         // Map data according to correct header order: Payee Name, Purpose, Category, Department, Amount
         rowData[0] = `${expense.firstName || ''} ${expense.lastName || ''}`.trim() || 'N/A'; // Payee Name
         rowData[1] = expense.purpose || expense.description || 'N/A'; // Purpose
@@ -109,7 +110,7 @@ export const exportExpenseToExcel = async (
           dataRow.getCell(i + 1).value = rowData[i];
         }
         dataRow.commit();
-        
+
         // Format amount column (last column)
         if (typeof rowData[4] === 'number') {
           dataRow.getCell(5).numFmt = '#,##0.00';
@@ -129,7 +130,7 @@ export const exportExpenseToExcel = async (
       }
     });
     const dataEndRow = dataStartRow + totalDataRows;
-    
+
     // Add totals row
     const totalsRowData = new Array(headers.length).fill('');
     totalsRowData[0] = '';
@@ -143,20 +144,20 @@ export const exportExpenseToExcel = async (
     for (let i = 0; i < headers.length; i++) {
       const cell = totalsRow.getCell(i + 1);
       cell.value = totalsRowData[i];
-      cell.font = { bold: true };
+      cell.font = { name: 'Arial', size: 11, bold: true };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: 'DCF5DC' } // Light green
       };
-      
+
       // Format amount column (last column)
       if (i === 4 && typeof totalsRowData[i] === 'number') {
         cell.numFmt = '#,##0.00';
       }
     }
     totalsRow.commit();
-    
+
     const finalDataEndRow = dataEndRow + 1;
 
     // Set column widths to prevent overflow
@@ -173,7 +174,7 @@ export const exportExpenseToExcel = async (
       } else {
         width = 12; // Amount column
       }
-      
+
       worksheet.getColumn(i + 1).width = width;
     }
 
@@ -188,7 +189,7 @@ export const exportExpenseToExcel = async (
         cell.border = {};
       }
     }
-    
+
     // Add borders to title and date rows
     for (let row = 1; row <= 2; row++) {
       for (let col = 1; col <= lastCol; col++) {
@@ -201,7 +202,7 @@ export const exportExpenseToExcel = async (
         };
       }
     }
-    
+
     // Add borders to main data table
     for (let row = dataStartRow; row <= finalDataEndRow; row++) {
       for (let col = 1; col <= lastCol; col++) {

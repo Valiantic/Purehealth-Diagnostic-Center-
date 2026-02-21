@@ -12,6 +12,7 @@ export const exportIncomeToExcel = async (
   try {
     // Create a new workbook
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Income Report');
 
     // Set worksheet properties
@@ -31,7 +32,7 @@ export const exportIncomeToExcel = async (
     const titleRow = worksheet.addRow(['']);
     const titleCell = titleRow.getCell(1);
     titleCell.value = 'PUREHEALTH DIAGNOSTIC CENTER';
-    titleCell.font = { bold: true, size: 18, color: { argb: '000000' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 18, color: { argb: '000000' } };
     titleCell.alignment = { horizontal: 'center' };
     titleCell.fill = {
       type: 'pattern',
@@ -44,7 +45,7 @@ export const exportIncomeToExcel = async (
     const dateRow = worksheet.addRow(['']);
     const dateCell = dateRow.getCell(1);
     dateCell.value = `Income Report - ${selectedDate.toLocaleDateString()}`;
-    dateCell.font = { bold: true, size: 14, color: { argb: '000000' } };
+    dateCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: '000000' } };
     dateCell.alignment = { horizontal: 'center' };
     dateCell.fill = {
       type: 'pattern',
@@ -61,7 +62,7 @@ export const exportIncomeToExcel = async (
     for (let i = 0; i < headers.length; i++) {
       const cell = headerRow.getCell(i + 1);
       cell.value = headers[i];
-      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFF' } };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -146,7 +147,7 @@ export const exportIncomeToExcel = async (
     for (let i = 0; i < headers.length; i++) {
       const cell = totalsRow.getCell(i + 1);
       cell.value = totalsRowData[i];
-      cell.font = { bold: true };
+      cell.font = { name: 'Arial', size: 11, bold: true };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',

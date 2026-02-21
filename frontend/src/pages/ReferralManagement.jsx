@@ -17,23 +17,23 @@ const ReferralManagement = () => {
   const { user, isAuthenticating } = useAuth()
   const location = useLocation()
   const queryClient = useQueryClient()
-  
+
   // Use custom hook for referrer form management
   const {
     firstName, lastName, birthday, sex, clinicName, clinicAddress, contactNo,
     setFirstName, setLastName, setBirthday, setSex, setClinicName, setClinicAddress, setContactNo,
     resetForm, validateForm, getFormData, setFormData
   } = useReferrerForm();
-  
+
   // State for filtering and search
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortDirection, setSortDirection] = useState('asc'); 
-  
+  const [sortDirection, setSortDirection] = useState('asc');
+
   // State for modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedReferrer, setSelectedReferrer] = useState(null);
-  
+
   // State for kebab menu
   const [activeMenu, setActiveMenu] = useState(null);
 
@@ -55,7 +55,7 @@ const ReferralManagement = () => {
     queryKey: ['referrers', sortDirection, searchQuery],
     queryFn: async () => {
       if (searchQuery) {
-        const response = await referrerAPI.searchReferrers({ 
+        const response = await referrerAPI.searchReferrers({
           search: searchQuery,
           sort: sortDirection
         });
@@ -83,7 +83,7 @@ const ReferralManagement = () => {
 
   // Create referrer mutation
   const addReferrerMutation = useMutation({
-    mutationFn: (referrerData) => 
+    mutationFn: (referrerData) =>
       referrerAPI.createReferrer(referrerData, user.userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referrers'] });
@@ -97,14 +97,14 @@ const ReferralManagement = () => {
 
   // Update referrer mutation 
   const updateReferrerMutation = useMutation({
-    mutationFn: (data) => 
+    mutationFn: (data) =>
       referrerAPI.updateReferrer(data.id, data.referrerData, user.userId, data.actionType || 'UPDATE_REFERRER_DETAILS'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referrers'] });
-      
+
       // Show a single consistent toast message regardless of what was updated
       toast.success('Referrer updated successfully');
-      
+
       closeEditModal();
     },
     onError: (error) => {
@@ -139,13 +139,13 @@ const ReferralManagement = () => {
     if (!validateForm()) {
       return;
     }
-    
+
     // Get form data using hook utility
     const formData = getFormData();
-    
+
     // Format birthday as YYYY-MM-DD for API
     const formattedBirthday = formData.birthday ? formData.birthday : null;
-    
+
     addReferrerMutation.mutate({
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -159,10 +159,10 @@ const ReferralManagement = () => {
 
   // Open edit modal with selected referrer data
   const openEditModal = (referrer) => {
-   
-    const originalReferrer = {...referrer};
+
+    const originalReferrer = { ...referrer };
     setSelectedReferrer(originalReferrer);
-    
+
     // Set form field values using hook utility
     setFormData({
       firstName: referrer.firstName,
@@ -189,10 +189,10 @@ const ReferralManagement = () => {
     if (!validateForm()) {
       return;
     }
-    
+
     // Format birthday as YYYY-MM-DD for API
     const formattedBirthday = birthday ? birthday : null;
-    
+
     // Get original values for comparison
     const originalValues = {
       firstName: selectedReferrer.firstName || '',
@@ -204,14 +204,14 @@ const ReferralManagement = () => {
       contactNo: selectedReferrer.contactNo || '',
       status: (selectedReferrer.originalStatus || '').toLowerCase()
     };
-    
+
     // Get current form values using hook utility
     const currentValues = getFormData();
     currentValues.birthday = formattedBirthday;
     currentValues.status = (selectedReferrer.status || '').toLowerCase();
-    
+
     // Check if anything other than status has changed
-    const detailsChanged = 
+    const detailsChanged =
       currentValues.firstName !== originalValues.firstName ||
       currentValues.lastName !== originalValues.lastName ||
       currentValues.birthday !== originalValues.birthday ||
@@ -219,21 +219,21 @@ const ReferralManagement = () => {
       currentValues.clinicName !== originalValues.clinicName ||
       currentValues.clinicAddress !== originalValues.clinicAddress ||
       currentValues.contactNo !== originalValues.contactNo;
-    
+
     // Check if status has changed - use lowercase for comparison
     const statusChanged = originalValues.status !== currentValues.status;
-    
+
     // Determine the appropriate action type based on what changed
     let actionType = 'UPDATE_REFERRER_DETAILS';
-    
+
     if (statusChanged && !detailsChanged) {
       actionType = currentValues.status === 'active' ? 'ACTIVATE_REFERRER' : 'DEACTIVATE_REFERRER';
     } else if (statusChanged && detailsChanged) {
       actionType = 'UPDATE_REFERRER_ALL';
     }
-    
+
     const statusOnlyChanged = statusChanged && !detailsChanged;
-    
+
     updateReferrerMutation.mutate({
       id: selectedReferrer.referrerId,
       referrerData: {
@@ -245,14 +245,14 @@ const ReferralManagement = () => {
         clinicAddress: currentValues.clinicAddress,
         contactNo: currentValues.contactNo,
         status: currentValues.status,
-        statusOnly: statusOnlyChanged  
+        statusOnly: statusOnlyChanged
       },
-      actionType: actionType 
+      actionType: actionType
     });
   };
   const handleStatusChange = (e) => {
     const normalizedStatus = e.target.value.toLowerCase();
-    
+
     if (!selectedReferrer.originalStatus) {
       setSelectedReferrer({
         ...selectedReferrer,
@@ -265,7 +265,7 @@ const ReferralManagement = () => {
         status: normalizedStatus
       });
     }
-    
+
   };
 
   const toggleMenu = (e, id) => {
@@ -281,7 +281,7 @@ const ReferralManagement = () => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -301,9 +301,9 @@ const ReferralManagement = () => {
 
   const filterReferrers = (referrers, query) => {
     if (!query || query.trim() === '') return referrers;
-    
+
     const normalizedQuery = query.toLowerCase().trim();
-    
+
     return referrers.filter(referrer => {
       if (
         referrer.firstName?.toLowerCase().includes(normalizedQuery) ||
@@ -314,7 +314,7 @@ const ReferralManagement = () => {
       ) {
         return true;
       }
-      
+
       // Simple date search using toLocaleDateString - similar to Department Management
       if (referrer.birthday) {
         const formattedBirthday = new Date(referrer.birthday).toLocaleDateString();
@@ -322,18 +322,18 @@ const ReferralManagement = () => {
           return true;
         }
       }
-      
+
       if (referrer.createdAt) {
         const formattedCreatedAt = new Date(referrer.createdAt).toLocaleDateString();
         if (formattedCreatedAt.includes(normalizedQuery)) {
           return true;
         }
       }
-      
+
       // Numeric search for day/month/year components
       if (!isNaN(normalizedQuery)) {
         const numQuery = parseInt(normalizedQuery);
-        
+
         if (referrer.birthday) {
           const birthDate = new Date(referrer.birthday);
           if (
@@ -344,7 +344,7 @@ const ReferralManagement = () => {
             return true;
           }
         }
-        
+
         if (referrer.createdAt) {
           const createdDate = new Date(referrer.createdAt);
           if (
@@ -356,7 +356,7 @@ const ReferralManagement = () => {
           }
         }
       }
-      
+
       return false;
     });
   };
@@ -366,7 +366,7 @@ const ReferralManagement = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentReferrers = filteredReferrers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredReferrers.length / itemsPerPage);
-  
+
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const handleExportToExcel = async () => {
@@ -392,7 +392,7 @@ const ReferralManagement = () => {
   }
 
   const currentPath = location.pathname;
-  const activeTab = tabsConfig.find(tab => 
+  const activeTab = tabsConfig.find(tab =>
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Referrer';
 
@@ -406,17 +406,17 @@ const ReferralManagement = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm min-h-0 md:h-full">
           <TabNavigation tabsConfig={tabsConfig} />
           <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center p-2 mt-4 mb-4">
-            <button 
-              onClick={openAddModal} 
+            <button
+              onClick={openAddModal}
               className="bg-green-800 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded flex items-center hover:bg-green-600 text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start"
             >
               <PlusCircle className="mr-1 sm:mr-2" size={18} />
               Add New Referrer
             </button>
-            
+
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="relative">
-                <button 
+                <button
                   onClick={toggleSortDirection}
                   className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between hover:bg-green-50"
                 >
@@ -443,7 +443,7 @@ const ReferralManagement = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="p-2">
             <div className="bg-green-800 p-2 rounded-t">
               <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Doctors</h1>
@@ -453,13 +453,13 @@ const ReferralManagement = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-green-800 bg-green-100">
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Doctor Name</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Clinic Name</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Address</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Birth Date</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Date Created</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Doctor Name</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Clinic Name</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Address</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Birth Date</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Date Created</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Status</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Actions</th>
                     </tr>
                   </thead>
                   <tbody>{isLoading ? (
@@ -477,9 +477,9 @@ const ReferralManagement = () => {
                   ) : (
                     currentReferrers.map((referrer) => (
                       <tr key={referrer.referrerId} className="border-b border-green-200">
-                        <td className="p-1 pl-5 border-r border-green-200 text-left">{referrer.firstName} {referrer.lastName}</td>
-                        <td className="p-1 border-r border-green-200 text-center">{referrer.clinicName}</td>
-                        <td className="p-1 border-r border-green-200 text-center">{referrer.clinicAddress}</td>
+                        <td className="p-1 pl-5 border-r border-green-200 text-left">{(referrer.firstName || '') + ' ' + (referrer.lastName || '') || 'N/A'}</td>
+                        <td className="p-1 border-r border-green-200 text-left">{referrer.clinicName || 'N/A'}</td>
+                        <td className="p-1 border-r border-green-200 text-left">{referrer.clinicAddress || 'N/A'}</td>
                         <td className="p-1 border-r border-green-200 text-center">
                           {referrer.birthday ? new Date(referrer.birthday).toLocaleDateString() : 'N/A'}
                         </td>
@@ -487,28 +487,27 @@ const ReferralManagement = () => {
                           {referrer.createdAt ? new Date(referrer.createdAt).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="p-1 border-r border-green-200 text-center">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            referrer.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs ${referrer.status?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
                             {referrer.status?.toLowerCase() === 'active' ? 'Unarchived' : 'Archived'}
                           </span>
                         </td>
                         <td className="p-1 border-r border-green-200 text-center relative">
                           <div className="flex justify-center relative">
-                            <button 
-                              onClick={(e) => toggleMenu(e, referrer.referrerId)} 
+                            <button
+                              onClick={(e) => toggleMenu(e, referrer.referrerId)}
                               className="text-gray-500 hover:text-gray-700 focus:outline-none"
                             >
-                              <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
-                                   strokeLinecap="round" strokeLinejoin="round">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none"
+                                strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="1"></circle>
                                 <circle cx="12" cy="5" r="1"></circle>
                                 <circle cx="12" cy="19" r="1"></circle>
                               </svg>
                             </button>
-                            
+
                             {activeMenu === referrer.referrerId && (
-                              <div 
+                              <div
                                 ref={(el) => (dropdownRefs.current[referrer.referrerId] = el)}
                                 className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200 absolute top-0 right-1/2 mr-2.5"
                               >
@@ -532,19 +531,19 @@ const ReferralManagement = () => {
                       </tr>
                     ))
                   )}
-                  {!isLoading && currentReferrers.length > 0 && currentReferrers.length < itemsPerPage && (
-                    [...Array(itemsPerPage - currentReferrers.length)].map((_, index) => (
-                      <tr key={`empty-row-${index}`} className="border-b border-green-200">
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                        <td className="p-1 border-r border-green-200">&nbsp;</td>
-                      </tr>
-                    ))
-                  )}</tbody>
+                    {!isLoading && currentReferrers.length > 0 && currentReferrers.length < itemsPerPage && (
+                      [...Array(itemsPerPage - currentReferrers.length)].map((_, index) => (
+                        <tr key={`empty-row-${index}`} className="border-b border-green-200">
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                          <td className="p-1 border-r border-green-200">&nbsp;</td>
+                        </tr>
+                      ))
+                    )}</tbody>
                 </table>
               </div>
             </div>
@@ -555,12 +554,11 @@ const ReferralManagement = () => {
                 <nav>
                   <ul className="flex list-none">
                     <li>
-                      <button 
+                      <button
                         onClick={() => paginate(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
-                        className={`px-3 py-1 border border-gray-300 rounded-l ${
-                          currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                        }`}
+                        className={`px-3 py-1 border border-gray-300 rounded-l ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                          }`}
                       >
                         Prev
                       </button>
@@ -568,25 +566,24 @@ const ReferralManagement = () => {
                     {(() => {
                       let startPage = Math.max(1, currentPage - 1);
                       let endPage = Math.min(totalPages, startPage + 2);
-                      
+
                       if (endPage - startPage < 2 && startPage > 1) {
                         startPage = Math.max(1, endPage - 2);
                       }
-                      
+
                       const pageNumbers = [];
                       for (let i = startPage; i <= endPage; i++) {
                         pageNumbers.push(i);
                       }
-                      
+
                       return pageNumbers.map(number => (
                         <li key={number}>
                           <button
                             onClick={() => paginate(number)}
-                            className={`px-3 py-1 border-t border-b border-gray-300 ${
-                              currentPage === number 
-                                ? 'bg-green-800 text-white' 
-                                : 'bg-white text-green-800 hover:bg-green-50'
-                            }`}
+                            className={`px-3 py-1 border-t border-b border-gray-300 ${currentPage === number
+                              ? 'bg-green-800 text-white'
+                              : 'bg-white text-green-800 hover:bg-green-50'
+                              }`}
                           >
                             {number}
                           </button>
@@ -594,12 +591,11 @@ const ReferralManagement = () => {
                       ));
                     })()}
                     <li>
-                      <button 
+                      <button
                         onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                         disabled={currentPage === totalPages}
-                        className={`px-3 py-1 border border-gray-300 rounded-r ${
-                          currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                        }`}
+                        className={`px-3 py-1 border border-gray-300 rounded-r ${currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                          }`}
                       >
                         Next
                       </button>
@@ -612,7 +608,7 @@ const ReferralManagement = () => {
             {filteredReferrers.length > 0 && (
               <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
                 <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                  <button 
+                  <button
                     onClick={handleExportToExcel}
                     className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
                   >

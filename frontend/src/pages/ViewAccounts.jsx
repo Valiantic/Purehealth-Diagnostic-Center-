@@ -302,23 +302,23 @@ const ViewAccounts = () => {
                     <table className='w-full text-sm '>
                       <thead className='sticky top-0 bg-green-100 z-10'>
                         <tr className='border-b border-green-800 bg-green-100'>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                          <th className='p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide'>
                             Email
                           </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                          <th className='p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide'>
                             Fullname
                           </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                          <th className='p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide'>
                             Role
                           </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                          <th className='p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide'>
                             Status
                           </th>
-                          <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                          <th className='p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide'>
                             Date Created
                           </th>
                           {hasPermission('accounts.manage') && (
-                            <th className='p-1 border-r border-green-800 text-sm font-medium'>
+                            <th className='p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide'>
                               Actions
                             </th>
                           )}
@@ -353,11 +353,11 @@ const ViewAccounts = () => {
                               key={account.userId}
                               className='border-b border-green-200'
                             >
-                              <td className='p-1 pl-5 border-r border-green-200'>
-                                {account.email}
+                              <td className='p-1 pl-5 border-r border-green-200 text-left'>
+                                {account.email || 'N/A'}
                               </td>
-                              <td className='p-1 pl-5 border-r border-green-200'>
-                                {account.name}
+                              <td className='p-1 pl-5 border-r border-green-200 text-left'>
+                                {account.name || 'N/A'}
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
                                 <span
@@ -373,7 +373,7 @@ const ViewAccounts = () => {
                                       return roleData.displayName;
                                     }
                                     // Fallback to capitalizing the role string
-                                    return account.role 
+                                    return account.role
                                       ? account.role.charAt(0).toUpperCase() + account.role.slice(1)
                                       : 'Receptionist';
                                   })()}
@@ -390,7 +390,7 @@ const ViewAccounts = () => {
                                 </span>
                               </td>
                               <td className='p-1 border-r border-green-200 text-center'>
-                                {new Date(account.createdAt).toLocaleDateString()}
+                                {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
                               </td>
                               {hasPermission('accounts.manage') && (
                                 <td className='p-1 text-center relative'>

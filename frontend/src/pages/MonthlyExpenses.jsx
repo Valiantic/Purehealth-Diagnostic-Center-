@@ -10,18 +10,18 @@ import { exportMonthlyExpensesToExcel } from '../utils/monthlyExpensesExporter'
 const MonthlyExpenses = () => {
   const { user, isAuthenticating } = useAuth()
   const navigate = useNavigate()
-  
+
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
     return {
-      month: now.getMonth() + 1, 
+      month: now.getMonth() + 1,
       year: now.getFullYear()
     };
   });
   const [currentMonth, setCurrentMonth] = useState('');
-  
+
   const [departmentsList, setDepartmentsList] = useState([]);
-  
+
   const [monthlyData, setMonthlyData] = useState({
     departments: [],
     dailyExpenses: []
@@ -32,9 +32,9 @@ const MonthlyExpenses = () => {
   useEffect(() => {
     const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     setCurrentMonth(`${monthNames[currentDate.month - 1]}-${currentDate.year}`);
-    
+
     fetchDepartments();
-  }, [currentDate]); 
+  }, [currentDate]);
 
   useEffect(() => {
     if (departmentsList.length > 0) {
@@ -45,14 +45,14 @@ const MonthlyExpenses = () => {
   const fetchDepartments = async () => {
     try {
       const response = await departmentAPI.getAllDepartments(true);
-      
+
       if (response && response.data) {
-        const depts = Array.isArray(response.data) ? response.data : 
-                     Array.isArray(response.data.data) ? response.data.data : [];
-        
+        const depts = Array.isArray(response.data) ? response.data :
+          Array.isArray(response.data.data) ? response.data.data : [];
+
         // Only include active departments (exclude archived)
         const activeDepts = depts.filter(dept => dept.status === 'active');
-        
+
         setDepartmentsList(activeDepts);
       } else {
         console.error("Failed to get departments:", response);
@@ -76,7 +76,7 @@ const MonthlyExpenses = () => {
         currentDate.year,
         null // Get all data
       );
-      
+
       if (expensesResponse && expensesResponse.data && expensesResponse.data.success) {
         const responseData = expensesResponse.data.data;
         setMonthlyData(responseData);
@@ -134,19 +134,19 @@ const MonthlyExpenses = () => {
     if (!monthlyData.dailyExpenses || monthlyData.dailyExpenses.length === 0) {
       return [];
     }
-    
+
     const items = [];
-    
+
     monthlyData.dailyExpenses.forEach(day => {
       Object.entries(day.departments).forEach(([deptName, deptData]) => {
         // Find department by ID
-        const department = departmentsList.find(dept => 
+        const department = departmentsList.find(dept =>
           dept.departmentId === departmentId || dept.id === departmentId
         );
-        
+
         if (department && department.departmentName === deptName) {
           deptData.items.forEach(item => {
-            if (item.status !== 'paid') { 
+            if (item.status !== 'paid') {
               items.push({
                 ...item,
                 date: day.date,
@@ -157,7 +157,7 @@ const MonthlyExpenses = () => {
         }
       });
     });
-    
+
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
@@ -166,15 +166,15 @@ const MonthlyExpenses = () => {
     if (!monthlyData.dailyExpenses || monthlyData.dailyExpenses.length === 0) {
       return [];
     }
-    
+
     const items = [];
-    
+
     monthlyData.dailyExpenses.forEach(day => {
       Object.entries(day.departments).forEach(([deptName, deptData]) => {
         // Check if this is the rebates department
         if (deptName === 'Rebates') {
           deptData.items.forEach(item => {
-            if (item.status !== 'paid') { 
+            if (item.status !== 'paid') {
               items.push({
                 ...item,
                 date: day.date,
@@ -185,7 +185,7 @@ const MonthlyExpenses = () => {
         }
       });
     });
-    
+
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
@@ -194,17 +194,17 @@ const MonthlyExpenses = () => {
     if (!monthlyData.dailyExpenses || monthlyData.dailyExpenses.length === 0) {
       return [];
     }
-    
+
     const items = [];
-    
+
     monthlyData.dailyExpenses.forEach(day => {
       Object.entries(day.departments).forEach(([deptName, deptData]) => {
         // Check if this department name doesn't match any active department AND is not rebates
         const isKnownDepartment = departmentsList.some(dept => dept.departmentName === deptName);
-        
+
         if ((!isKnownDepartment || deptName === 'Other' || deptName === 'No Department') && deptName !== 'Rebates') {
           deptData.items.forEach(item => {
-            if (item.status !== 'paid') { 
+            if (item.status !== 'paid') {
               items.push({
                 ...item,
                 date: day.date,
@@ -215,7 +215,7 @@ const MonthlyExpenses = () => {
         }
       });
     });
-    
+
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
@@ -264,7 +264,7 @@ const MonthlyExpenses = () => {
   if (isAuthenticating) {
     return null;
   }
-  
+
   if (!user) {
     return null;
   }
@@ -278,34 +278,34 @@ const MonthlyExpenses = () => {
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
-      
+
       {/* Main content area with improved spacing */}
       <div className="flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64">
 
         <div className="bg-cream-50 border-green-800 rounded">
 
           <div className='flex justify-start mb-2'>
-              <button onClick={GoToMonthlyIncome} 
-                        className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
-                        Monthly Income <ChevronLeft size={16} className="ml-1" />
-              </button>
+            <button onClick={GoToMonthlyIncome}
+              className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
+              Monthly Income <ChevronLeft size={16} className="ml-1" />
+            </button>
           </div>
 
           {/* Month navigation */}
           <div className="flex justify-center items-center py-2">
             <div className="flex border border-green-800 rounded overflow-hidden">
-              <button 
+              <button
                 onClick={handlePrevMonth}
                 className="bg-green-800 font-bold text-white px-2 py-2 flex items-center justify-center text-sm"
               >
-               <ChevronLeft size={20} color="white" />
+                <ChevronLeft size={20} color="white" />
               </button>
               <div className="px-4 py-1 font-medium border-l border-r border-green-800 text-green-800">{currentMonth}</div>
-              <button 
+              <button
                 onClick={handleNextMonth}
                 className="bg-green-800 font-bold text-white px-2 py-2 flex items-center justify-center text-sm"
               >
-               <ChevronRight size={20} color="white" />
+                <ChevronRight size={20} color="white" />
               </button>
             </div>
           </div>
@@ -327,7 +327,7 @@ const MonthlyExpenses = () => {
               {departmentsList.map((department) => {
                 const departmentItems = getExpenseItemsByDepartment(department.departmentId || department.id);
                 const departmentTotal = calculateDepartmentTotal(department.departmentId || department.id);
-                
+
                 // Only show department if it has expenses
                 if (departmentItems.length === 0) {
                   return null;
@@ -345,24 +345,24 @@ const MonthlyExpenses = () => {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-green-800 bg-green-100">
-                              <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
-                              <th className="p-1 border-r border-green-800 text-sm font-medium">Paid To</th>
-                              <th className="p-1 border-r border-green-800 text-sm font-medium">Category</th>
-                              <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
+                              <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Date</th>
+                              <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Paid To</th>
+                              <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Category</th>
+                              <th className="p-1 border-r border-green-800 text-sm font-medium text-right uppercase tracking-wide">Amount</th>
                             </tr>
                           </thead>
                           <tbody>
                             {departmentItems.map((item, index) => (
                               <tr key={item.id || `dept-${department.departmentId}-item-${index}`} className="border-b border-green-100">
                                 <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(item.date)}</td>
-                                <td className="p-1 border-r border-green-200 text-center bg-white">{item.paidTo || '-'}</td>
-                                <td className="p-1 border-r border-green-200 text-center bg-white">{item.categoryName || '-'}</td>
-                                <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(item.amount)}</td>
+                                <td className="p-1 border-r border-green-200 text-left bg-white">{item.paidTo || '-'}</td>
+                                <td className="p-1 border-r border-green-200 text-left bg-white">{item.categoryName || '-'}</td>
+                                <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(item.amount)}</td>
                               </tr>
                             ))}
-                            
+
                             {/* Empty rows to fill space if needed */}
-                            {departmentItems.length < 5 && 
+                            {departmentItems.length < 5 &&
                               [...Array(5 - departmentItems.length)].map((_, index) => (
                                 <tr key={`dept-${department.departmentId}-empty-${index}`} className="border-b border-green-100">
                                   <td className="p-1 border-r border-green-200 bg-white">&nbsp;</td>
@@ -377,7 +377,7 @@ const MonthlyExpenses = () => {
                             <tr className="border-t border-green-800 bg-green-100 font-bold">
                               <td className="p-1 text-center border-r border-green-800">TOTAL:</td>
                               <td colSpan={2} className="p-1 border-r border-green-800"></td>
-                              <td className="p-1 border-r border-green-800 text-center">{formatCurrency(departmentTotal)}</td>
+                              <td className="p-1 border-r border-green-800 text-right">{formatCurrency(departmentTotal)}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -400,24 +400,24 @@ const MonthlyExpenses = () => {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-green-800 bg-green-100">
-                            <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
-                            <th className="p-1 border-r border-green-800 text-sm font-medium">Paid To</th>
-                            <th className="p-1 border-r border-green-800 text-sm font-medium">Category</th>
-                            <th className="p-1 border-r border-green-800 text-sm font-medium">Amount</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Date</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Paid To</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Category</th>
+                            <th className="p-1 border-r border-green-800 text-sm font-medium text-right uppercase tracking-wide">Amount</th>
                           </tr>
                         </thead>
                         <tbody>
                           {rebateExpensesItems.map((item, index) => (
                             <tr key={item.id || `rebate-item-${index}`} className="border-b border-green-100">
                               <td className="p-1 border-r border-green-200 text-center bg-white">{formatDate(item.date)}</td>
-                              <td className="p-1 border-r border-green-200 text-center bg-white">{item.paidTo || '-'}</td>
-                              <td className="p-1 border-r border-green-200 text-center bg-white">{item.categoryName || '-'}</td>
-                              <td className="p-1 border-r border-green-200 text-center bg-white">{formatCurrency(item.amount)}</td>
+                              <td className="p-1 border-r border-green-200 text-left bg-white">{item.paidTo || '-'}</td>
+                              <td className="p-1 border-r border-green-200 text-left bg-white">{item.categoryName || '-'}</td>
+                              <td className="p-1 border-r border-green-200 text-right bg-white">{formatCurrency(item.amount)}</td>
                             </tr>
                           ))}
-                          
+
                           {/* Empty rows to fill space if needed */}
-                          {rebateExpensesItems.length < 5 && 
+                          {rebateExpensesItems.length < 5 &&
                             [...Array(5 - rebateExpensesItems.length)].map((_, index) => (
                               <tr key={`rebate-empty-${index}`} className="border-b border-green-100">
                                 <td className="p-1 border-r border-green-200 bg-white">&nbsp;</td>
@@ -432,7 +432,7 @@ const MonthlyExpenses = () => {
                           <tr className="border-t border-green-800 bg-green-100 font-bold">
                             <td className="p-1 text-center border-r border-green-800">TOTAL:</td>
                             <td colSpan={2} className="p-1 border-r border-green-800"></td>
-                            <td className="p-1 border-r border-green-800 text-center">{formatCurrency(calculateRebateExpensesTotal())}</td>
+                            <td className="p-1 border-r border-green-800 text-right">{formatCurrency(calculateRebateExpensesTotal())}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -454,24 +454,24 @@ const MonthlyExpenses = () => {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-800 bg-gray-100">
-                            <th className="p-1 border-r border-gray-800 text-sm font-medium">Date</th>
-                            <th className="p-1 border-r border-gray-800 text-sm font-medium">Paid To</th>
-                            <th className="p-1 border-r border-gray-800 text-sm font-medium">Category</th>
-                            <th className="p-1 border-r border-gray-800 text-sm font-medium">Amount</th>
+                            <th className="p-1 border-r border-gray-800 text-sm font-medium text-center uppercase tracking-wide">Date</th>
+                            <th className="p-1 border-r border-gray-800 text-sm font-medium text-left uppercase tracking-wide">Paid To</th>
+                            <th className="p-1 border-r border-gray-800 text-sm font-medium text-left uppercase tracking-wide">Category</th>
+                            <th className="p-1 border-r border-gray-800 text-sm font-medium text-right uppercase tracking-wide">Amount</th>
                           </tr>
                         </thead>
                         <tbody>
                           {otherExpensesItems.map((item, index) => (
                             <tr key={item.id || `other-item-${index}`} className="border-b border-gray-100">
                               <td className="p-1 border-r border-gray-200 text-center bg-white">{formatDate(item.date)}</td>
-                              <td className="p-1 border-r border-gray-200 text-center bg-white">{item.paidTo || '-'}</td>
-                              <td className="p-1 border-r border-gray-200 text-center bg-white">{item.categoryName || '-'}</td>
-                              <td className="p-1 border-r border-gray-200 text-center bg-white">{formatCurrency(item.amount)}</td>
+                              <td className="p-1 border-r border-gray-200 text-left bg-white">{item.paidTo || '-'}</td>
+                              <td className="p-1 border-r border-gray-200 text-left bg-white">{item.categoryName || '-'}</td>
+                              <td className="p-1 border-r border-gray-200 text-right bg-white">{formatCurrency(item.amount)}</td>
                             </tr>
                           ))}
-                          
+
                           {/* Empty rows to fill space if needed */}
-                          {otherExpensesItems.length < 5 && 
+                          {otherExpensesItems.length < 5 &&
                             [...Array(5 - otherExpensesItems.length)].map((_, index) => (
                               <tr key={`other-empty-${index}`} className="border-b border-gray-100">
                                 <td className="p-1 border-r border-gray-200 bg-white">&nbsp;</td>
@@ -486,7 +486,7 @@ const MonthlyExpenses = () => {
                           <tr className="border-t border-gray-800 bg-gray-100 font-bold">
                             <td className="p-1 text-center border-r border-gray-800">TOTAL:</td>
                             <td colSpan={2} className="p-1 border-r border-gray-800"></td>
-                            <td className="p-1 border-r border-gray-800 text-center">{formatCurrency(calculateOtherExpensesTotal())}</td>
+                            <td className="p-1 border-r border-gray-800 text-right">{formatCurrency(calculateOtherExpensesTotal())}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -509,24 +509,24 @@ const MonthlyExpenses = () => {
             const departmentItems = getExpenseItemsByDepartment(dept.departmentId || dept.id);
             return departmentItems.length > 0;
           }) || otherExpensesItems.length > 0 || rebateExpensesItems.length > 0) && (
-            <div className="flex justify-end p-2">
-              <button 
-                onClick={handleGenerateExpenseReport}
-                className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
-              >
-                Generate Report
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </button>
-            </div>
-          )}
+              <div className="flex justify-end p-2">
+                <button
+                  onClick={handleGenerateExpenseReport}
+                  className="bg-green-800 text-white px-4 py-2 rounded flex items-center hover:bg-green-600"
+                >
+                  Generate Report
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              </div>
+            )}
         </div>
       </div>
-      
+
       {/* Close dropdown menus when clicking outside */}
       {activeMenu && (
-        <div 
+        <div
           className="fixed inset-0 h-full w-full z-0"
           onClick={() => setActiveMenu(null)}
         />
