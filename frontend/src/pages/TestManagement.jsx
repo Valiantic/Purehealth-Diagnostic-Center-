@@ -18,13 +18,13 @@ const Test = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  
+
   const {
     testName, testDate, testDepartment, departmentId, price, status, userSelectedDepartment,
-    setTestName, setTestDepartment, setDepartmentId, setStatus, resetForm, validateForm, getFormData, 
+    setTestName, setTestDepartment, setDepartmentId, setStatus, resetForm, validateForm, getFormData,
     setFormData, handleDepartmentChange, handlePriceChange, handleDateChange
   } = useTestForm();
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -40,7 +40,7 @@ const Test = () => {
   const dropdownRefs = useRef({});
 
   // React Query for departments
-  const { 
+  const {
     data: departmentsData = [],
     isLoading: isDepartmentsLoading,
   } = useQuery({
@@ -66,7 +66,7 @@ const Test = () => {
   });
 
   // React Query for tests
-  const { 
+  const {
     data: testsData = [],
     isLoading: isTestsLoading,
   } = useQuery({
@@ -101,7 +101,7 @@ const Test = () => {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ testId, newStatus, userId }) => 
+    mutationFn: ({ testId, newStatus, userId }) =>
       testAPI.updateTestStatus(testId, newStatus, userId),
     onSuccess: (_, variables) => {
       toast.success(`Test ${variables.newStatus === 'active' ? 'Unarchived' : 'Archived'} successfully`);
@@ -116,7 +116,7 @@ const Test = () => {
   });
 
   const updateTestMutation = useMutation({
-    mutationFn: ({ testId, testData, userId }) => 
+    mutationFn: ({ testId, testData, userId }) =>
       testAPI.updateTest(testId, testData, userId),
     onSuccess: () => {
       toast.success('Test updated successfully');
@@ -131,10 +131,10 @@ const Test = () => {
   });
 
   // Derived state from query results
-  const departments = Array.isArray(departmentsData) ? departmentsData : 
-                     Array.isArray(departmentsData?.data) ? departmentsData.data : [];
-  const tests = Array.isArray(testsData) ? testsData : 
-                Array.isArray(testsData?.data) ? testsData.data : [];
+  const departments = Array.isArray(departmentsData) ? departmentsData :
+    Array.isArray(departmentsData?.data) ? departmentsData.data : [];
+  const tests = Array.isArray(testsData) ? testsData :
+    Array.isArray(testsData?.data) ? testsData.data : [];
   const isLoading = isTestsLoading;
 
   useEffect(() => {
@@ -143,11 +143,11 @@ const Test = () => {
         setShowDepartmentFilter(false);
       }
     }
-    
+
     if (showDepartmentFilter) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -158,7 +158,7 @@ const Test = () => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     }
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -197,25 +197,25 @@ const Test = () => {
       if (!validateForm()) {
         return;
       }
-      
-      const duplicateTest = tests.find(test => 
-        test.testName.toLowerCase() === testName.toLowerCase() && 
+
+      const duplicateTest = tests.find(test =>
+        test.testName.toLowerCase() === testName.toLowerCase() &&
         parseInt(test.departmentId) === parseInt(departmentId)
       );
-      
+
       if (duplicateTest) {
         toast.error('A test with this name already exists in this department');
         return;
       }
-      
-      const userId = user.userId || user.id; 
-            
+
+      const userId = user.userId || user.id;
+
       if (!userId) {
         console.error('User ID is missing from user object:', user);
         toast.error('Authentication error. Please log in again.');
         return;
       }
-      
+
       // Get form data using hook utility
       const testData = getFormData();
       testData.currentUserId = userId;
@@ -231,7 +231,7 @@ const Test = () => {
     // Find the department to check its status
     const department = departments.find(d => d.departmentId === test.departmentId);
     const isArchived = department?.status === 'inactive';
-    
+
     setEditingTest({
       testId: test.testId,
       testName: test.testName,
@@ -240,7 +240,7 @@ const Test = () => {
       status: test.status,
       dateCreated: test.dateCreated || new Date().toISOString().split('T')[0]
     });
-    
+
     // Set form data using hook utility
     setFormData({
       testName: test.testName,
@@ -250,7 +250,7 @@ const Test = () => {
       dateCreated: test.dateCreated,
       status: test.status
     });
-    
+
     setIsDepartmentArchived(isArchived);
     setEditModalOpen(true);
   };
@@ -266,25 +266,25 @@ const Test = () => {
         return;
       }
 
-      const duplicateTest = tests.find(test => 
-        test.testName.toLowerCase() === testName.toLowerCase() && 
+      const duplicateTest = tests.find(test =>
+        test.testName.toLowerCase() === testName.toLowerCase() &&
         parseInt(test.departmentId) === parseInt(departmentId) &&
         test.testId !== editingTest.testId
       );
-      
+
       if (duplicateTest) {
         toast.error('A test with this name already exists in this department');
         return;
       }
 
       const userId = user.userId || user.id;
-            
+
       if (!userId) {
         console.error('User ID is missing from user object:', user);
         toast.error('Authentication error. Please log in again.');
         return;
       }
-      
+
       // Get form data using hook utility
       const testData = getFormData();
       testData.currentUserId = userId;
@@ -298,10 +298,10 @@ const Test = () => {
 
   const filteredTests = Array.isArray(tests) ? tests.filter(test => {
     if (!searchTerm.trim() && selectedDepartmentFilter === 'all') return true;
-    
-    const departmentMatch = selectedDepartmentFilter === 'all' || 
+
+    const departmentMatch = selectedDepartmentFilter === 'all' ||
       (test.departmentId === parseInt(selectedDepartmentFilter));
-    
+
     const searchTermLower = searchTerm.toLowerCase();
     const searchMatch = !searchTerm.trim() || (
       test.testName?.toLowerCase?.().includes(searchTermLower) ||
@@ -309,7 +309,7 @@ const Test = () => {
       test.price?.toString?.().includes(searchTerm) ||
       test.status?.toLowerCase?.().includes(searchTermLower)
     );
-    
+
     return departmentMatch && searchMatch;
   }) : [];
 
@@ -372,26 +372,26 @@ const Test = () => {
                   <PlusCircle className="mr-1 sm:mr-2" size={18} />
                   Add New Test
                 </button>
-                
+
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <div className="relative" ref={departmentFilterRef}>
-                    <button 
+                    <button
                       onClick={() => setShowDepartmentFilter(!showDepartmentFilter)}
                       className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-4 py-1 md:py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between"
                     >
                       <span>
-                        {selectedDepartmentFilter === 'all' 
-                          ? 'All Departments' 
+                        {selectedDepartmentFilter === 'all'
+                          ? 'All Departments'
                           : departments.find(d => d.departmentId === parseInt(selectedDepartmentFilter))?.departmentName || 'Select Department'}
                       </span>
                       <svg className="w-4 h-4 ml-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
                     </button>
-                    
+
                     {showDepartmentFilter && (
                       <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-50 w-48 max-h-60 overflow-y-auto">
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedDepartmentFilter('all');
                             setShowDepartmentFilter(false);
@@ -401,7 +401,7 @@ const Test = () => {
                           All Departments
                         </button>
                         {Array.isArray(departments) ? departments.map(dept => (
-                          <button 
+                          <button
                             key={dept.departmentId}
                             onClick={() => {
                               setSelectedDepartmentFilter(dept.departmentId.toString());
@@ -439,12 +439,12 @@ const Test = () => {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-green-800 bg-green-100">
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Test Name</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Department</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Price</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Date Created</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Status</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Test Name</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-left uppercase tracking-wide">Department</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-right uppercase tracking-wide">Price</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Date Created</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Status</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -461,9 +461,9 @@ const Test = () => {
                         ) : (
                           currentTests.map((test, index) => (
                             <tr key={`test-row-${test.testId}`} className="border-b border-green-200">
-                              <td className="p-1 pl-5 border-r border-green-200 text-left">{test.testName}</td>
-                              <td className="p-1 border-r border-green-200 text-center">{test.Department?.departmentName}</td>
-                              <td className="p-1 border-r border-green-200 text-center">₱{parseFloat(test.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="p-1 pl-5 border-r border-green-200 text-left">{test.testName || 'N/A'}</td>
+                              <td className="p-1 border-r border-green-200 text-left">{test.Department?.departmentName || 'N/A'}</td>
+                              <td className="p-1 border-r border-green-200 text-right">{test.price != null ? `₱${parseFloat(test.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}</td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 {test.dateCreated ? new Date(test.dateCreated).toLocaleDateString() : 'N/A'}
                               </td>
@@ -474,20 +474,20 @@ const Test = () => {
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
                                 <div className="flex justify-center relative">
-                                  <button 
-                                    onClick={(e) => toggleDropdown(e, test.testId)} 
+                                  <button
+                                    onClick={(e) => toggleDropdown(e, test.testId)}
                                     className="text-gray-500 hover:text-gray-700 focus:outline-none"
                                   >
-                                    <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none" 
-                                         strokeLinecap="round" strokeLinejoin="round">
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5" stroke="currentColor" strokeWidth="2" fill="none"
+                                      strokeLinecap="round" strokeLinejoin="round">
                                       <circle cx="12" cy="12" r="1"></circle>
                                       <circle cx="12" cy="5" r="1"></circle>
                                       <circle cx="12" cy="19" r="1"></circle>
                                     </svg>
                                   </button>
-                                  
+
                                   {activeDropdown === test.testId && (
-                                    <div 
+                                    <div
                                       ref={(el) => (dropdownRefs.current[test.testId] = el)}
                                       className="absolute z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200 top-0 right-1/2 mr-2.5"
                                     >
@@ -532,12 +532,11 @@ const Test = () => {
                     <nav>
                       <ul className="flex list-none">
                         <li>
-                          <button 
+                          <button
                             onClick={() => paginate(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
-                            className={`px-3 py-1 border border-gray-300 rounded-l ${
-                              currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                            }`}
+                            className={`px-3 py-1 border border-gray-300 rounded-l ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                              }`}
                           >
                             Prev
                           </button>
@@ -545,25 +544,24 @@ const Test = () => {
                         {(() => {
                           let startPage = Math.max(1, currentPage - 1);
                           let endPage = Math.min(totalPages, startPage + 2);
-                          
+
                           if (endPage - startPage < 2 && startPage > 1) {
                             startPage = Math.max(1, endPage - 2);
                           }
-                          
+
                           const pageNumbers = [];
                           for (let i = startPage; i <= endPage; i++) {
                             pageNumbers.push(i);
                           }
-                          
+
                           return pageNumbers.map(number => (
                             <li key={number}>
                               <button
                                 onClick={() => paginate(number)}
-                                className={`px-3 py-1 border-t border-b border-gray-300 ${
-                                  currentPage === number 
-                                    ? 'bg-green-800 text-white' 
-                                    : 'bg-white text-green-800 hover:bg-green-50'
-                                }`}
+                                className={`px-3 py-1 border-t border-b border-gray-300 ${currentPage === number
+                                  ? 'bg-green-800 text-white'
+                                  : 'bg-white text-green-800 hover:bg-green-50'
+                                  }`}
                               >
                                 {number}
                               </button>
@@ -571,12 +569,11 @@ const Test = () => {
                           ));
                         })()}
                         <li>
-                          <button 
+                          <button
                             onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                             disabled={currentPage === totalPages}
-                            className={`px-3 py-1 border border-gray-300 rounded-r ${
-                              currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                            }`}
+                            className={`px-3 py-1 border border-gray-300 rounded-r ${currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                              }`}
                           >
                             Next
                           </button>
@@ -585,11 +582,11 @@ const Test = () => {
                     </nav>
                   </div>
                 )}
-                
+
                 {filteredTests.length > 0 && (
                   <div className="mt-2 flex flex-col md:flex-row justify-end p-2">
                     <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                      <button 
+                      <button
                         onClick={handleExportToExcel}
                         className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
                       >
@@ -598,7 +595,7 @@ const Test = () => {
                     </div>
                   </div>
                 )}
-                
+
                 <TestModal
                   isOpen={isOpen}
                   onClose={closeModal}

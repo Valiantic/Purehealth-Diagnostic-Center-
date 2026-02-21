@@ -18,6 +18,8 @@ import referralIcon from '../../assets/icons/network.png';
 import PDCHI from '../../assets/icons/purehealth_logo.jpg';
 import LogoutConfirmModal from './LogoutConfirmModal';
 import usePermissions from '../../hooks/auth/usePermissions';
+import income from '../../assets/icons/income.png';
+import collectibleIncome from '../../assets/icons/collectible-income.png';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -78,8 +80,17 @@ const Sidebar = () => {
       });
     }
 
-    // Monthly Reports - always visible (for now, could add reports.view permission)
-    items.push({ title: 'Monthly', path: '/monthly-income', icon: annualIcon });
+    // Monthly - always visible, dropdown with 3 sub-items
+    items.push({
+      title: 'Monthly',
+      path: '/monthly',
+      icon: annualIcon,
+      dropdown: [
+        { label: 'Income', icon: income, path: '/monthly-income' },
+        { label: 'Expenses', icon: expensesIcon, path: '/monthly-expenses' },
+        { label: 'Collectible Income', icon: collectibleIncome, path: '/collectible-income' },
+      ]
+    });
 
     // Referrals - only show if user has referrals.view permission
     if (hasPermission('referrals.view')) {
@@ -105,10 +116,11 @@ const Sidebar = () => {
       return ['/add-expenses', '/manage-expenses'].includes(location.pathname) ||
         location.pathname.startsWith('/add-expenses');
     }
-    else if (itemPath === '/monthly-income') {
-      return ['/monthly-income', '/monthly-expenses'].includes(location.pathname) ||
+    else if (itemPath === '/monthly') {
+      return ['/monthly-income', '/monthly-expenses', '/collectible-income'].includes(location.pathname) ||
         location.pathname.startsWith('/monthly-income/') ||
-        location.pathname.startsWith('/monthly-expenses');
+        location.pathname.startsWith('/monthly-expenses') ||
+        location.pathname.startsWith('/collectible-income');
     }
     else if (itemPath === '/settings') {
       return ['/view-accounts', '/add-account', '/activity-log', '/department-management', '/test-management', '/referral-management', '/settings'].includes(location.pathname) ||

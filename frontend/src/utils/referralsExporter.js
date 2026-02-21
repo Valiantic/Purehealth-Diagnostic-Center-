@@ -11,6 +11,7 @@ export const exportReferralsToExcel = async (
 ) => {
   try {
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Rebates Report');
 
     // Format the selected date for display
@@ -27,7 +28,7 @@ export const exportReferralsToExcel = async (
     worksheet.mergeCells(1, 1, 2, totalColumns);
     const titleCell = worksheet.getCell(1, 1);
     titleCell.value = `Rebate Report - ${formattedDate}`;
-    titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.border = {
@@ -55,7 +56,7 @@ export const exportReferralsToExcel = async (
       worksheet.mergeCells(currentRow, 1, currentRow, totalColumns);
       const referrerTitleCell = worksheet.getCell(currentRow, 1);
       referrerTitleCell.value = `Dr. ${referrer.firstName} ${referrer.lastName}`;
-      referrerTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      referrerTitleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
       referrerTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
       referrerTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
       referrerTitleCell.border = {
@@ -71,7 +72,7 @@ export const exportReferralsToExcel = async (
       headers.forEach((header, index) => {
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = header;
-        cell.font = { bold: true, color: { argb: 'FF166534' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
@@ -143,7 +144,7 @@ export const exportReferralsToExcel = async (
         const noDataCell2 = worksheet.getCell(currentRow, 2);
         noDataCell2.value = 'No transactions found';
         noDataCell2.alignment = { horizontal: 'center', vertical: 'middle' };
-        noDataCell2.font = { italic: true, color: { argb: 'FF6B7280' } };
+        noDataCell2.font = { name: 'Arial', italic: true, color: { argb: 'FF6B7280' } };
         noDataCell2.border = {
           top: { style: 'thin', color: { argb: 'FF166534' } },
           left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -174,7 +175,7 @@ export const exportReferralsToExcel = async (
       // TOTAL row
       const totalCell1 = worksheet.getCell(currentRow, 1);
       totalCell1.value = 'TOTAL:';
-      totalCell1.font = { bold: true, color: { argb: 'FF166534' } };
+      totalCell1.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       totalCell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       totalCell1.alignment = { horizontal: 'center', vertical: 'middle' };
       totalCell1.border = {
@@ -201,7 +202,7 @@ export const exportReferralsToExcel = async (
 
         const totalCell = worksheet.getCell(currentRow, 3 + deptIndex);
         totalCell.value = deptTotal > 0 ? deptTotal.toFixed(2) : '';
-        totalCell.font = { bold: true, color: { argb: 'FF166534' } };
+        totalCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         totalCell.alignment = { horizontal: 'center', vertical: 'middle' };
         totalCell.border = {
@@ -217,7 +218,7 @@ export const exportReferralsToExcel = async (
       // REBATES row
       const rebateCell1 = worksheet.getCell(currentRow, 1);
       rebateCell1.value = `REBATES:`;
-      rebateCell1.font = { bold: true, color: { argb: 'FF166534' } };
+      rebateCell1.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       rebateCell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       rebateCell1.alignment = { horizontal: 'center', vertical: 'middle' };
       rebateCell1.border = {
@@ -252,7 +253,7 @@ export const exportReferralsToExcel = async (
 
         const rebateCell = worksheet.getCell(currentRow, 3 + deptIndex);
         rebateCell.value = deptRebate > 0 ? deptRebate.toFixed(2) : '';
-        rebateCell.font = { bold: true, color: { argb: 'FF166534' } };
+        rebateCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
         rebateCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
         rebateCell.alignment = { horizontal: 'center', vertical: 'middle' };
         rebateCell.border = {
@@ -278,7 +279,7 @@ export const exportReferralsToExcel = async (
       worksheet.mergeCells(currentRow, 1, currentRow, totalColumns);
       const totalRebatesCell = worksheet.getCell(currentRow, 1);
       totalRebatesCell.value = `TOTAL REBATES: ${totalRebates.toFixed(2)}`;
-      totalRebatesCell.font = { bold: true, color: { argb: 'FF166534' } };
+      totalRebatesCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       totalRebatesCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // Yellow background
       totalRebatesCell.alignment = { horizontal: 'right', vertical: 'middle' };
       totalRebatesCell.border = {

@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, collectibles, currentMonth, profitLossData = null, allTransactions = []) => {
   try {
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Monthly Income Report');
 
     // Helper functions
@@ -33,7 +34,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     worksheet.mergeCells(1, 1, 2, maxColumns);
     const titleCell = worksheet.getCell(1, 1);
     titleCell.value = `Monthly Transaction & Income Report - ${currentMonth}`;
-    titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.border = {
@@ -49,7 +50,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     worksheet.mergeCells(currentRow, 1, currentRow, maxColumns);
     const transTitleCell = worksheet.getCell(currentRow, 1);
     transTitleCell.value = 'Transaction Details';
-    transTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    transTitleCell.font = { name: 'Arial', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
     transTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     transTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
     currentRow++;
@@ -58,7 +59,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     transHeaders.forEach((header, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = header;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -79,9 +80,9 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
 
         const rowData = [
           formatDate(trans.transactionDate),
-          trans.mcNo,
-          `${trans.firstName} ${trans.lastName}`,
-          tests,
+          trans.mcNo || 'N/A',
+          `${trans.firstName || ''} ${trans.lastName || ''}`.trim() || 'N/A',
+          tests || 'N/A',
           formatCurrency(amount)
         ];
 
@@ -108,17 +109,17 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     // Transaction Summary Row
     const transSummaryCell = worksheet.getCell(currentRow, 4);
     transSummaryCell.value = 'TOTAL TRANSACTIONS:';
-    transSummaryCell.font = { bold: true };
+    transSummaryCell.font = { name: 'Arial', size: 11, bold: true };
     const transTotalCell = worksheet.getCell(currentRow, 5);
     transTotalCell.value = formatCurrency(transTotal);
-    transTotalCell.font = { bold: true };
+    transTotalCell.font = { name: 'Arial', size: 11, bold: true };
     currentRow += 3;
 
     // SECTION 2: DAILY SUMMARY
     worksheet.mergeCells(currentRow, 1, currentRow, mainTableColumns);
     const dailyTitleCell = worksheet.getCell(currentRow, 1);
     dailyTitleCell.value = 'Daily Income Summary';
-    dailyTitleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    dailyTitleCell.font = { name: 'Arial', bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
     dailyTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     dailyTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
     currentRow++;
@@ -129,7 +130,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(dailyHeadersRow, index + 1);
       cell.value = header;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -174,7 +175,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     totalsData.forEach((data, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = data;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -192,7 +193,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     worksheet.mergeCells(currentRow, 1, currentRow, 4);
     const collectibleTitleCell = worksheet.getCell(currentRow, 1);
     collectibleTitleCell.value = 'Collectible Income';
-    collectibleTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    collectibleTitleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
     collectibleTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     collectibleTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     collectibleTitleCell.border = {
@@ -209,7 +210,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     collectibleHeaders.forEach((header, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = header;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -224,8 +225,8 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     // Add collectible income data
     collectibles.forEach((item) => {
       const rowData = [
-        item.companyName,
-        item.coordinatorName,
+        item.companyName || 'N/A',
+        item.coordinatorName || 'N/A',
         new Date(item.dateConducted).toLocaleDateString(),
         formatCurrency(item.totalIncome)
       ];
@@ -251,7 +252,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
     collectibleTotalData.forEach((data, index) => {
       const cell = worksheet.getCell(currentRow, index + 1);
       cell.value = data;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -277,28 +278,28 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let titleCellPL = plWorksheet.getCell(plRow, 1);
       titleCellPL.value = 'Purehealth Diagnostic Center Inc.';
-      titleCellPL.font = { bold: true, size: 16, color: { argb: 'FF166534' } };
+      titleCellPL.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FF166534' } };
       titleCellPL.alignment = { horizontal: 'center', vertical: 'middle' };
       plRow++;
 
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let subtitleCell = plWorksheet.getCell(plRow, 1);
       subtitleCell.value = 'General Mariano Alvarez, Cavite Branch';
-      subtitleCell.font = { size: 12, color: { argb: 'FF166534' } };
+      subtitleCell.font = { name: 'Arial', size: 12, color: { argb: 'FF166534' } };
       subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       plRow++;
 
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let dateCell = plWorksheet.getCell(plRow, 1);
       dateCell.value = `Date: ${profitLossData.date}`;
-      dateCell.font = { size: 10, color: { argb: 'FF000000' } };
+      dateCell.font = { name: 'Arial', size: 10, color: { argb: 'FF000000' } };
       dateCell.alignment = { horizontal: 'left', vertical: 'middle' };
       plRow += 2;
 
       plWorksheet.mergeCells(plRow, 1, plRow, 3);
       let sectionTitleCell = plWorksheet.getCell(plRow, 1);
       sectionTitleCell.value = 'Profit&Loss Report';
-      sectionTitleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      sectionTitleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
       sectionTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
       sectionTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       sectionTitleCell.border = {
@@ -313,7 +314,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       headerData.forEach((header, index) => {
         const cell = plWorksheet.getCell(plRow, index + 1);
         cell.value = header;
-        cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = {
@@ -329,7 +330,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       // Revenue Section
       let revenueHeaderCell = plWorksheet.getCell(plRow, 1);
       revenueHeaderCell.value = 'Revenue';
-      revenueHeaderCell.font = { bold: true, size: 11 };
+      revenueHeaderCell.font = { name: 'Arial', bold: true, size: 11 };
       revenueHeaderCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
       revenueHeaderCell.border = {
         top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -407,7 +408,7 @@ export const exportMonthlyIncomeToExcel = async (monthlyData, monthlySummary, co
       // Expense Section
       let expensesHeaderCell = plWorksheet.getCell(plRow, 1);
       expensesHeaderCell.value = 'Expenses';
-      expensesHeaderCell.font = { bold: true, size: 11 };
+      expensesHeaderCell.font = { name: 'Arial', bold: true, size: 11 };
       expensesHeaderCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } };
       expensesHeaderCell.border = { style: 'thin', color: { argb: 'FF000000' } };
       plRow++;

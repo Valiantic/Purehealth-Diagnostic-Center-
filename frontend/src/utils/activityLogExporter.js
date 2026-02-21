@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 export const exportActivityLogToExcel = async (logsData, selectedDate, searchTerm) => {
   try {
     const workbook = new ExcelJS.Workbook();
+    workbook.defaultFont = { name: 'Arial', size: 11 };
     const worksheet = workbook.addWorksheet('Activity Log Report');
 
     // Create title based on filters
@@ -29,7 +30,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
     worksheet.mergeCells(1, 1, 2, 5);
     const titleCell = worksheet.getCell(1, 1);
     titleCell.value = titleText;
-    titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Arial', bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.border = {
@@ -44,11 +45,11 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
     worksheet.getColumn(2).width = 15; // Role
     worksheet.getColumn(3).width = 12; // Time
     worksheet.getColumn(4).width = 12; // Date
-    
+
     // Calculate dynamic width for action column based on content
     const logs = logsData?.logs || [];
     let maxActionLength = 20; // Minimum width
-    
+
     if (logs.length > 0) {
       logs.forEach(log => {
         if (log.details) {
@@ -59,17 +60,17 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
         }
       });
     }
-    
+
     worksheet.getColumn(5).width = Math.max(maxActionLength, 30); // Action column with dynamic width
 
     // Add headers
     const headerRow = 3;
     const headers = ['User', 'Role', 'Time', 'Date', 'Action'];
-    
+
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(headerRow, index + 1);
       cell.value = header;
-      cell.font = { bold: true, color: { argb: 'FF166534' } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF166534' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F7FF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
@@ -97,7 +98,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
         const cell = worksheet.getCell(currentRow, index + 1);
         cell.value = data;
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.font = { italic: true, color: { argb: 'FF6B7280' } };
+        cell.font = { name: 'Arial', italic: true, color: { argb: 'FF6B7280' } };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF166534' } },
           left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -109,7 +110,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
       logs.forEach((log) => {
         const rowData = [
           log.user?.name || 'System',
-          log.user?.role 
+          log.user?.role
             ? (log.user.role === 'admin' ? 'Admin' : 'Receptionist')
             : 'SYSTEM',
           log.time,
@@ -120,12 +121,12 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
         rowData.forEach((data, index) => {
           const cell = worksheet.getCell(currentRow, index + 1);
           cell.value = data;
-          cell.alignment = { 
+          cell.alignment = {
             horizontal: index === 4 ? 'left' : 'center', // Left align action column
             vertical: 'middle',
             wrapText: index === 4 // Enable text wrapping for action column
           };
-          
+
           // Special formatting for role column
           if (index === 1 && log.user?.role) {
             if (log.user.role === 'admin') {
@@ -136,7 +137,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
               cell.font = { color: { argb: 'FF166534' } }; // Green text
             }
           }
-          
+
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF166534' } },
             left: { style: 'thin', color: { argb: 'FF166534' } },
@@ -155,7 +156,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
     worksheet.mergeCells(currentRow, 1, currentRow, 2);
     const summaryTitleCell = worksheet.getCell(currentRow, 1);
     summaryTitleCell.value = 'Summary';
-    summaryTitleCell.font = { bold: true, size: 12, color: { argb: 'FF166534' } };
+    summaryTitleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF166534' } };
     summaryTitleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
     currentRow += 1;
@@ -163,7 +164,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
     // Total logs count
     const totalCell1 = worksheet.getCell(currentRow, 1);
     totalCell1.value = 'Total Logs:';
-    totalCell1.font = { bold: true };
+    totalCell1.font = { name: 'Arial', size: 11, bold: true };
     totalCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const totalCell2 = worksheet.getCell(currentRow, 2);
@@ -175,7 +176,7 @@ export const exportActivityLogToExcel = async (logsData, selectedDate, searchTer
     // Export timestamp
     const timestampCell1 = worksheet.getCell(currentRow, 1);
     timestampCell1.value = 'Exported on:';
-    timestampCell1.font = { bold: true };
+    timestampCell1.font = { name: 'Arial', size: 11, bold: true };
     timestampCell1.alignment = { horizontal: 'left', vertical: 'middle' };
 
     const timestampCell2 = worksheet.getCell(currentRow, 2);

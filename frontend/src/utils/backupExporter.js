@@ -4,6 +4,7 @@ import { transactionAPI, expenseAPI, referrerAPI, departmentAPI, testAPI, monthl
 export const exportFullBackup = async () => {
     try {
         const workbook = new ExcelJS.Workbook();
+        workbook.defaultFont = { name: 'Arial', size: 11 };
 
         // Set workbook properties
         workbook.creator = 'Purehealth Diagnostic Center';

@@ -12,6 +12,7 @@ import Expenses from './pages/Expenses';
 import AddTransaction from './pages/AddTransaction';
 import MonthlyIncome from './pages/MonthlyIncome';
 import MonthlyExpenses from './pages/MonthlyExpenses';
+import CollectibleIncome from './pages/CollectibleIncome';
 import Referrals from './pages/Referrals';
 import Settings from './pages/Settings';
 import ViewAccounts from './pages/ViewAccounts';
@@ -44,7 +45,8 @@ function App() {
           <Route path="referrals" element={<ProtectedRoute component={Referrals} requiredPermission="referrals.view" />} />
           <Route path="monthly-income" element={<ProtectedRoute component={MonthlyIncome} />} />
           <Route path="monthly-expenses" element={<ProtectedRoute component={MonthlyExpenses} />} />
-          
+          <Route path="collectible-income" element={<ProtectedRoute component={CollectibleIncome} />} />
+
           {/* Settings and Account Management */}
           <Route path="settings" element={<ProtectedRoute component={Settings} />} />
           <Route path="view-accounts" element={<ProtectedRoute component={ViewAccounts} requiredPermission="accounts.manage" />} />

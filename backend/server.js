@@ -80,7 +80,7 @@ app.use((err, req, res, next) => {
 });
 
 // Sync database and start server
-sequelize.sync({ alter: process.env.NODE_ENV === 'development' })
+sequelize.sync()
   .then(() => {
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

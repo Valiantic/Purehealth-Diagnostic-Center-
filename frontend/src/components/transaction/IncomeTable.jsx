@@ -1,7 +1,18 @@
-import React from 'react';
-import { MoreVertical, Save, X } from 'lucide-react';
-import { getRefundedTestsInfo } from '../../utils/transactionUtils';
+import React, { useState, useMemo } from 'react';
+import { MoreVertical, Save, X, ChevronDown } from 'lucide-react';
+import PatientTransactionsModal from './PatientTransactionsModal';
 
+/* ─────────────────────────────────────────────
+   Normalise a patient name for grouping:
+   trim + collapse spaces + lowercase
+   e.g. "john doe" === "John  Doe" === "JOHN DOE"
+───────────────────────────────────────────── */
+const normalizeName = (name = '') =>
+  name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/* ─────────────────────────────────────────────
+   Single transaction row (same as before)
+───────────────────────────────────────────── */
 const TransactionRow = ({
   transaction,
   departmentsWithValues,
@@ -29,20 +40,6 @@ const TransactionRow = ({
         : 'bg-white'
       }
     >
-      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 sticky left-0 bg-inherit">
-        {editingId === transaction.id ? (
-          <input
-            type="text"
-            value={editedTransaction.id}
-            onChange={(e) => handleEditChange(e, 'id')}
-            className="w-full px-2 py-1 border border-green-600 rounded focus:outline-none focus:ring-1 focus:ring-green-600"
-          />
-        ) : (
-          <span className={transaction.status === 'cancelled' ? 'line-through' : ''}>
-            {transaction.id}
-          </span>
-        )}
-      </td>
       <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">
         {editingId === transaction.id ? (
           <input
@@ -53,12 +50,11 @@ const TransactionRow = ({
           />
         ) : (
           <span className={transaction.status === 'cancelled' ? 'line-through' : ''}>
-            {transaction.name}
+            {transaction.name || 'N/A'}
           </span>
         )}
       </td>
 
-      {/* Department columns and amounts */}
       {departmentsWithValues.map(dept => {
         const deptData = transaction.departmentRevenues[dept.departmentId];
         const isArchivedWithValue = dept.status !== 'active' &&
@@ -80,7 +76,7 @@ const TransactionRow = ({
                     <span className={hasBalance ? 'relative' : ''}>
                       {deptData.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
-                  ) : ''}
+                  ) : <span className="text-gray-400 text-xs">N/A</span>}
                 </>
               )
             }
@@ -114,7 +110,7 @@ const TransactionRow = ({
             title={`Referrer: ${transaction.originalTransaction?.referrerId || 'None'}`}
             className={`truncate text-xs md:text-sm font-medium ${transaction.status === 'cancelled' ? 'text-gray-500' : ''}`}
           >
-            {transaction.referrer}
+            {transaction.referrer || 'N/A'}
           </div>
         )}
       </td>
@@ -203,6 +199,91 @@ const TransactionRow = ({
   );
 };
 
+/* ─────────────────────────────────────────────
+   Grouped row — shown when a patient name has
+   more than one transaction.
+   Displays: combined dept totals, combined gross,
+   a "View X transactions" badge that opens the modal.
+───────────────────────────────────────────── */
+const GroupedRow = ({
+  displayName,
+  transactions,
+  departmentsWithValues,
+  onViewGroup,
+}) => {
+  const activeTransactions = transactions.filter(t => t.status !== 'cancelled');
+  const allCancelled = activeTransactions.length === 0;
+
+  // Sum dept amounts across all active transactions in the group
+  const groupDeptTotals = useMemo(() => {
+    const totals = {};
+    activeTransactions.forEach(txn => {
+      departmentsWithValues.forEach(dept => {
+        const amt = txn.departmentRevenues?.[dept.departmentId]?.amount || 0;
+        totals[dept.departmentId] = (totals[dept.departmentId] || 0) + amt;
+      });
+    });
+    return totals;
+  }, [activeTransactions, departmentsWithValues]);
+
+  const groupGross = activeTransactions.reduce((s, t) => s + (t.grossDeposit || 0), 0);
+
+  const fmt = (n) =>
+    n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <tr className="bg-green-50 hover:bg-green-100 transition-colors">
+      {/* Patient name + multi-badge */}
+      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={allCancelled ? 'line-through text-gray-400' : 'font-medium'}>
+            {displayName}
+          </span>
+          <span className="inline-flex items-center gap-1 text-xs font-semibold bg-green-800 text-white rounded-full px-2 py-0.5">
+            {transactions.length} visits
+          </span>
+        </div>
+      </td>
+
+      {/* Summed department columns */}
+      {departmentsWithValues.map(dept => (
+        <td key={dept.departmentId} className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+          {allCancelled
+            ? <span className="text-gray-400 text-xs">—</span>
+            : groupDeptTotals[dept.departmentId] > 0
+              ? fmt(groupDeptTotals[dept.departmentId])
+              : <span className="text-gray-400 text-xs">N/A</span>
+          }
+        </td>
+      ))}
+
+      {/* Combined gross */}
+      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-semibold text-green-800">
+        {allCancelled ? '—' : fmt(groupGross)}
+      </td>
+
+      {/* Referrer — blank for group row (shown in modal) */}
+      <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200 text-xs text-gray-400 italic">
+        Multiple
+      </td>
+
+      {/* Actions — "View" button */}
+      <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">
+        <button
+          onClick={() => onViewGroup(displayName, transactions)}
+          className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-green-800 text-white text-xs font-semibold hover:bg-green-700 transition-colors shadow-sm"
+        >
+          View
+          <ChevronDown size={12} />
+        </button>
+      </td>
+    </tr>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   Main IncomeTable
+───────────────────────────────────────────── */
 const IncomeTable = ({
   filteredTransactions,
   departmentsWithValues,
@@ -215,6 +296,33 @@ const IncomeTable = ({
   handlers,
   permissions = {}
 }) => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalPatient, setModalPatient] = useState({ name: '', transactions: [] });
+
+  /* Group transactions by normalised patient name */
+  const grouped = useMemo(() => {
+    const map = new Map(); // key: normalised name → { displayName, transactions[] }
+
+    filteredTransactions.forEach(txn => {
+      const key = normalizeName(txn.name);
+      if (!map.has(key)) {
+        // Use the first occurrence's capitalisation as the display name
+        map.set(key, { displayName: txn.name || 'N/A', transactions: [] });
+      }
+      map.get(key).transactions.push(txn);
+    });
+
+    return [...map.values()]; // array of { displayName, transactions }
+  }, [filteredTransactions]);
+
+  const handleViewGroup = (name, transactions) => {
+    setModalPatient({ name, transactions });
+    setModalOpen(true);
+  };
+
+  const fmt = (n) =>
+    n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="relative">
 
@@ -238,43 +346,53 @@ const IncomeTable = ({
             <table className="min-w-full border-collapse text-sm md:text-base">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-green-800 text-white">
-                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 sticky left-0 bg-green-800 z-20">OR#</th>
-                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200">Patient Name</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 uppercase tracking-wide">Patient Name</th>
 
-                  {/* Department columns */}
                   {departmentsWithValues.map(dept => (
                     <th
                       key={dept.departmentId}
-                      className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-700' : ''}`}
+                      className={`py-1 md:py-2 px-1 md:px-2 text-right border border-green-200 uppercase tracking-wide ${dept.status !== 'active' ? 'bg-green-700' : ''}`}
                     >
                       {dept.departmentName}
                       {dept.status !== 'active' && <span className="ml-1 text-xs opacity-75">(archived)</span>}
                     </th>
                   ))}
 
-                  <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Gross</th>
-                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 w-[80px] md:w-[120px]">Referrer</th>
-                  <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200">Actions</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-right border border-green-200 uppercase tracking-wide">Gross</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-left border border-green-200 w-[80px] md:w-[120px] uppercase tracking-wide">Referrer</th>
+                  <th className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTransactions.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    departmentsWithValues={departmentsWithValues}
-                    editingId={editingId}
-                    editedTransaction={editedTransaction}
-                    openMenuId={openMenuId}
-                    referrers={referrers}
-                    handlers={handlers}
-                    permissions={permissions}
-                  />
-                ))}
+                {grouped.map(({ displayName, transactions }) =>
+                  transactions.length === 1 ? (
+                    /* ── Single transaction: render as before ── */
+                    <TransactionRow
+                      key={transactions[0].id}
+                      transaction={transactions[0]}
+                      departmentsWithValues={departmentsWithValues}
+                      editingId={editingId}
+                      editedTransaction={editedTransaction}
+                      openMenuId={openMenuId}
+                      referrers={referrers}
+                      handlers={handlers}
+                      permissions={permissions}
+                    />
+                  ) : (
+                    /* ── Multiple transactions: grouped row ── */
+                    <GroupedRow
+                      key={normalizeName(displayName)}
+                      displayName={displayName}
+                      transactions={transactions}
+                      departmentsWithValues={departmentsWithValues}
+                      onViewGroup={handleViewGroup}
+                    />
+                  )
+                )}
 
                 {/* Totals row */}
                 <tr className="bg-green-100">
-                  <td colSpan={2} className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
+                  <td className="py-1 md:py-2 px-1 md:px-2 font-bold border border-green-200 text-green-800 sticky left-0 bg-green-100">TOTAL:</td>
 
                   {departmentsWithValues.map(dept => {
                     const grossRevenue = departmentTotals[dept.departmentId] || 0;
@@ -283,17 +401,17 @@ const IncomeTable = ({
                     return (
                       <td
                         key={dept.departmentId}
-                        className={`py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
+                        className={`py-1 md:py-2 px-1 md:px-2 text-right border border-green-200 ${dept.status !== 'active' ? 'bg-green-50' : ''}`}
                       >
                         <div className="font-bold">
-                          {netRevenue > 0 ? netRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                          {netRevenue > 0 ? fmt(netRevenue) : '0.00'}
                         </div>
                       </td>
                     );
                   })}
 
-                  <td className="py-1 md:py-2 px-1 md:px-2 text-center border border-green-200 font-bold text-green-700">
-                    {totalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <td className="py-1 md:py-2 px-1 md:px-2 text-right border border-green-200 font-bold text-green-700">
+                    {fmt(totalGross)}
                   </td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
                   <td className="py-1 md:py-2 px-1 md:px-2 border border-green-200"></td>
@@ -305,10 +423,25 @@ const IncomeTable = ({
 
         <div className="flex justify-end mt-4 px-2">
           <div className="text-sm text-gray-600">
-            Showing {filteredTransactions.length} {filteredTransactions.length === 1 ? 'patient' : 'patients'}
+            Showing {grouped.length} {grouped.length === 1 ? 'patient' : 'patients'}
           </div>
         </div>
       </div>
+
+      {/* Patient Transactions Modal */}
+      <PatientTransactionsModal
+        isOpen={modalOpen}
+        patientName={modalPatient.name}
+        transactions={modalPatient.transactions}
+        departmentsWithValues={departmentsWithValues}
+        editingId={editingId}
+        editedTransaction={editedTransaction}
+        openMenuId={openMenuId}
+        referrers={referrers}
+        handlers={handlers}
+        permissions={permissions}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 };

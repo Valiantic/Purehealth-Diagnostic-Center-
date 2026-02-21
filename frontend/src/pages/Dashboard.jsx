@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { BsTriangleFill } from 'react-icons/bs';
 import { TbTriangleInvertedFilled } from 'react-icons/tb';
 import { RxAvatar } from 'react-icons/rx';
+import { FileText, Loader2 } from 'lucide-react';
 import Chart from 'chart.js/auto';
 import Sidebar from '../components/dashboard/Sidebar';
 import DashboardErrorBoundary from '../components/dashboard/DashboardErrorBoundary';
@@ -9,6 +10,7 @@ import DateSelector from '../components/transaction/DateSelector';
 import useAuth from '../hooks/auth/useAuth';
 import { DashboardProvider, useDashboardContext } from '../contexts/DashboardContext';
 import useDashboardData from '../hooks/dashboard/useDashboardData';
+import { exportDashboardPdf } from '../utils/dashboardPdfExporter';
 import {
   transformDailyIncomeData,
   transformExpensesByDepartment,
@@ -32,6 +34,8 @@ const DashboardContent = () => {
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const dateInputRef = useRef(null);
+  const dashboardContentRef = useRef(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   // Dashboard data hook (add selectedDate as dependency to ensure refresh)
   const {
@@ -69,6 +73,39 @@ const DashboardContent = () => {
         setSelectedDate(newDate);
         setPeriod(month, year);
       }
+    }
+  };
+
+  // Generate PDF report handler
+  const handleGenerateReport = async () => {
+    if (!dashboardContentRef.current || isPrinting) return;
+    setIsPrinting(true);
+    try {
+      const formattedDate = selectedDate.toLocaleDateString('en-PH', {
+        month: 'long',
+        year: 'numeric',
+      });
+      await exportDashboardPdf(
+        dashboardContentRef.current,
+        {
+          monthlyRevenue,
+          monthlyExpenses,
+          netProfit,
+          transactionCount,
+          revenueComparison,
+          expensesComparison,
+          netProfitComparison,
+          transactionComparison,
+          expensesByDepartment,
+          dailyIncomeData,
+          monthlyProfitData,
+        },
+        formattedDate
+      );
+    } catch (err) {
+      console.error('Dashboard PDF export failed:', err);
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -322,31 +359,60 @@ const DashboardContent = () => {
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
 
-      <div className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
+      <div ref={dashboardContentRef} data-pdf-capture className="flex-1 overflow-auto p-6 pt-16 lg:pt-6 lg:ml-64">
 
         <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 relative">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
+
+          {/* Right-side controls — all inline, no wrapping */}
+          <div className="flex items-center gap-2 flex-nowrap">
             <span className="text-gray-500 text-base font-medium whitespace-nowrap">Showing data for:</span>
-            <div className="relative w-full max-w-xs sm:max-w-[180px]">
+
+            {/* Date picker — fixed width so it never grows and pushes the button */}
+            <div className="w-[160px] shrink-0">
               <DateSelector
                 date={selectedDate}
                 onDateChange={handleDateChange}
                 inputRef={dateInputRef}
                 max={new Date().toISOString().split('T')[0]}
-                className="border border-gray-300 rounded px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 text-base font-medium w-full min-w-[120px] sm:min-w-[120px]"
+                className="border border-gray-300 rounded px-3 py-[7px] text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-600 text-sm font-medium w-full"
                 customStyles={{
                   wrapper: "relative w-full",
-                  text: "text-sm sm:text-base w-full",
-                  icon: "ml-2 h-4 w-4 text-gray-400"
+                  text: "text-sm w-full",
+                  icon: "ml-1 h-4 w-4 text-gray-400"
                 }}
                 dropdownProps={{
-                  className: "absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-auto w-full",
-                  style: { maxWidth: '100vw' }
+                  className: "absolute left-0 top-full z-50 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-auto w-full",
+                  style: { minWidth: '160px' }
                 }}
                 displayFormat="month-year"
               />
             </div>
+
+            {/* Generate Report button — same height as the date picker */}
+            <button
+              id="dashboard-generate-report-btn"
+              onClick={handleGenerateReport}
+              disabled={isPrinting || loading.monthlyData}
+              title="Export dashboard as PDF report with metric documentation"
+              className={`flex items-center gap-2 px-3 py-[7px] rounded border text-sm font-semibold transition-all whitespace-nowrap shrink-0
+                ${isPrinting || loading.monthlyData
+                  ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                  : 'bg-green-700 border-green-800 text-white hover:bg-green-800 active:scale-95 shadow-sm'
+                }`}
+            >
+              {isPrinting ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <FileText size={15} />
+                  <span>Generate Report</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -354,12 +420,12 @@ const DashboardContent = () => {
         <div className="mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Revenue */}
-            <div className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4">
-              <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">Total Revenue</h3>
+            <div id="kpi-total-revenue" className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4">
+              <h3 className="text-green-800 font-bold text-base sm:text-2xl md:text-3xl mb-2">Total Revenue</h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-black">{loading.monthlyData ? 'Loading...' : `${formatCurrency(monthlyRevenue)}`}</div>
-                  <div className="flex items-center text-xs text-gray-500 mt-2">
+                  <div className="text-3xl sm:text-4xl font-extrabold text-black">{loading.monthlyData ? 'Loading...' : `${formatCurrency(monthlyRevenue)}`}</div>
+                  <div className="flex items-center text-sm text-gray-500 mt-2">
                     {revenueComparison ? (
                       <>
                         {revenueComparison.direction === 'up' ? (
@@ -379,12 +445,12 @@ const DashboardContent = () => {
             </div>
 
             {/* Operating Cost */}
-            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
-              <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">Operating Cost</h3>
+            <div id="kpi-operating-cost" className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
+              <h3 className="text-green-800 font-bold text-base sm:text-2xl md:text-3xl mb-2">Operating Cost</h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-black">{loading.monthlyData ? 'Loading...' : `${formatCurrency(monthlyExpenses)}`}</div>
-                  <div className="flex items-center text-xs text-gray-500 mt-2">
+                  <div className="text-3xl sm:text-4xl font-extrabold text-black">{loading.monthlyData ? 'Loading...' : `${formatCurrency(monthlyExpenses)}`}</div>
+                  <div className="flex items-center text-sm text-gray-500 mt-2">
                     {expensesComparison ? (
                       <>
                         {expensesComparison.direction === 'up' ? (
@@ -404,12 +470,12 @@ const DashboardContent = () => {
             </div>
 
             {/* Total Transactions */}
-            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
-              <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">Total Transactions</h3>
+            <div id="kpi-total-transactions" className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
+              <h3 className="text-green-800 font-bold text-base sm:text-2xl md:text-3xl mb-2">Total Transactions</h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-black">{loading.monthlyData ? 'Loading...' : (typeof transactionCount === 'number' ? transactionCount : '--')}</div>
-                  <div className="flex items-center text-xs text-gray-500 mt-2">
+                  <div className="text-3xl sm:text-4xl font-extrabold text-black">{loading.monthlyData ? 'Loading...' : (typeof transactionCount === 'number' ? transactionCount : '--')}</div>
+                  <div className="flex items-center text-sm text-gray-500 mt-2">
                     {transactionComparison ? (
                       <>
                         {transactionComparison.direction === 'up' ? (
@@ -431,12 +497,12 @@ const DashboardContent = () => {
             </div>
 
             {/* Net Profit */}
-            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
-              <h3 className="text-green-800 font-bold text-sm sm:text-xl md:text-2xl mb-2">{netProfit >= 0 ? 'Net Profit' : 'Net Loss'}</h3>
+            <div id="kpi-net-profit" className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4">
+              <h3 className="text-green-800 font-bold text-base sm:text-2xl md:text-3xl mb-2">{netProfit >= 0 ? 'Net Profit' : 'Net Loss'}</h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className={`text-2xl sm:text-3xl font-extrabold ${netProfit >= 0 ? 'text-black' : 'text-red-600'}`}>{loading.monthlyData ? 'Loading...' : `${formatCurrency(netProfit)}`}</div>
-                  <div className="flex items-center text-xs text-gray-500 mt-2">
+                  <div className={`text-3xl sm:text-4xl font-extrabold ${netProfit >= 0 ? 'text-black' : 'text-red-600'}`}>{loading.monthlyData ? 'Loading...' : `${formatCurrency(netProfit)}`}</div>
+                  <div className="flex items-center text-sm text-gray-500 mt-2">
                     {netProfitComparison ? (
                       <>
                         {netProfitComparison.direction === 'up' ? (
@@ -461,8 +527,8 @@ const DashboardContent = () => {
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Left Column: Monthly Progress and Expenses by Category stacked */}
           <div className="flex flex-col gap-4 h-full justify-start">
-            <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2">
-              <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-1">Monthly Progress</h3>
+            <div id="kpi-monthly-progress" className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2">
+              <h3 className="text-green-700 font-extrabold text-xl sm:text-2xl md:text-3xl mb-1">Monthly Progress</h3>
               {(() => {
                 const now = new Date();
                 const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
@@ -479,7 +545,7 @@ const DashboardContent = () => {
                         />
                       </div>
                     </div>
-                    <div className="text-sm text-gray-700 mb-1 mt-2">
+                    <div className="text-base text-gray-700 mb-1 mt-2">
                       {currentDay}/{daysInMonth} days of {now.toLocaleString('default', { month: 'long' })}
                     </div>
                   </>
@@ -487,8 +553,8 @@ const DashboardContent = () => {
               })()}
             </div>
 
-            <div className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-auto min-h-[256px] max-h-[320px] overflow-hidden">
-              <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2 flex-shrink-0">Expenses by Category</h3>
+            <div id="kpi-expenses-by-category" className="bg-white border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-auto min-h-[256px] max-h-[320px] overflow-hidden">
+              <h3 className="text-green-700 font-extrabold text-xl sm:text-2xl md:text-3xl mb-2 flex-shrink-0">Expenses by Category</h3>
               {Array.isArray(expensesByDepartment) && expensesByDepartment.length > 0 ? (
                 <div className="flex flex-col gap-1 flex-1 min-h-0">
                   {/* Bars - responsive scrollable container for many categories */}
@@ -506,14 +572,14 @@ const DashboardContent = () => {
                         const label = item.category || item.department || 'Category';
                         return (
                           <div key={idx} className="flex items-center py-1 w-full min-w-0 flex-shrink-0">
-                            <span className="w-24 min-w-[70px] truncate text-sm text-gray-800 font-bold mr-2" title={label}>{label}</span>
+                            <span className="w-28 min-w-[80px] truncate text-base text-gray-800 font-bold mr-2" title={label}>{label}</span>
                             <div className="relative flex-1 flex items-center min-w-0">
                               <div
                                 className="h-3 rounded-full"
                                 style={{ backgroundColor: color, width: `${percentage}%`, minWidth: '8px', maxWidth: '100%' }}
                               ></div>
                             </div>
-                            <span className="text-sm text-gray-800 font-bold ml-2 whitespace-nowrap">{percentage}%</span>
+                            <span className="text-base text-gray-800 font-bold ml-2 whitespace-nowrap">{percentage}%</span>
                           </div>
                         );
                       });
@@ -527,8 +593,8 @@ const DashboardContent = () => {
           </div>
 
           {/* Right Column: Income Trend Chart */}
-          <div className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-full justify-center">
-            <h3 className="text-green-700 font-extrabold text-lg sm:text-xl md:text-2xl mb-2">Income Trend</h3>
+          <div id="kpi-income-trend" className="bg-white  border border-3 border-gray-300 rounded shadow-sm p-4 flex flex-col gap-2 h-full justify-center">
+            <h3 className="text-green-700 font-extrabold text-xl sm:text-2xl md:text-3xl mb-2">Income Trend</h3>
             <div className="h-64 w-full">
               {loading.dailyIncome ? (
                 <div className="flex items-center justify-center h-full">
@@ -542,7 +608,7 @@ const DashboardContent = () => {
             {dailyIncomeLegend && dailyIncomeLegend.length > 0 && (
               <div className="mt-2 flex flex-row gap-4 items-center">
                 {dailyIncomeLegend.map((item, idx) => (
-                  <div key={idx} className="flex items-center text-xs">
+                  <div key={idx} className="flex items-center text-sm">
                     <span
                       className="inline-block w-4 h-2 mr-2 rounded"
                       style={{
@@ -561,27 +627,27 @@ const DashboardContent = () => {
         </div>
 
         {/* Monthly Profit and Loss Chart (Full Width) */}
-        <div className="bg-white  border border-3 border-gray-300 p-4 rounded-lg shadow-md mt-6">
+        <div id="kpi-profit-loss" className="bg-white  border border-3 border-gray-300 p-4 rounded-lg shadow-md mt-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-              <h3 className="font-bold text-green-700 text-lg">Monthly Profit and Loss</h3>
+              <h3 className="font-bold text-green-700 text-xl">Monthly Profit and Loss</h3>
               {/* Legend - Responsive grid for mobile */}
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#84cc16' }}></div>
-                  <span className="text-xs text-gray-700">Revenue</span>
+                  <span className="text-sm text-gray-700">Revenue</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#15803d' }}></div>
-                  <span className="text-xs text-gray-700">Expenses</span>
+                  <span className="text-sm text-gray-700">Expenses</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#a3e635' }}></div>
-                  <span className="text-xs text-gray-700">Profit</span>
+                  <span className="text-sm text-gray-700">Profit</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ea580c' }}></div>
-                  <span className="text-xs text-gray-700">Loss</span>
+                  <span className="text-sm text-gray-700">Loss</span>
                 </div>
               </div>
             </div>

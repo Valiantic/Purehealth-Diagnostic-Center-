@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { MoreVertical, Download, Edit } from 'lucide-react';
 
-const ExpenseTable = ({ 
-  filteredExpenses, 
+const ExpenseTable = ({
+  filteredExpenses,
   expenseSearchTerm,
   onEditExpense,
   permissions = {}
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
-  
+
   const toggleDropdown = (id, e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -18,7 +18,7 @@ const ExpenseTable = ({
   const handleEditFromDropdown = (expense, e) => {
     e.stopPropagation();
     e.preventDefault();
-    setOpenDropdownId(null); 
+    setOpenDropdownId(null);
     if (onEditExpense) {
       onEditExpense(expense);
     }
@@ -28,14 +28,14 @@ const ExpenseTable = ({
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     const dateA = new Date(a.createdAt || 0);
     const dateB = new Date(b.createdAt || 0);
-    return dateB - dateA; 
+    return dateB - dateA;
   });
 
   React.useEffect(() => {
     const handleClickOutside = () => {
       setOpenDropdownId(null);
     };
-    
+
     document.addEventListener('click', handleClickOutside);
     return () => {
       document.removeEventListener('click', handleClickOutside);
@@ -49,7 +49,7 @@ const ExpenseTable = ({
           <p className="text-gray-500 font-medium">No expenses found on this day</p>
           <p className="text-sm text-gray-400 mt-1">Add expenses or adjust your search criteria</p>
         </div>
-        
+
         <div className="flex justify-end mt-4 px-2">
           <div className="text-sm text-gray-600">
             Showing 0 expenses
@@ -74,24 +74,24 @@ const ExpenseTable = ({
         <table className="min-w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="bg-[#02542D] text-white">
-              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Payee</th>
-              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Paid to</th>
-              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Category</th>
-              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Department</th>
-              <th className="py-3 px-4 text-left font-semibold border-r border-green-700">Status</th>
-              <th className="py-3 px-4 text-right font-semibold border-r border-green-700">Amount</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700 uppercase tracking-wide">Payee</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700 uppercase tracking-wide">Paid to</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700 uppercase tracking-wide">Category</th>
+              <th className="py-3 px-4 text-left font-semibold border-r border-green-700 uppercase tracking-wide">Department</th>
+              <th className="py-3 px-4 text-center font-semibold border-r border-green-700 uppercase tracking-wide">Status</th>
+              <th className="py-3 px-4 text-right font-semibold border-r border-green-700 uppercase tracking-wide">Amount</th>
               <th className="py-3 px-4 text-center font-semibold w-16"></th>
             </tr>
           </thead>
           <tbody>
             {sortedExpenses.flatMap((expense, expenseIndex) => {
-              const hasExpenseItems = expense.ExpenseItems && 
-                                    Array.isArray(expense.ExpenseItems) && 
-                                    expense.ExpenseItems.length > 0;
-                                    
+              const hasExpenseItems = expense.ExpenseItems &&
+                Array.isArray(expense.ExpenseItems) &&
+                expense.ExpenseItems.length > 0;
+
               if (!hasExpenseItems) {
                 const expenseId = expense.id || expense.expenseId || `exp-${expenseIndex}`;
-                
+
                 // Format payee name (firstName + lastName)
                 const payeeName = (() => {
                   if (expense.firstName || expense.lastName) {
@@ -101,12 +101,12 @@ const ExpenseTable = ({
                   }
                   return 'Unknown';
                 })();
-                
+
                 let expensePurpose = expense.purpose || expense.expensePurpose || expense.description || 'N/A';
-                
+
                 // Get category name
-                const categoryName = expense.Category?.name || 'No Category';
-                
+                const categoryName = expense.Category?.name || 'N/A';
+
                 let departmentName = '';
                 try {
                   if (expense.department) {
@@ -123,21 +123,20 @@ const ExpenseTable = ({
                 } catch (err) {
                   departmentName = 'Unknown';
                 }
-                
+
                 const amount = parseFloat(expense.amount || expense.expenseAmount || 0);
                 const isCancelled = expense.status === 'cancelled';
                 const statusToDisplay = expense.status || 'pending';
-                
+
                 return [(
-                  <tr 
-                    key={`exp-single-${expenseId}-${expenseIndex}`} 
-                    className={`border-b hover:bg-gray-50 ${
-                      isCancelled ? 'bg-red-50 text-red-600' : ''
-                    }`}
+                  <tr
+                    key={`exp-single-${expenseId}-${expenseIndex}`}
+                    className={`border-b hover:bg-gray-50 ${isCancelled ? 'bg-red-50 text-red-600' : ''
+                      }`}
                   >
                     <td className="py-3 px-4 border-r border-gray-200">
                       <span className={isCancelled ? 'line-through' : ''}>
-                        {payeeName}
+                        {payeeName || 'N/A'}
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
@@ -156,13 +155,12 @@ const ExpenseTable = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${
-                        statusToDisplay === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${statusToDisplay === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         statusToDisplay === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
-                        statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
-                        statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
+                            statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {statusToDisplay.charAt(0).toUpperCase() + statusToDisplay.slice(1)}
                       </span>
                     </td>
@@ -177,14 +175,14 @@ const ExpenseTable = ({
                     <td className="py-3 px-4 text-center">
                       {permissions.canEdit && (
                         <div className="relative">
-                          <button 
+                          <button
                             type="button"
                             className="text-gray-600 hover:text-green-600 focus:outline-none"
                             onClick={(e) => toggleDropdown(expenseId, e)}
                           >
                             <MoreVertical size={20} />
                           </button>
-                          
+
                           {openDropdownId === expenseId && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
                               <button
@@ -202,12 +200,12 @@ const ExpenseTable = ({
                   </tr>
                 )];
               }
-              
+
               const expenseId = expense.id || expense.expenseId || `exp-${expenseIndex}`;
-              
+
               return expense.ExpenseItems.map((expenseItem, itemIndex) => {
                 const uniqueItemKey = `${expenseId}-item-${itemIndex}`;
-                
+
                 // Format payee name (firstName + lastName)
                 const payeeName = (() => {
                   if (expense.firstName || expense.lastName) {
@@ -217,12 +215,12 @@ const ExpenseTable = ({
                   }
                   return 'Unknown';
                 })();
-                
+
                 let expensePurpose = expenseItem.purpose || expenseItem.description || 'N/A';
-                
+
                 // Get category name for this specific expense item
                 const categoryName = expenseItem.Category?.name || 'No Category';
-                
+
                 let departmentName = '';
                 try {
                   if (expense.department) {
@@ -239,17 +237,16 @@ const ExpenseTable = ({
                 } catch (err) {
                   departmentName = 'Unknown';
                 }
-                
+
                 const amount = parseFloat(expenseItem.amount || 0);
                 const isCancelled = expenseItem.status === 'cancelled';
                 const statusToDisplay = expenseItem.status || 'pending';
-                
+
                 return (
-                  <tr 
-                    key={uniqueItemKey} 
-                    className={`border-b hover:bg-gray-50 ${
-                      isCancelled ? 'bg-red-50 text-red-600' : ''
-                    }`}
+                  <tr
+                    key={uniqueItemKey}
+                    className={`border-b hover:bg-gray-50 ${isCancelled ? 'bg-red-50 text-red-600' : ''
+                      }`}
                   >
                     <td className="py-3 px-4 border-r border-gray-200">
                       <span className={isCancelled ? 'line-through' : ''}>
@@ -272,13 +269,12 @@ const ExpenseTable = ({
                       </span>
                     </td>
                     <td className="py-3 px-4 border-r border-gray-200">
-                      <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${
-                        statusToDisplay === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${statusToDisplay === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         statusToDisplay === 'reimbursed' ? 'bg-blue-100 text-blue-800' :
-                        statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
-                        statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          statusToDisplay === 'paid' ? 'bg-green-100 text-green-800' :
+                            statusToDisplay === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {statusToDisplay.charAt(0).toUpperCase() + statusToDisplay.slice(1)}
                       </span>
                     </td>
@@ -293,14 +289,14 @@ const ExpenseTable = ({
                     <td className="py-3 px-4 text-center">
                       {permissions.canEdit && (
                         <div className="relative">
-                          <button 
+                          <button
                             type="button"
                             className="text-gray-600 hover:text-green-600 focus:outline-none"
                             onClick={(e) => toggleDropdown(`${expenseId}-item-${itemIndex}`, e)}
                           >
                             <MoreVertical size={20} />
                           </button>
-                          
+
                           {openDropdownId === `${expenseId}-item-${itemIndex}` && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1 border border-gray-200">
                               <button

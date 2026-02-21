@@ -17,7 +17,7 @@ const ActivityLog = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(7) 
+  const [itemsPerPage] = useState(7)
   const [selectedDate, setSelectedDate] = useState('')
   const dateInputRef = useRef(null)
 
@@ -46,11 +46,11 @@ const ActivityLog = () => {
       if (selectedDate) {
         params.date = selectedDate;
       }
-  
+
       const response = await activityLogAPI.getAllLogs(params);
       return response.data;
     },
-    staleTime: 10000, 
+    staleTime: 10000,
     refetchInterval: 15000,
     retry: 2
   })
@@ -66,9 +66,9 @@ const ActivityLog = () => {
   if (!user) {
     return null;
   }
- 
+
   const currentPath = location.pathname;
-  const activeTab = tabsConfig.find(tab => 
+  const activeTab = tabsConfig.find(tab =>
     currentPath === tab.route || currentPath.startsWith(tab.route)
   )?.name || 'Activity';
 
@@ -110,9 +110,9 @@ const ActivityLog = () => {
 
   return (
     <div className='flex flex-col md:flex-row h-screen'>
-      <ToastContainer 
-        position="top-right" 
-        autoClose={3000} 
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
@@ -124,30 +124,30 @@ const ActivityLog = () => {
       <div className="md:sticky md:top-0 md:h-screen z-10">
         <Sidebar />
       </div>
-     
+
       <div className='flex-1 overflow-auto p-4 pt-16 lg:pt-6 lg:ml-64'>
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
           <TabNavigation tabsConfig={tabsConfig} />
-          
+
           {activeTab === 'Activity' && (
             <>
               {/* Improved controls layout with filter and search at top right */}
               <div className="p-2 mt-4 mb-4">
                 <div className="flex justify-between items-center">
                   {/* Refresh button stays on left */}
-                  <button 
+                  <button
                     className="bg-green-800 text-white p-2 rounded-full hover:bg-green-600 flex-shrink-0"
                     onClick={handleRefresh}
                     title="Refresh logs"
                   >
                     <RefreshCw className="h-5 w-5" />
                   </button>
-                  
+
                   {/* Filter and search aligned to right */}
                   <div className="flex flex-col sm:flex-row gap-2 items-center">
                     {/* Date Filter */}
                     <div className="relative w-full sm:w-auto">
-                      <button 
+                      <button
                         onClick={handleDateFilterClick}
                         className="border-2 border-green-800 bg-white text-green-800 rounded-lg px-3 py-2 text-sm md:text-base flex items-center w-full sm:w-auto justify-between"
                         type="button"
@@ -157,7 +157,7 @@ const ActivityLog = () => {
                         </span>
                         <Calendar className="h-4 w-4 flex-shrink-0" />
                       </button>
-                      
+
                       <input
                         ref={dateInputRef}
                         type="date"
@@ -200,7 +200,7 @@ const ActivityLog = () => {
                     <span className="text-sm text-gray-600 mr-2">Active filter:</span>
                     <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded flex items-center">
                       Date: {new Date(selectedDate).toLocaleDateString()}
-                      <button 
+                      <button
                         onClick={clearDateFilter}
                         className="ml-1 hover:text-red-600"
                       >
@@ -216,17 +216,17 @@ const ActivityLog = () => {
                   <h1 className='ml-2 font-bold text-white sm:text-xs md:text-2xl'>Activity Log</h1>
                 </div>
                 <div className="border border-green-800 rounded-b">
-                
+
                   {/* Replaced nested scrolling containers with single responsive table container */}
                   <div className="hidden md:block overflow-x-auto w-full max-h-[calc(100vh-380px)]">
                     <table className="w-full text-sm table-fixed">
                       <thead className="sticky top-0 bg-green-100 z-10">
                         <tr className="border-b border-green-800">
-                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[15%] sm:w-[15%]">User</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium hidden sm:table-cell w-[10%]">Role</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[15%] sm:w-[10%]">Time</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[15%] sm:w-[10%]">Date</th>
-                          <th className="p-1 border-r border-green-800 text-sm font-medium w-[55%]">Action</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-left w-[15%] sm:w-[15%] uppercase tracking-wide">User</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-center hidden sm:table-cell w-[10%] uppercase tracking-wide">Role</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-center w-[15%] sm:w-[10%] uppercase tracking-wide">Time</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-center w-[15%] sm:w-[10%] uppercase tracking-wide">Date</th>
+                          <th className="p-1 border-r border-green-800 text-sm font-medium text-left w-[55%] uppercase tracking-wide">Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -246,33 +246,32 @@ const ActivityLog = () => {
                           currentLogs.map(log => (
                             <tr key={log.logId} className="border-b border-green-200">
                               <td className="p-1 pl-2 border-r border-green-200 truncate">
-                                {log.user?.name || 'System'}
+                                {log.user?.name || 'N/A'}
                               </td>
                               <td className="p-1 border-r border-green-200 text-center hidden sm:table-cell">
                                 <span
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    log.user?.role?.toLowerCase() === 'administrator' || log.user?.role?.toLowerCase() === 'admin'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : log.user?.role?.toLowerCase() === 'marketing'
-                                        ? 'bg-purple-100 text-purple-800'
-                                        : log.user?.role?.toLowerCase() === 'accounting'
-                                          ? 'bg-yellow-100 text-yellow-800'
-                                          : log.user?.role?.toLowerCase() === 'cashier' || log.user?.role?.toLowerCase() === 'receptionist'
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-gray-100 text-gray-800'
-                                  }`}
+                                  className={`px-2 py-1 rounded text-xs font-medium ${log.user?.role?.toLowerCase() === 'administrator' || log.user?.role?.toLowerCase() === 'admin'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : log.user?.role?.toLowerCase() === 'marketing'
+                                      ? 'bg-purple-100 text-purple-800'
+                                      : log.user?.role?.toLowerCase() === 'accounting'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : log.user?.role?.toLowerCase() === 'cashier' || log.user?.role?.toLowerCase() === 'receptionist'
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-gray-100 text-gray-800'
+                                    }`}
                                 >
-                                  {log.user?.role || 'SYSTEM'}
+                                  {log.user?.role || 'N/A'}
                                 </span>
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
-                                {log.time}
+                                {log.time || 'N/A'}
                               </td>
                               <td className="p-1 border-r border-green-200 text-center">
-                                {log.date}
+                                {log.date || 'N/A'}
                               </td>
                               <td className="p-1 pl-2 sm:pl-4 border-r border-green-200 break-words">
-                                {log.details}
+                                {log.details || 'N/A'}
                               </td>
                             </tr>
                           ))
@@ -281,7 +280,7 @@ const ActivityLog = () => {
                     </table>
                   </div>
 
- {/* Mobile Card View - Visible only on mobile */}
+                  {/* Mobile Card View - Visible only on mobile */}
                   <div className="md:hidden max-h-[calc(100vh-380px)] overflow-y-auto">
                     {isLoading ? (
                       <div className="text-center p-4">Loading activity logs...</div>
@@ -303,17 +302,16 @@ const ActivityLog = () => {
                                 </div>
                               </div>
                               <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  log.user?.role?.toLowerCase() === 'administrator' || log.user?.role?.toLowerCase() === 'admin'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : log.user?.role?.toLowerCase() === 'marketing'
-                                      ? 'bg-purple-100 text-purple-800'
-                                      : log.user?.role?.toLowerCase() === 'accounting'
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : log.user?.role?.toLowerCase() === 'cashier' || log.user?.role?.toLowerCase() === 'receptionist'
-                                          ? 'bg-green-100 text-green-800'
-                                          : 'bg-gray-100 text-gray-800'
-                                }`}
+                                className={`px-2 py-1 rounded text-xs font-medium ${log.user?.role?.toLowerCase() === 'administrator' || log.user?.role?.toLowerCase() === 'admin'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : log.user?.role?.toLowerCase() === 'marketing'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : log.user?.role?.toLowerCase() === 'accounting'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : log.user?.role?.toLowerCase() === 'cashier' || log.user?.role?.toLowerCase() === 'receptionist'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-100 text-gray-800'
+                                  }`}
                               >
                                 {log.user?.role || 'SYSTEM'}
                               </span>
@@ -335,40 +333,38 @@ const ActivityLog = () => {
                     <nav>
                       <ul className="flex list-none">
                         <li>
-                          <button 
+                          <button
                             onClick={() => paginate(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
-                            className={`px-3 py-1 border border-gray-300 rounded-l ${
-                              currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                            }`}
+                            className={`px-3 py-1 border border-gray-300 rounded-l ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                              }`}
                           >
                             Prev
                           </button>
                         </li>
                         {/* Create a sliding window of page numbers */}
                         {(() => {
-                          
+
                           let startPage = Math.max(1, currentPage - 1);
                           let endPage = Math.min(totalPages, startPage + 2);
-                          
+
                           if (endPage - startPage < 2 && startPage > 1) {
                             startPage = Math.max(1, endPage - 2);
                           }
-                          
+
                           const pageNumbers = [];
                           for (let i = startPage; i <= endPage; i++) {
                             pageNumbers.push(i);
                           }
-                          
+
                           return pageNumbers.map(number => (
                             <li key={number}>
                               <button
                                 onClick={() => paginate(number)}
-                                className={`px-3 py-1 border-t border-b border-gray-300 ${
-                                  currentPage === number 
-                                    ? 'bg-green-800 text-white' 
-                                    : 'bg-white text-green-800 hover:bg-green-50'
-                                }`}
+                                className={`px-3 py-1 border-t border-b border-gray-300 ${currentPage === number
+                                  ? 'bg-green-800 text-white'
+                                  : 'bg-white text-green-800 hover:bg-green-50'
+                                  }`}
                               >
                                 {number}
                               </button>
@@ -376,12 +372,11 @@ const ActivityLog = () => {
                           ));
                         })()}
                         <li>
-                          <button 
+                          <button
                             onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
                             disabled={currentPage === totalPages}
-                            className={`px-3 py-1 border border-gray-300 rounded-r ${
-                              currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
-                            }`}
+                            className={`px-3 py-1 border border-gray-300 rounded-r ${currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-green-800 hover:bg-green-50'
+                              }`}
                           >
                             Next
                           </button>
@@ -396,7 +391,7 @@ const ActivityLog = () => {
                 {logsData?.logs?.length > 0 && (
                   <div className="mt-4 flex flex-col md:flex-row justify-end">
                     <div className="flex flex-wrap items-center mb-4 md:mb-0">
-                      <button 
+                      <button
                         onClick={handleGenerateActivityLogReport}
                         className="bg-green-800 text-white px-4 md:px-6 py-2 rounded flex items-center mb-2 md:mb-0 text-sm md:text-base hover:bg-green-600"
                       >

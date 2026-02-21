@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CirclePlus, MoreVertical } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CirclePlus } from 'lucide-react'
 import Sidebar from '../components/dashboard/Sidebar'
 import useAuth from '../hooks/auth/useAuth'
 import usePermissions from '../hooks/auth/usePermissions'
-import CollectibleIncomeModal from '../components/monthly-income/CollectiblesIncomeModals'
 import DailyIncomeBreakdownModal from '../components/transaction/DailyIncomeBreakdownModal';
 import { collectibleIncomeAPI, monthlyIncomeAPI, monthlyExpenseAPI, userAPI, transactionAPI } from '../services/api';
 import { toast, ToastContainer } from 'react-toastify';
@@ -17,15 +15,6 @@ const Monthly = () => {
   const { user, isAuthenticating } = useAuth()
   const { hasPermission } = usePermissions()
   const navigate = useNavigate()
-  const [isCollectibleModalOpen, setIsCollectibleModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('add');
-  const [selectedCollectible, setSelectedCollectible] = useState(null);
-  const [collectibles, setCollectibles] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [activeMenu, setActiveMenu] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 5;
 
   // Monthly income state
   const [monthlyData, setMonthlyData] = useState({
@@ -41,22 +30,21 @@ const Monthly = () => {
   });
   const [dataLoading, setDataLoading] = useState(false);
 
-  // Current month/year state
-  const [currentDate, setCurrentDate] = useState(() => {
-    const now = new Date();
-    return {
-      month: now.getMonth() + 1, // 1-12
-      year: now.getFullYear()
-    };
-  });
-
-  // Modal State for Breakdown
+  // Breakdown modal state
   const [breakdownData, setBreakdownData] = useState(null);
   const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
   const [cachedReportData, setCachedReportData] = useState(null);
   const [breakdownLabels, setBreakdownLabels] = useState({ col1: '', col2: '', title: '' });
 
-  // Admin user query
+  // Current month/year state
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date();
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  });
+
+  const [currentMonth, setCurrentMonth] = useState('');
+
+  // Admin user — needed for DailyIncomeBreakdownModal
   const { data: adminUser } = useQuery({
     queryKey: ['adminUser'],
     queryFn: async () => {
@@ -65,7 +53,6 @@ const Monthly = () => {
         const users = response.data?.users || response.data?.data || (Array.isArray(response.data) ? response.data : []);
         return users.find(u => u.role === 'admin');
       } catch (err) {
-        console.error('Error fetching admin user:', err);
         return null;
       }
     },
@@ -73,52 +60,12 @@ const Monthly = () => {
     retry: false
   });
 
-  // Format current month for display
-  const [currentMonth, setCurrentMonth] = useState('');
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
   useEffect(() => {
-    // Format the current month for display
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     setCurrentMonth(`${monthNames[currentDate.month - 1]}-${currentDate.year}`);
-
-    // Load data when month/year changes
     fetchMonthlyIncomeData();
-    fetchCollectibles();
-  }, [currentDate.month, currentDate.year, currentPage]);
-
-  const fetchCollectibles = async () => {
-    setLoading(true);
-    try {
-      ``
-      const response = await collectibleIncomeAPI.getAllCollectibleIncome();
-
-      if (response && response.data && response.data.success) {
-        const allCollectibles = response.data.data || [];
-        setTotalPages(Math.ceil(allCollectibles.length / itemsPerPage));
-
-        const filteredCollectibles = allCollectibles.filter(item => {
-          const itemDate = new Date(item.dateConducted);
-          return itemDate.getMonth() + 1 === currentDate.month &&
-            itemDate.getFullYear() === currentDate.year;
-        })
-
-        setTotalPages(Math.ceil(filteredCollectibles.length / itemsPerPage));
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const paginatedCollectibles = filteredCollectibles.slice(startIndex, startIndex + itemsPerPage);
-        setCollectibles(paginatedCollectibles);
-      } else {
-        console.error("Failed response:", response);
-        toast.error(`Failed to fetch collectible income data`);
-        setCollectibles([]);
-      }
-    } catch (error) {
-      console.error('Error details:', error);
-      toast.error(`Error loading collectible income: ${error.message}`);
-      setCollectibles([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [currentDate.month, currentDate.year]);
 
   const fetchMonthlyIncomeData = async () => {
     setDataLoading(true);
@@ -162,109 +109,21 @@ const Monthly = () => {
     }
   };
 
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleAddIncome = () => {
-    navigate('/add-transaction')
-  }
-
-  const handleAddCollectibles = () => {
-    setModalMode('add');
-    setSelectedCollectible(null);
-    setIsCollectibleModalOpen(true);
-  }
-
-  const handleEditCollectible = (collectible) => {
-    setModalMode('edit');
-    setSelectedCollectible(collectible);
-    setIsCollectibleModalOpen(true);
-    setActiveMenu(null);
-  }
-
-  const handleCollectibleSubmit = async (data) => {
-    setLoading(true);
-    try {
-      const collectibleData = {
-        ...data,
-        currentUserId: user?.userId || user?.id
-      };
-
-      const response = await collectibleIncomeAPI.createCollectibleIncome(collectibleData);
-
-      if (response?.data?.success) {
-        toast.success('Collectible income added successfully');
-        await fetchCollectibles();
-      } else {
-        toast.error(response?.data?.message || 'Failed to add collectible income');
-      }
-    } catch (error) {
-      console.error('Error adding collectible income:', error);
-      toast.error(`Error: ${error.message || 'An unknown error occurred'}`);
-    } finally {
-      setLoading(false);
-      setIsCollectibleModalOpen(false);
-    }
-  }
-
-  const handleCollectibleUpdate = async (data) => {
-    setLoading(true);
-    try {
-      const updateData = {
-        ...data,
-        currentUserId: user?.userId || user?.id
-      };
-
-      const response = await collectibleIncomeAPI.updateCollectibleIncome(selectedCollectible.companyId, updateData);
-
-      if (response?.data?.success) {
-        toast.success('Collectible income updated successfully');
-        await fetchCollectibles();
-      } else {
-        toast.error(response?.data?.message || 'Failed to update collectible income');
-      }
-    } catch (error) {
-      console.error('Error updating collectible income:', error);
-      toast.error(`Error: ${error.message || 'An unknown error occurred'}`);
-    } finally {
-      setLoading(false);
-      setIsCollectibleModalOpen(false);
-      setSelectedCollectible(null);
-    }
-  }
-
-  const toggleMenu = (id) => {
-    setActiveMenu(activeMenu === id ? null : id);
-  };
-
-  const GoToMonthlyExpenses = () => {
-    navigate('/monthly-expenses')
-  }
+  const handleAddIncome = () => navigate('/add-transaction');
 
   const handlePrevMonth = () => {
-    setCurrentDate(prev => {
-      const newMonth = prev.month === 1 ? 12 : prev.month - 1;
-      const newYear = prev.month === 1 ? prev.year - 1 : prev.year;
-      return { month: newMonth, year: newYear };
-    });
-  }
+    setCurrentDate(prev => ({
+      month: prev.month === 1 ? 12 : prev.month - 1,
+      year: prev.month === 1 ? prev.year - 1 : prev.year,
+    }));
+  };
 
   const handleNextMonth = () => {
-    setCurrentDate(prev => {
-      const newMonth = prev.month === 12 ? 1 : prev.month + 1;
-      const newYear = prev.month === 12 ? prev.year + 1 : prev.year;
-      return { month: newMonth, year: newYear };
-    });
-  }
+    setCurrentDate(prev => ({
+      month: prev.month === 12 ? 1 : prev.month + 1,
+      year: prev.month === 12 ? prev.year + 1 : prev.year,
+    }));
+  };
 
   const handleGenerateReport = async () => {
     try {
@@ -611,12 +470,7 @@ const Monthly = () => {
 
         <div className="bg-cream-50 border-green-800 rounded">
 
-          <div className='flex justify-end mb-2'>
-            <button onClick={GoToMonthlyExpenses}
-              className="text-green-800 bg-white border-2 border-green-800 hover:bg-green-300 hover:text-white font-medium py-1 px-3 rounded flex items-center">
-              Monthly Expenses <ChevronRight size={16} className="ml-1" />
-            </button>
-          </div>
+          {/* No navigation button needed — use the sidebar Monthly dropdown */}
 
           {/* Month navigation - improved to match design */}
           <div className="flex justify-center items-center py-2">
@@ -650,14 +504,14 @@ const Monthly = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-green-800 bg-green-100">
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Day</th>
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">Gross</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-center uppercase tracking-wide">Day</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-right uppercase tracking-wide">Gross</th>
                       {monthlyData.departments.map(dept => (
-                        <th key={dept.id} className="p-1 border-r border-green-800 text-sm font-medium">
+                        <th key={dept.id} className="p-1 border-r border-green-800 text-sm font-medium text-right uppercase tracking-wide">
                           {dept.name}
                         </th>
                       ))}
-                      <th className="p-1 border-r border-green-800 text-sm font-medium">GCash</th>
+                      <th className="p-1 border-r border-green-800 text-sm font-medium text-right uppercase tracking-wide">GCash</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -671,13 +525,13 @@ const Monthly = () => {
                       monthlyData.dailyIncome.map((day) => (
                         <tr key={day.date} className="border-b border-green-100">
                           <td className="p-2 border-r border-green-200 text-center bg-white">{formatDate(day.date)}</td>
-                          <td className="p-2 border-r border-green-200 text-center bg-white">{formatCurrency(day.grossAmount)}</td>
+                          <td className="p-2 border-r border-green-200 text-right bg-white">{formatCurrency(day.grossAmount)}</td>
                           {monthlyData.departments.map(dept => (
-                            <td key={`${day.date}-${dept.id}`} className="p-2 border-r border-green-200 text-center bg-white">
+                            <td key={`${day.date}-${dept.id}`} className="p-2 border-r border-green-200 text-right bg-white">
                               {formatCurrency(day.departments[dept.id])}
                             </td>
                           ))}
-                          <td className="p-2 border-r border-green-200 text-center bg-white">{formatCurrency(day.gCashAmount)}</td>
+                          <td className="p-2 border-r border-green-200 text-right bg-white">{formatCurrency(day.gCashAmount)}</td>
 
                         </tr>
                       ))
@@ -706,13 +560,13 @@ const Monthly = () => {
                   <tfoot>
                     <tr className="border-t border-green-800 bg-green-100 font-bold">
                       <td className="p-1 border-r border-green-800 text-center">TOTAL:</td>
-                      <td className="p-1 border-r border-green-800 text-center">{formatCurrency(monthlySummary.totalGross)}</td>
+                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(monthlySummary.totalGross)}</td>
                       {monthlyData.departments.map(dept => (
-                        <td key={`total-${dept.id}`} className="p-1 border-r border-green-800 text-center">
+                        <td key={`total-${dept.id}`} className="p-1 border-r border-green-800 text-right">
                           {formatCurrency(monthlySummary.departmentTotals[dept.id])}
                         </td>
                       ))}
-                      <td className="p-1 border-r border-green-800 text-center">{formatCurrency(monthlySummary.totalGCash)}</td>
+                      <td className="p-1 border-r border-green-800 text-right">{formatCurrency(monthlySummary.totalGCash)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -720,134 +574,8 @@ const Monthly = () => {
             </div>
           </div>
 
-          {/* Collectible Income Section - Only show if user has collectible.view permission */}
-          {hasPermission('collectible.view') && (
-          <div className="md:flex p-2 gap-2">
-            {/* Collectible Income */}
-            <div className="md:w-1/2">
-              <div className="bg-green-800 text-white p-2 font-semibold rounded-t flex justify-between items-center">
-                <span>Collectible Income</span>
-                {hasPermission('collectible.create') && (
-                  <button onClick={handleAddCollectibles} className="bg-green-700 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                    <CirclePlus />
-                  </button>
-                )}
-              </div>
-              <div className="border border-green-800 rounded-b">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-green-800 bg-green-100">
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Company</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Coordinator</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Date</th>
-                        <th className="p-1 border-r border-green-800 text-sm font-medium">Income</th>
-                        {hasPermission('collectible.edit') && (
-                          <th className="p-1 border-r border-green-800 text-sm font-medium">Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr>
-                          <td colSpan={hasPermission('collectible.edit') ? 5 : 4} className="p-2 text-center bg-white">Loading...</td>
-                        </tr>
-                      ) : collectibles.length > 0 ? (
-                        collectibles.map((item) => (
-                          <tr key={`collectible-row-${item.companyId}`} className="border-b border-green-200">
-                            <td className="p-3 border-r border-green-200 text-center bg-white">{item.companyName}</td>
-                            <td className="p-3 border-r border-green-200 text-center bg-white">{item.coordinatorName}</td>
-                            <td className="p-3 border-r border-green-200 text-center bg-white">{new Date(item.dateConducted).toLocaleDateString()}</td>
-                            <td className="p-3 border-r border-green-200 text-center bg-white">
-                              {formatCurrency(item.totalIncome)}
-                            </td>
-                            {hasPermission('collectible.edit') && (
-                              <td className="p-3 text-center relative bg-white">
-                                <button
-                                  className="text-green-800 hover:text-green-600 p-1"
-                                  onClick={() => toggleMenu(item.companyId)}
-                                >
-                                  <MoreVertical size={20} />
-                                </button>
-
-                                {activeMenu === item.companyId && (
-                                  <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                    <ul className="py-1">
-                                      <li>
-                                        <button
-                                          onClick={() => handleEditCollectible(item)}
-                                          className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-100"
-                                        >
-                                          Edit
-                                        </button>
-                                      </li>
-                                    </ul>
-                                  </div>
-                                )}
-                              </td>
-                            )}
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={hasPermission('collectible.edit') ? 5 : 4} className="p-2 text-center text-gray-500 bg-white">No collectible income records found</td>
-                        </tr>
-                      )}
-
-                      {!loading && collectibles.length < 5 &&
-                        [...Array(5 - collectibles.length)].map((_, index) => (
-                          <tr key={`empty-collectible-row-${index}`} className={collectibles.length === 0 ? "" : "border-b border-green-200"}>
-                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
-                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
-                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
-                            <td className={collectibles.length === 0 ? "p-3 bg-white" : "p-3 border-r border-green-200 bg-white"}></td>
-                            {hasPermission('collectible.edit') && (
-                              <td className="p-3 bg-white"></td>
-                            )}
-                          </tr>
-                        ))
-                      }
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination Controls */}
-                <div className="flex justify-between items-center p-2 border-t border-green-800 bg-green-100">
-                  <div className="p-1 font-bold text-green-800">
-                    TOTAL: {formatCurrency(collectibles.reduce((sum, item) => sum + parseFloat(item.totalIncome || 0), 0))}
-                  </div>
-
-                  <div className="flex items-center">
-                    <button
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className={`h-8 w-8 flex items-center justify-center rounded-l border border-green-800 ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
-                        }`}
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <span className="h-8 min-w-[3rem] px-2 flex items-center justify-center bg-white border-t border-b border-green-800 text-green-800 font-medium">
-                      {currentPage} / {totalPages || 1}
-                    </span>
-                    <button
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages || totalPages === 0}
-                      className={`h-8 w-8 flex items-center justify-center rounded-r border border-green-800 ${currentPage === totalPages || totalPages === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-800 text-white hover:bg-green-700'
-                        }`}
-                      aria-label="Next page"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          )}
-
-          {/* Generate Report Button - Only show if there's data and user has export permission */}
-          {(monthlyData.dailyIncome.length > 0 || collectibles.length > 0) && hasPermission('transactions.export') && (
+          {/* Generate Report Button */}
+          {(monthlyData.dailyIncome.length > 0) && hasPermission('transactions.export') && (
             <div className="flex justify-end p-2">
               <button
                 onClick={handleGenerateReport}
@@ -860,38 +588,16 @@ const Monthly = () => {
         </div>
       </div>
 
-      <CollectibleIncomeModal
-        isOpen={isCollectibleModalOpen}
-        onClose={() => {
-          setIsCollectibleModalOpen(false);
-          setSelectedCollectible(null);
-          setModalMode('add');
-        }}
-        onSubmit={handleCollectibleSubmit}
-        onUpdate={handleCollectibleUpdate}
-        userId={user?.userId || user?.id}
-        mode={modalMode}
-        initialData={selectedCollectible}
-      />
-
       <DailyIncomeBreakdownModal
         isOpen={isBreakdownModalOpen}
         onClose={() => setIsBreakdownModalOpen(false)}
         breakdownData={breakdownData}
-        selectedDate={new Date(currentDate.year, currentDate.month - 1, 1)} // 1st of current month
+        selectedDate={new Date(currentDate.year, currentDate.month - 1, 1)}
         user={user}
         adminUser={adminUser}
         labels={breakdownLabels}
         onGenerateExternal={handleModalExport}
       />
-
-      {/* Close dropdown menus when clicking outside */}
-      {activeMenu && (
-        <div
-          className="fixed inset-0 h-full w-full z-0"
-          onClick={() => setActiveMenu(null)}
-        />
-      )}
     </div>
   )
 }
